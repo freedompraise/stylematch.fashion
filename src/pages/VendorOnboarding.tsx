@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Instagram, Facebook, Twitter, Bank, Upload } from 'lucide-react';
+import { ArrowRight, Instagram, Facebook, Twitter, Banknote, Upload } from 'lucide-react';
 import Logo from '@/components/Logo';
 
 const onboardingSchema = z.object({
