@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Logo from './Logo';
 import Button from './Button';
 import { Menu, X } from 'lucide-react';
@@ -23,12 +24,16 @@ const Navbar: React.FC = () => {
 
         {/* Desktop navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <a href="#features" className="text-baseContent hover:text-primary transition-colors font-semibold">Features</a>
-          <a href="#benefits" className="text-baseContent hover:text-primary transition-colors font-semibold">Benefits</a>
-          <a href="#testimonials" className="text-baseContent hover:text-primary transition-colors font-semibold">Success Stories</a>
-          <a href="#pricing" className="text-baseContent hover:text-primary transition-colors font-semibold">Pricing</a>
-          <Button variant="primary" size="sm">Get Started</Button>
-          <Button variant="outline" size="sm">Login</Button>
+          <Link to="/#features" className="text-baseContent hover:text-primary transition-colors font-semibold">Features</Link>
+          <Link to="/#benefits" className="text-baseContent hover:text-primary transition-colors font-semibold">Benefits</Link>
+          <Link to="/#testimonials" className="text-baseContent hover:text-primary transition-colors font-semibold">Success Stories</Link>
+          <Link to="/#pricing" className="text-baseContent hover:text-primary transition-colors font-semibold">Pricing</Link>
+          <Link to="/auth">
+            <Button variant="primary" size="sm">Get Started</Button>
+          </Link>
+          <Link to="/auth">
+            <Button variant="outline" size="sm">Login</Button>
+          </Link>
         </nav>
       </div>
 
@@ -36,37 +41,41 @@ const Navbar: React.FC = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white shadow-lg animate-fade-in">
           <div className="container py-4 flex flex-col space-y-4">
-            <a 
-              href="#features" 
+            <Link 
+              to="/#features" 
               className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Features
-            </a>
-            <a 
-              href="#benefits" 
+            </Link>
+            <Link 
+              to="/#benefits" 
               className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Benefits
-            </a>
-            <a 
-              href="#testimonials" 
+            </Link>
+            <Link 
+              to="/#testimonials" 
               className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Success Stories
-            </a>
-            <a 
-              href="#pricing" 
+            </Link>
+            <Link 
+              to="/#pricing" 
               className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Pricing
-            </a>
+            </Link>
             <div className="flex flex-col space-y-3 py-3">
-              <Button variant="primary" onClick={() => setIsMenuOpen(false)}>Get Started</Button>
-              <Button variant="outline" onClick={() => setIsMenuOpen(false)}>Login</Button>
+              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="primary">Get Started</Button>
+              </Link>
+              <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline">Login</Button>
+              </Link>
             </div>
           </div>
         </div>
