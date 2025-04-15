@@ -1,0 +1,53 @@
+# .cursorrules sample
+- Use Tailwind CSS for styling in .tsx files
+- Follow the Design System Doc for colors and typography
+- Generate components in TypeScript
+- Reference the PRD for feature requirements and app flow
+- Code should be clear and maintainable, following the design doc references and using descriptive variable names.
+- Avoid redundant comments; focus on meaningful code clarity.
+- I am using free tiers for the api integrations. Miniimize overhead. For instance, product deletions should delete their images from cloudinary
+
+
+- **Environment Variables:**  
+  - All sensitive keys must be referenced via environment variables:
+    - `NEXT_PUBLIC_SUPABASE_URL`
+    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+    - `CLOUDINARY_CLOUD_NAME`
+    - `CLOUDINARY_API_KEY`
+    - `CLOUDINARY_API_SECRET`
+    - `PAYSTACK_PUBLIC_KEY`
+    - `PAYSTACK_SECRET_KEY`
+
+
+Generate a complete, working MVP code base for StyleMatch that follows these rules. My only manual step should be to insert the secret keys in my `.env.local` file and perform minor refinements. The code must reference our documents for PRD and App Flow, tech stack, Layout Design, and db design docs 
+
+# Keep AI tone technical and concise
+
+## Image Handling
+- Use Next.js's built‑in `next/image` component for all images.
+- Ensure lazy loading is enabled by default.
+- Always specify width and height to prevent layout shifts.
+- Prioritize key images (using `priority={true}` and `fetchPriority="high"`) only for critical elements (e.g., hero banners).
+
+## Bundle Optimization
+- Analyze bundle sizes using React.js and Vercel documentation tools.
+- Remove unnecessary imports and dependencies.
+- Keep third‑party libraries to a minimum to reduce bloat.
+
+## Static Rendering & Incremental Static Regeneration (ISR)
+- Maximize static page rendering for pages that do not change frequently.
+- Use Next.js ISR to add revalidation to static pages for periodic updates without full rebuilds.
+
+## Dynamic Loading
+- Implement dynamic imports with React Suspense for large components.
+- Split code bundles to decrease initial load times.
+- Only load non-critical components when needed.
+
+## Third-Party Scripts
+- Use `next/script` to load external scripts.
+- Optimize the loading strategy (e.g., lazy loading, afterInteractive) to avoid blocking page rendering.
+
+## API & Service Layer Security
+- Ensure proper authorization checks are implemented in API routes.
+- Validate requests in the service and data access layers.
+- Optimize queries and access patterns for performance and scalability.
