@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -267,7 +266,7 @@ const VendorOnboarding: React.FC = () => {
                           <FormLabel>Bank Name</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Bank className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                               <Input 
                                 placeholder="Your bank name" 
                                 className="pl-10" 
