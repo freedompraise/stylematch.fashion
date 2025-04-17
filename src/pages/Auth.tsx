@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { useSession } from '@/contexts/SessionContext';
+import { toast } from 'sonner';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -31,7 +32,9 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { supabase } = useSession();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -52,16 +55,77 @@ const Auth: React.FC = () => {
     },
   });
 
-  const onLoginSubmit = (data: LoginFormValues) => {
-    console.log('Login data:', data);
-    // This would be replaced with actual authentication logic
-    navigate('/dashboard');
+  const onLoginSubmit = async (data: LoginFormValues) => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const onRegisterSubmit = (data: RegisterFormValues) => {
-    console.log('Register data:', data);
-    // This would be replaced with actual registration logic
-    navigate('/onboarding');
+  const onRegisterSubmit = async (data: RegisterFormValues) => {
+    try {
+      setIsLoading(true);
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName,
+            store_name: data.storeName,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+
+      // Create vendor profile
+      const { error: profileError } = await supabase
+        .from('vendors')
+        .insert([
+          {
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            store_name: data.storeName,
+            full_name: data.fullName,
+          },
+        ]);
+
+      if (profileError) throw profileError;
+
+      toast.success('Account created successfully! Please check your email to verify your account.');
+      navigate('/onboarding');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create account');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,6 +145,25 @@ const Auth: React.FC = () => {
                 ? 'Sign in to access your StyleMatch dashboard' 
                 : 'Join hundreds of fashion entrepreneurs growing their business online'}
             </p>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full mb-4"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <img src="/google.svg" alt="Google" className="w-5 h-5 mr-2" />
+            Continue with Google
+          </Button>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+            </div>
           </div>
 
           {isLogin ? (
@@ -135,7 +218,7 @@ const Auth: React.FC = () => {
                   </a>
                 </div>
 
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   Sign In
                   <ArrowRight size={18} className="ml-2" />
                 </Button>
@@ -251,7 +334,7 @@ const Auth: React.FC = () => {
                   )}
                 />
 
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   Create Account
                   <ArrowRight size={18} className="ml-2" />
                 </Button>
