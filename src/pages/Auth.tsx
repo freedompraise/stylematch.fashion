@@ -19,6 +19,7 @@ import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useSession } from '@/contexts/SessionContext';
 import { toast } from 'sonner';
+import { Navigate } from 'react-router-dom';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -43,7 +44,11 @@ const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { supabase } = useSession();
+  const { supabase, session } = useSession();
+
+  if (session) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -147,7 +152,12 @@ const Auth: React.FC = () => {
     if (toLogin) {
       registerForm.reset();
     } else {
-      loginForm.reset();
+      loginForm.reset();const handleTabSwitch = (toLogin: boolean) => {
+        setIsLogin(toLogin);
+        if (toLogin) {
+          registerForm.reset();
+        }
+      };
     }
   };
 
