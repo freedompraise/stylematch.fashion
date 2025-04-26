@@ -95,6 +95,30 @@ const VendorOnboarding: React.FC = () => {
     }
   };
 
+  const validateStep = async () => {
+    if (step === 1) {
+      return await form.trigger(['bio', 'store_image']);
+    } else if (step === 2) {
+      return await form.trigger(['instagram_link', 'facebook_link', 'twitter_link']);
+    } else if (step === 3) {
+      return await form.trigger(['bank_name', 'account_number', 'account_name']);
+    }
+    return true;
+  };
+
+  const handleNextStep = async () => {
+    const isValid = await validateStep();
+    if (isValid) {
+      setStep((prevStep) => prevStep + 1);
+    } else {
+      toast.error('Please fill in all required fields before continuing.');
+    }
+  };
+
+  const handlePreviousStep = () => {
+    setStep((prevStep) => prevStep - 1);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm p-4">
@@ -190,7 +214,7 @@ const VendorOnboarding: React.FC = () => {
                     <div className="pt-4 flex justify-end">
                       <Button 
                         type="button" 
-                        onClick={() => setStep(2)}
+                        onClick={handleNextStep}
                       >
                         Continue
                         <ArrowRight size={18} className="ml-2" />
@@ -273,13 +297,13 @@ const VendorOnboarding: React.FC = () => {
                       <Button 
                         type="button" 
                         variant="outline"
-                        onClick={() => setStep(1)}
+                        onClick={handlePreviousStep}
                       >
                         Back
                       </Button>
                       <Button 
                         type="button" 
-                        onClick={() => setStep(3)}
+                        onClick={handleNextStep}
                       >
                         Continue
                         <ArrowRight size={18} className="ml-2" />
@@ -354,7 +378,7 @@ const VendorOnboarding: React.FC = () => {
                       <Button 
                         type="button" 
                         variant="outline"
-                        onClick={() => setStep(2)}
+                        onClick={handlePreviousStep}
                       >
                         Back
                       </Button>
