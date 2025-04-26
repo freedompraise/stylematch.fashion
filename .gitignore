@@ -25,5 +25,6 @@ dist-ssr
 *.sln
 *.sw?
 .cursor/
+.cursorrules
 docs/
 stylematch-nextjs/

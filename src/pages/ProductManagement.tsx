@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Package, 
   Plus, 
@@ -32,55 +31,11 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Textarea } from '@/components/ui/textarea';
-
-// Sample product data
-const sampleProducts = [
-  {
-    id: 1,
-    name: 'Floral Summer Dress',
-    category: 'Dresses',
-    price: 15000,
-    stock: 12,
-    image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGZsb3JhbCUyMGRyZXNzfGVufDB8fDB8fHww',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Premium Denim Jeans',
-    category: 'Bottoms',
-    price: 12500,
-    stock: 24,
-    image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8ZGVuaW0lMjBqZWFuc3xlbnwwfHwwfHx8MA%3D%3D',
-    status: 'Active'
-  },
-  {
-    id: 3,
-    name: 'Leather Crossbody Bag',
-    category: 'Accessories',
-    price: 18900,
-    stock: 8,
-    image: 'https://images.unsplash.com/photo-1597633244018-0201d0158aab?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGxlYXRoZXIlMjBiYWd8ZW58MHx8MHx8fDA%3D',
-    status: 'Low Stock'
-  },
-  {
-    id: 4,
-    name: 'Cotton Graphic Tee',
-    category: 'Tops',
-    price: 5500,
-    stock: 32,
-    image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fHQlMjBzaGlydHxlbnwwfHwwfHx8MA%3D%3D',
-    status: 'Active'
-  },
-  {
-    id: 5,
-    name: 'Embroidered Silk Blouse',
-    category: 'Tops',
-    price: 13500,
-    stock: 0,
-    image: 'https://images.unsplash.com/photo-1516726817505-f5ed825624d8?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8YmxvdXNlfGVufDB8fDB8fHww',
-    status: 'Out of Stock'
-  }
-];
+import { useToast } from '@/components/ui/use-toast';
+import { useSession } from '@/contexts/SessionContext';
+import { Product } from '@/types';
+import supabase from '@/lib/supabaseClient';
+import * as productService from '@/services/productService';
 
 // Categories for dropdown
 const categories = [
@@ -94,11 +49,49 @@ const categories = [
 ];
 
 const ProductManagement: React.FC = () => {
-  const [products, setProducts] = useState(sampleProducts);
+  const { toast } = useToast();
+  const { session } = useSession();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [draggedFiles, setDraggedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    category: '',
+    size: [] as string[],
+    color: [] as string[],
+    stock: 0,
+    discount_price: undefined as number | undefined,
+    discount_start: undefined as Date | undefined,
+    discount_end: undefined as Date | undefined,
+    is_hottest_offer: false
+  });
+
+  // Load vendor's products
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        if (session?.user?.id) {
+          const vendorProducts = await productService.getVendorProducts(supabase, session.user.id);
+          setProducts(vendorProducts);
+        }
+      } catch (error) {
+        toast({
+          title: "Error loading products",
+          description: "Could not load your products. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [session?.user?.id]);
 
   // Filter products based on search and category
   const filteredProducts = products.filter(product => {
@@ -143,9 +136,101 @@ const ProductManagement: React.FC = () => {
     setDraggedFiles(draggedFiles.filter((_, i) => i !== index));
   };
 
+  // Create product
+  const handleCreateProduct = async () => {
+    if (!session?.user?.id) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create products.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const product = await productService.createProduct(
+        supabase,
+        {
+          ...newProduct,
+          vendor_id: session.user.id
+        },
+        draggedFiles
+      );
+
+      setProducts(prev => [product, ...prev]);
+      toast({
+        title: "Product created",
+        description: "Your product has been created successfully."
+      });
+
+      // Reset form
+      setNewProduct({
+        name: '',
+        description: '',
+        price: 0,
+        category: '',
+        size: [],
+        color: [],
+        stock: 0,
+        discount_price: undefined,
+        discount_start: undefined,
+        discount_end: undefined,
+        is_hottest_offer: false
+      });
+      setDraggedFiles([]);
+    } catch (error) {
+      toast({
+        title: "Error creating product",
+        description: "Could not create your product. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Delete product
-  const deleteProduct = (id: number) => {
-    setProducts(products.filter(product => product.id !== id));
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await productService.deleteProduct(supabase, productId);
+      setProducts(prev => prev.filter(p => p.id !== productId));
+      toast({
+        title: "Product deleted",
+        description: "Your product has been deleted successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error deleting product",
+        description: "Could not delete your product. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update product stock
+  const handleUpdateStock = async (productId: string, quantity: number) => {
+    try {
+      await productService.updateProductStock(supabase, productId, quantity);
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { ...p, stock: quantity } : p
+      ));
+      toast({
+        title: "Stock updated",
+        description: "Product stock has been updated successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error updating stock",
+        description: "Could not update product stock. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle form input changes
+  const handleInputChange = (field: string, value: any) => {
+    setNewProduct(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -187,6 +272,7 @@ const ProductManagement: React.FC = () => {
                         id="single-product-image"
                         accept="image/*"
                         className="hidden"
+                        onChange={handleFileSelect}
                       />
                     </div>
                   </div>
@@ -194,13 +280,20 @@ const ProductManagement: React.FC = () => {
                   <div className="col-span-2 space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">Product Name</label>
-                      <Input placeholder="e.g., Floral Summer Dress" />
+                      <Input 
+                        placeholder="e.g., Floral Summer Dress" 
+                        value={newProduct.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                      />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-1">Category</label>
-                        <Select>
+                        <Select 
+                          value={newProduct.category}
+                          onValueChange={(value) => handleInputChange('category', value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
@@ -213,31 +306,51 @@ const ProductManagement: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium mb-1">Price (₦)</label>
-                        <Input type="number" placeholder="e.g., 15000" />
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 15000" 
+                          value={newProduct.price || ''}
+                          onChange={(e) => handleInputChange('price', Number(e.target.value))}
+                        />
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-1">Stock Quantity</label>
-                        <Input type="number" placeholder="e.g., 20" />
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 20" 
+                          value={newProduct.stock || ''}
+                          onChange={(e) => handleInputChange('stock', Number(e.target.value))}
+                        />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-1">Discount (%)</label>
-                        <Input type="number" placeholder="e.g., 10" />
+                        <label className="block text-sm font-medium mb-1">Discount Price (₦)</label>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 12000" 
+                          value={newProduct.discount_price || ''}
+                          onChange={(e) => handleInputChange('discount_price', Number(e.target.value))}
+                        />
                       </div>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium mb-1">Description</label>
-                      <Textarea placeholder="Describe your product..." rows={4} />
+                      <Textarea 
+                        placeholder="Describe your product..." 
+                        rows={4}
+                        value={newProduct.description}
+                        onChange={(e) => handleInputChange('description', e.target.value)}
+                      />
                     </div>
                     
                     <div className="flex justify-end space-x-3 pt-4">
                       <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                       </DialogClose>
-                      <Button>Save Product</Button>
+                      <Button onClick={handleCreateProduct}>Save Product</Button>
                     </div>
                   </div>
                 </div>
@@ -396,70 +509,79 @@ const ProductManagement: React.FC = () => {
         </div>
       </div>
       
-      {/* Products Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <div className="relative h-48">
-              <img 
-                src={product.image} 
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-2 right-2 flex gap-1">
-                <Button variant="outline" size="icon" className="h-8 w-8 bg-white">
-                  <Edit size={15} />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 bg-white text-red-500 hover:text-red-600"
-                  onClick={() => deleteProduct(product.id)}
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </div>
-              {product.status === 'Low Stock' && (
-                <div className="absolute top-2 left-2 bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
-                  Low Stock
-                </div>
-              )}
-              {product.status === 'Out of Stock' && (
-                <div className="absolute top-2 left-2 bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-medium">
-                  Out of Stock
-                </div>
-              )}
-            </div>
-            <div className="p-4">
-              <h3 className="font-semibold text-baseContent truncate">{product.name}</h3>
-              <p className="text-sm text-baseContent-secondary mb-2">{product.category}</p>
-              <div className="flex justify-between items-center">
-                <p className="font-bold text-primary">₦{product.price.toLocaleString()}</p>
-                <p className="text-sm">{product.stock} in stock</p>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-      
-      {/* Empty state */}
-      {filteredProducts.length === 0 && (
+      {/* Loading state */}
+      {loading ? (
         <div className="text-center py-12">
-          <Package size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-semibold text-baseContent mb-1">No products found</h3>
-          <p className="text-baseContent-secondary mb-6">
-            Try adjusting your search or filters, or add a new product.
-          </p>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus size={18} className="mr-2" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            {/* Dialog content would be identical to the one above */}
-          </Dialog>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-baseContent-secondary">Loading products...</p>
         </div>
+      ) : (
+        <>
+          {/* Products Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <Card key={product.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <div className="relative h-48">
+                  <img 
+                    src={product.images[0]} 
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <Button variant="outline" size="icon" className="h-8 w-8 bg-white">
+                      <Edit size={15} />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8 bg-white text-red-500 hover:text-red-600"
+                      onClick={() => handleDeleteProduct(product.id)}
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                  {product.stock <= 5 && product.stock > 0 && (
+                    <div className="absolute top-2 left-2 bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
+                      Low Stock
+                    </div>
+                  )}
+                  {product.stock === 0 && (
+                    <div className="absolute top-2 left-2 bg-red-100 text-red-800 px-2 py-1 rounded-md text-xs font-medium">
+                      Out of Stock
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-baseContent truncate">{product.name}</h3>
+                  <p className="text-sm text-baseContent-secondary mb-2">{product.category}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="font-bold text-primary">₦{product.price.toLocaleString()}</p>
+                    <p className="text-sm">{product.stock} in stock</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          
+          {/* Empty state */}
+          {filteredProducts.length === 0 && (
+            <div className="text-center py-12">
+              <Package size={48} className="mx-auto text-gray-300 mb-4" />
+              <h3 className="text-lg font-semibold text-baseContent mb-1">No products found</h3>
+              <p className="text-baseContent-secondary mb-6">
+                Try adjusting your search or filters, or add a new product.
+              </p>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus size={18} className="mr-2" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

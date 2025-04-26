@@ -121,4 +121,75 @@ export async function updateVendorProfile(
     }
     throw error;
   }
+}
+
+export async function getVendorStats(supabase: SupabaseClient, userId: string) {
+  try {
+    // Get total products
+    const { count: totalProducts, error: productsError } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('vendor_id', userId);
+
+    if (productsError) throw productsError;
+
+    // Get total orders
+    const { count: totalOrders, error: ordersError } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('vendor_id', userId);
+
+    if (ordersError) throw ordersError;
+
+    // Get total revenue
+    const { data: orders, error: revenueError } = await supabase
+      .from('orders')
+      .select('total_amount')
+      .eq('vendor_id', userId)
+      .eq('status', 'completed');
+
+    if (revenueError) throw revenueError;
+
+    const totalRevenue = orders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+
+    // Get recent orders
+    const { data: recentOrders, error: recentOrdersError } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        created_at,
+        status,
+        total_amount,
+        customer:profiles(name, email)
+      `)
+      .eq('vendor_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (recentOrdersError) throw recentOrdersError;
+
+    return {
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      recentOrders
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function getVendorProfile(supabase: SupabaseClient, userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw error;
+  }
 } 

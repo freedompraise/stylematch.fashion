@@ -63,6 +63,12 @@ export interface Order {
   total_amount: number;
   created_at: string;
   updated_at: string;
+  customer?: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
 }
 
 export interface OrderItem {
