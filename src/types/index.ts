@@ -45,14 +45,22 @@ export interface Product {
   updated_at: string;
 }
 
+export interface ProductWithSales extends Product {
+  sales: number;
+  sales_count?: number; // For backward compatibility
+}
+
 // Order Types
 export interface Order {
   id: string;
-  customer_id: string;
+  product_id: string;
   vendor_id: string;
+  customer_name: string;
+  customer_phone: string;
   status: OrderStatus;
+  delivery_location: string;
+  delivery_date: string;
   total_amount: number;
-  shipping_address: Address;
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +75,7 @@ export interface OrderItem {
   color: string;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'delivered' | 'cancelled' | 'completed';
 
 // Address Type
 export interface Address {
