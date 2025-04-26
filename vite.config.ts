@@ -19,4 +19,8 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // This ensures process.env is defined in the browser
+    'process.env': {},
+  },
 }));
