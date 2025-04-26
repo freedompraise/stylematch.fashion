@@ -4,7 +4,7 @@ export async function uploadToCloudinary(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'stylematch');
+    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
 
     fetch(
       `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
@@ -43,10 +43,13 @@ export async function deleteFromCloudinary(publicId: string): Promise<void> {
   });
 }
 
-export function getPublicIdFromUrl(url: string): string {
-  const matches = url.match(/\/v\d+\/([^/]+)\.\w+$/);
-  return matches ? matches[1] : '';
-}
+export const getPublicIdFromUrl = (url: string) => {
+  if (!url) {
+      console.error("Image URL is missing!");
+      return "";
+  }
+  return url.match(/(?:\/v\d+\/)?([^/.]+)(?:\.[a-z]+)?$/)?.[1] || "";
+};
 
 function generateSignature(publicId: string, timestamp: number): string {
   const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}${import.meta.env.VITE_CLOUDINARY_API_SECRET || ''}`;

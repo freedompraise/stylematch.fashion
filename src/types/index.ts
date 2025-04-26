@@ -20,7 +20,7 @@ export interface VendorProfile {
   bio?: string;
   instagram_link?: string;
   facebook_link?: string;
-  twitter_link?: string;
+  wabusiness_link?: string;
   bank_name?: string;
   account_number?: number;
   account_name?: string;
@@ -96,7 +96,7 @@ export interface OnboardingFormValues {
   bio: string;
   instagram_link?: string;
   facebook_link?: string;
-  twitter_link?: string;
+  wabusiness_link?: string;
   bank_name: string;
   account_number: string;
   account_name: string;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Instagram, Facebook, Twitter, Banknote, Upload } from 'lucide-react';
+import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useSession } from '@/contexts/SessionContext';
-import { createVendorProfile } from '@/services/vendorService';
+import { updateVendorProfile } from '@/services/vendorService';
 import { toast } from 'sonner';
 import { OnboardingFormValues } from '@/types';
 
@@ -18,7 +18,7 @@ const onboardingSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
   instagram_link: z.string().optional(),
   facebook_link: z.string().optional(),
-  twitter_link: z.string().optional(),
+  wabusiness_link: z.string().optional(),
   bank_name: z.string().min(2, { message: 'Bank name is required' }),
   account_number: z.string().min(10, { message: 'Valid account number required' }),
   account_name: z.string().min(2, { message: 'Account name is required' }),
@@ -38,12 +38,53 @@ const VendorOnboarding: React.FC = () => {
       bio: '',
       instagram_link: '',
       facebook_link: '',
-      twitter_link: '',
+      wabusiness_link: '',
       bank_name: '',
       account_number: '',
       account_name: '',
     },
   });
+
+  // Load existing vendor data if available
+  useEffect(() => {
+    const loadVendorData = async () => {
+      if (!session?.user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('vendors')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Set form values from existing data
+          form.setValue('bio', data.bio || '');
+          form.setValue('instagram_link', data.instagram_url || '');
+          form.setValue('facebook_link', data.facebook_url || '');
+          form.setValue('wabusiness_link', data.wabusiness_url || '');
+          
+          // Set payout info if available
+          if (data.payout_info) {
+            form.setValue('bank_name', data.payout_info.bank_name || '');
+            form.setValue('account_number', data.payout_info.account_number || '');
+            form.setValue('account_name', data.payout_info.account_name || '');
+          }
+          
+          // Set image preview if available
+          if (data.banner_image_url) {
+            setUploadedImage(data.banner_image_url);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading vendor data:', error);
+      }
+    };
+    
+    loadVendorData();
+  }, [session, supabase, form]);
 
   const onSubmit = async (data: OnboardingFormValues) => {
     if (!session?.user) {
@@ -53,24 +94,24 @@ const VendorOnboarding: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await createVendorProfile(
+      await updateVendorProfile(
         supabase,
+        session.user.id,
         {
-          user_id: session.user.id,
-          store_name: session.user.user_metadata.store_name,
-          full_name: session.user.user_metadata.full_name,
           bio: data.bio,
-          instagram_link: data.instagram_link,
-          facebook_link: data.facebook_link,
-          twitter_link: data.twitter_link,
-          bank_name: data.bank_name,
-          account_number: data.account_number,
-          account_name: data.account_name,
+          instagram_url: data.instagram_link,
+          facebook_url: data.facebook_link,
+          wabusiness_url: data.wabusiness_link,
+          payout_info: {
+            bank_name: data.bank_name,
+            account_number: data.account_number,
+            account_name: data.account_name,
+          },
         },
         data.store_image?.[0]
       );
 
-      toast.success('Profile created successfully!');
+      toast.success('Profile updated successfully!');
       navigate('/dashboard');
     } catch (error) {
       console.error('Error during onboarding:', error);
@@ -99,7 +140,7 @@ const VendorOnboarding: React.FC = () => {
     if (step === 1) {
       return await form.trigger(['bio', 'store_image']);
     } else if (step === 2) {
-      return await form.trigger(['instagram_link', 'facebook_link', 'twitter_link']);
+      return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     } else if (step === 3) {
       return await form.trigger(['bank_name', 'account_number', 'account_name']);
     }
@@ -274,15 +315,15 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="twitter_link"
+                      name="wabusiness_link"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Twitter Profile</FormLabel>
+                          <FormLabel>Whatsapp Business Link</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                               <Input 
-                                placeholder="https://twitter.com/yourstorename" 
+                                placeholder="https://wa.me/yourwhatsapplink"
                                 className="pl-10" 
                                 {...field} 
                               />

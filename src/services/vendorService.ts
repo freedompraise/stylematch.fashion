@@ -4,15 +4,18 @@ import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/
 export interface VendorProfile {
   user_id: string;
   store_name: string;
-  full_name: string;
+  name: string;
   bio?: string;
-  instagram_link?: string;
-  facebook_link?: string;
-  twitter_link?: string;
-  bank_name?: string;
-  account_number?: string;
-  account_name?: string;
-  image_url?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  wabusiness_url?: string;
+  phone?: string;
+  banner_image_url?: string;
+  payout_info?: {
+    bank_name?: string;
+    account_number?: string;
+    account_name?: string;
+  };
 }
 
 export async function createVendorProfile(
@@ -30,13 +33,21 @@ export async function createVendorProfile(
       uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
     }
 
-    // Create vendor profile
+    // Create vendor profile with correct column names
     const { error: profileError } = await supabase
       .from('vendors')
       .insert([
         {
-          ...profile,
-          image_url: imageUrl,
+          user_id: profile.user_id,
+          store_name: profile.store_name,
+          name: profile.name,
+          bio: profile.bio,
+          instagram_url: profile.instagram_url,
+          facebook_url: profile.facebook_url,
+          wabusiness_url: profile.wabusiness_url,
+          phone: profile.phone,
+          banner_image_url: imageUrl,
+          payout_info: profile.payout_info,
         },
       ]);
 
@@ -64,7 +75,7 @@ export async function updateVendorProfile(
     // Get current profile to check for existing image
     const { data: currentProfile, error: fetchError } = await supabase
       .from('vendors')
-      .select('image_url')
+      .select('banner_image_url')
       .eq('user_id', userId)
       .single();
 
@@ -76,17 +87,24 @@ export async function updateVendorProfile(
       uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
       
       // If there was an old image, mark it for deletion
-      if (currentProfile?.image_url) {
-        oldImagePublicId = getPublicIdFromUrl(currentProfile.image_url);
+      if (currentProfile?.banner_image_url) {
+        oldImagePublicId = getPublicIdFromUrl(currentProfile.banner_image_url);
       }
     }
 
-    // Update profile
+    // Update profile with correct column names
     const { error: updateError } = await supabase
       .from('vendors')
       .update({
-        ...updates,
-        image_url: imageUrl,
+        name: updates.name,
+        store_name: updates.store_name,
+        bio: updates.bio,
+        instagram_url: updates.instagram_url,
+        facebook_url: updates.facebook_url,
+        wabusiness_url: updates.wabusiness_url,
+        phone: updates.phone,
+        banner_image_url: imageUrl,
+        payout_info: updates.payout_info,
       })
       .eq('user_id', userId);
 
