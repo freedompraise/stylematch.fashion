@@ -9,42 +9,75 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, Twitter, Banknote, Upload } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { useSession } from '@/contexts/SessionContext';
+import { createVendorProfile } from '@/services/vendorService';
+import { toast } from 'sonner';
+import { OnboardingFormValues } from '@/types';
 
 const onboardingSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
-  instagramLink: z.string().optional(),
-  facebookLink: z.string().optional(),
-  twitterLink: z.string().optional(),
-  bankName: z.string().min(2, { message: 'Bank name is required' }),
-  accountNumber: z.string().min(10, { message: 'Valid account number required' }),
-  accountName: z.string().min(2, { message: 'Account name is required' }),
-  storeImage: z.any().optional(),
+  instagram_link: z.string().optional(),
+  facebook_link: z.string().optional(),
+  twitter_link: z.string().optional(),
+  bank_name: z.string().min(2, { message: 'Bank name is required' }),
+  account_number: z.string().min(10, { message: 'Valid account number required' }),
+  account_name: z.string().min(2, { message: 'Account name is required' }),
+  store_image: z.any().optional(),
 });
-
-type OnboardingFormValues = z.infer<typeof onboardingSchema>;
 
 const VendorOnboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { supabase, session } = useSession();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       bio: '',
-      instagramLink: '',
-      facebookLink: '',
-      twitterLink: '',
-      bankName: '',
-      accountNumber: '',
-      accountName: '',
+      instagram_link: '',
+      facebook_link: '',
+      twitter_link: '',
+      bank_name: '',
+      account_number: '',
+      account_name: '',
     },
   });
 
-  const onSubmit = (data: OnboardingFormValues) => {
-    console.log('Onboarding data:', data);
-    // This would be replaced with actual onboarding logic
-    navigate('/dashboard');
+  const onSubmit = async (data: OnboardingFormValues) => {
+    if (!session?.user) {
+      toast.error('No authenticated user found');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await createVendorProfile(
+        supabase,
+        {
+          user_id: session.user.id,
+          store_name: session.user.user_metadata.store_name,
+          full_name: session.user.user_metadata.full_name,
+          bio: data.bio,
+          instagram_link: data.instagram_link,
+          facebook_link: data.facebook_link,
+          twitter_link: data.twitter_link,
+          bank_name: data.bank_name,
+          account_number: data.account_number,
+          account_name: data.account_name,
+        },
+        data.store_image?.[0]
+      );
+
+      toast.success('Profile created successfully!');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error during onboarding:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to complete onboarding');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,6 +86,10 @@ const VendorOnboarding: React.FC = () => {
       const reader = new FileReader();
       reader.onload = () => {
         setUploadedImage(reader.result as string);
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        const fileList = dataTransfer.files;
+        form.setValue('store_image', fileList);
       };
       reader.readAsDataURL(file);
     }
@@ -99,7 +136,7 @@ const VendorOnboarding: React.FC = () => {
             </div>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {step === 1 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Details</h2>
@@ -171,7 +208,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="instagramLink"
+                      name="instagram_link"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Instagram Profile</FormLabel>
@@ -192,7 +229,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="facebookLink"
+                      name="facebook_link"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Facebook Page</FormLabel>
@@ -213,7 +250,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="twitterLink"
+                      name="twitter_link"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Twitter Profile</FormLabel>
@@ -260,7 +297,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="bankName"
+                      name="bank_name"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Bank Name</FormLabel>
@@ -281,7 +318,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="accountNumber"
+                      name="account_number"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Account Number</FormLabel>
@@ -298,7 +335,7 @@ const VendorOnboarding: React.FC = () => {
                     
                     <FormField
                       control={form.control}
-                      name="accountName"
+                      name="account_name"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Account Name</FormLabel>
@@ -321,8 +358,11 @@ const VendorOnboarding: React.FC = () => {
                       >
                         Back
                       </Button>
-                      <Button type="submit">
-                        Complete Setup
+                      <Button 
+                        type="submit"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Saving...' : 'Complete Setup'}
                       </Button>
                     </div>
                   </div>
