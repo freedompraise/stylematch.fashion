@@ -1,3 +1,4 @@
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import Index from '@/pages/Index';
@@ -9,6 +10,7 @@ import ProductManagement from '@/pages/ProductManagement';
 import OrderManagement from '@/pages/OrderManagement';
 import Storefront from '@/pages/Storefront';
 import NotFound from '@/pages/NotFound';
+import { VendorLayout } from '@/components/vendor/VendorLayout';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -47,11 +49,15 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
+      {/* Vendor routes with layout */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <VendorDashboard />
+            <VendorLayout>
+              <VendorDashboard />
+            </VendorLayout>
           </ProtectedRoute>
         }
       />
@@ -59,7 +65,9 @@ export default function AppRoutes() {
         path="/products"
         element={
           <ProtectedRoute>
-            <ProductManagement />
+            <VendorLayout>
+              <ProductManagement />
+            </VendorLayout>
           </ProtectedRoute>
         }
       />
@@ -67,7 +75,9 @@ export default function AppRoutes() {
         path="/orders"
         element={
           <ProtectedRoute>
-            <OrderManagement />
+            <VendorLayout>
+              <OrderManagement />
+            </VendorLayout>
           </ProtectedRoute>
         }
       />
@@ -76,4 +86,4 @@ export default function AppRoutes() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
-} 
+}
