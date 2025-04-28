@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Order, ProductWithSales, OrderStatus } from '@/types'
 import { useSession } from '@/contexts/SessionContext'
@@ -12,6 +12,17 @@ import RecentOrders from '@/components/dashboard/RecentOrders'
 import TopProducts from '@/components/dashboard/TopProducts'
 import DashboardEmptyState from '@/components/dashboard/DashboardEmptyState'
 import DashboardLoadingState from '@/components/dashboard/DashboardLoadingState'
+import { 
+  TrendingUp, 
+  Package, 
+  ShoppingCart, 
+  Users, 
+  DollarSign, 
+  ArrowUpRight, 
+  ArrowDownRight 
+} from 'lucide-react'
+import { QuickActions, dashboardQuickActions } from '@/components/vendor/QuickActions'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface DashboardStats {
   totalSales: number
