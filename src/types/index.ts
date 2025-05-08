@@ -41,6 +41,9 @@ export interface Product {
   color: string[];
   images: string[];
   stock: number;
+  isDiscounted: boolean;
+  discountPercentage: number;
+  isHottestOffer: boolean;
   created_at: string;
   updated_at: string;
 }

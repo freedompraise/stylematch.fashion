@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { Product } from '@/types';
+import supabase from '@/lib/supabaseClient';
 
 export interface CreateProductInput {
   vendor_id: string;
@@ -15,52 +16,53 @@ export interface CreateProductInput {
   discount_start?: Date;
   discount_end?: Date;
   is_hottest_offer?: boolean;
+  image: File;
 }
 
-export async function createProduct(
-  supabase: SupabaseClient,
-  product: CreateProductInput,
-  imageFiles: File[]
-): Promise<Product> {
-  let uploadedImageUrls: string[] = [];
-  let uploadedImagePublicIds: string[] = [];
+export async function createProducts(
+  products: CreateProductInput[]
+): Promise<Product[]> {
+  const createdProducts: Product[] = [];
+  const uploadedImagePublicIds: string[] = [];
 
   try {
-    // Upload all images
-    for (const imageFile of imageFiles) {
-      const imageUrl = await uploadToCloudinary(imageFile);
+    // Process each product sequentially
+    for (const product of products) {
+      // Upload the image
+      const imageUrl = await uploadToCloudinary(product.image);
       const publicId = getPublicIdFromUrl(imageUrl);
-      uploadedImageUrls.push(imageUrl);
       uploadedImagePublicIds.push(publicId);
+
+      // Create the product
+      const { data: newProduct, error: productError } = await supabase
+        .from('products')
+        .insert([
+          {
+            vendor_id: product.vendor_id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            category: product.category,
+            size: product.size,
+            color: product.color,
+            stock: product.stock,
+            discount_price: product.discount_price,
+            discount_start: product.discount_start,
+            discount_end: product.discount_end,
+            is_hottest_offer: product.is_hottest_offer,
+            images: [imageUrl],
+          },
+        ])
+        .select()
+        .single();
+
+      if (productError) throw productError;
+      createdProducts.push(newProduct as Product);
     }
 
-    // Create product with images
-    const { data: newProduct, error: productError } = await supabase
-      .from('products')
-      .insert([
-        {
-          vendor_id: product.vendor_id,
-          name: product.name,
-          description: product.description,
-          price: product.price,
-          category: product.category,
-          size: product.size,
-          color: product.color,
-          stock: product.stock,
-          discount_price: product.discount_price,
-          discount_start: product.discount_start,
-          discount_end: product.discount_end,
-          is_hottest_offer: product.is_hottest_offer,
-          images: uploadedImageUrls,
-        },
-      ])
-      .select()
-      .single();
-
-    if (productError) throw productError;
-    return newProduct as Product;
+    return createdProducts;
   } catch (error) {
-    // If product creation fails, delete all uploaded images
+    // If any product creation fails, delete all uploaded images
     for (const publicId of uploadedImagePublicIds) {
       await deleteFromCloudinary(publicId);
     }
@@ -69,7 +71,6 @@ export async function createProduct(
 }
 
 export async function updateProduct(
-  supabase: SupabaseClient,
   productId: string,
   updates: Partial<CreateProductInput>,
   newImageFiles?: File[],
@@ -146,7 +147,6 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(
-  supabase: SupabaseClient,
   productId: string
 ): Promise<void> {
   try {
@@ -180,7 +180,6 @@ export async function deleteProduct(
 }
 
 export async function getVendorProducts(
-  supabase: SupabaseClient,
   vendorId: string
 ): Promise<Product[]> {
   const { data: products, error } = await supabase
@@ -194,7 +193,6 @@ export async function getVendorProducts(
 }
 
 export async function getProduct(
-  supabase: SupabaseClient,
   productId: string
 ): Promise<Product> {
   const { data: product, error } = await supabase
@@ -208,7 +206,6 @@ export async function getProduct(
 }
 
 export async function getProductsByCategory(
-  supabase: SupabaseClient,
   category: string
 ): Promise<Product[]> {
   const { data: products, error } = await supabase
@@ -222,7 +219,6 @@ export async function getProductsByCategory(
 }
 
 export async function searchProducts(
-  supabase: SupabaseClient,
   searchTerm: string
 ): Promise<Product[]> {
   const { data: products, error } = await supabase
@@ -236,7 +232,6 @@ export async function searchProducts(
 }
 
 export async function updateProductStock(
-  supabase: SupabaseClient,
   productId: string,
   quantity: number
 ): Promise<void> {
@@ -249,7 +244,6 @@ export async function updateProductStock(
 }
 
 export async function getHottestOffers(
-  supabase: SupabaseClient,
   limit: number = 10
 ): Promise<Product[]> {
   const { data: products, error } = await supabase
