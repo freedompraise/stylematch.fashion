@@ -32,7 +32,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from '@/contexts/SessionContext';
 import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
-import * as productService from '@/services/productService';
+import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
 
@@ -47,6 +47,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const { session } = useSession();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
+  const { createProducts } = useVendorData();
 
   const form = useForm<{ root: ProductFormValues }>({
     resolver: zodResolver(z.object({ root: productsSchema })),
@@ -124,12 +125,12 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     }
 
     try {
-      // Let productService handle the image upload
-      const createdProducts = await productService.createProducts(
+      // Use the new context service for image upload and creation
+      const createdProducts = await createProducts(
         data.root.map((product, index) => ({
           ...product,
           vendor_id: session.user.id,
-          image: productImages[index]!, // Pass the File object directly
+          image: productImages[index]!,
         }))
       );
 

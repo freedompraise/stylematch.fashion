@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Order,OrderStatus } from '@/types'
+import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
 import { useSession } from '@/contexts/SessionContext'
-import supabase from '@/lib/supabaseClient'
-import { getVendorStats } from '@/services/vendorService'
+import { useVendorData } from '@/services/vendorDataService'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DashboardStats from '@/components/dashboard/DashboardStats'
 import SalesChart from '@/components/dashboard/SalesChart'
@@ -35,6 +34,10 @@ interface DashboardStats {
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
   const { session } = useSession()
+  const {
+    products,
+    getVendorStats,
+  } = useVendorData();
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     totalSales: 0,
@@ -50,36 +53,31 @@ const VendorDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!session?.user?.id) return
-
       setIsLoading(true)
       try {
-        const vendorStats = await getVendorStats(supabase, session.user.id)
+        const vendorStats = await getVendorStats(session.user.id)
         const totalOrders = vendorStats.totalOrders || 0
         const totalSales = vendorStats.totalRevenue || 0
         const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0
-
         setStats({
           totalSales,
           totalOrders,
           averageOrderValue,
-          lowStockProducts: 0
+          lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
         })
-
-        setRecentOrders((vendorStats.recentOrders as unknown as Order[]) || [])
-
+        setRecentOrders(vendorStats.recentOrders as Order[])
+        // Optionally, calculate topProducts and salesData here
         const salesByMonth = (vendorStats.recentOrders || []).reduce((acc, order) => {
           const month = new Date(order.created_at).toLocaleString('default', { month: 'short' })
-          acc[month] = (acc[month] || 0) + order.total_amount
+          acc[month] = (acc[month] || 0) + (order.total_amount || 0)
           return acc
         }, {} as Record<string, number>)
-
         setSalesData(
           Object.entries(salesByMonth).map(([name, sales]) => ({
             name,
-            sales
+            sales: sales as number
           }))
         )
-
         setHasData(totalOrders > 0)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -88,33 +86,12 @@ const VendorDashboard: React.FC = () => {
         setIsLoading(false)
       }
     }
-
     fetchData()
-
-    const channel = supabase
-      .channel('orders')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'orders',
-          filter: `vendor_id=eq.${session?.user?.id}`
-        },
-        (payload) => {
-          const newOrder = payload.new as Order
-          setRecentOrders(prev => [newOrder, ...prev.slice(0, 4)])
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [session?.user?.id])
+    // eslint-disable-next-line
+  }, [session?.user?.id, getVendorStats, products.length])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    // You may want to clear the context here if needed
     navigate('/')
   }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus } from '@/types/OrderSchema';
 import { ShoppingCart } from 'lucide-react';
 
 interface RecentOrdersProps {

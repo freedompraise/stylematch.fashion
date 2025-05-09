@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from '@/contexts/SessionContext';
 import { Product } from '@/types/ProductSchema';
-import * as productService from '@/services/productService';
+import { useVendorData } from '@/services/vendorDataService';
 import { FilterBar, FilterConfig, FilterValue } from '@/components/vendor/FilterBar';
 import { QuickActions, productsQuickActions } from '@/components/vendor/QuickActions';
 import { AddProductDialog } from '@/components/vendor/products/AddProductDialog';
@@ -41,47 +41,43 @@ const filterConfigs: FilterConfig[] = [
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
   const { session } = useSession();
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const {
+    products,
+    fetchProducts,
+    deleteProduct,
+    updateProduct,
+    createProduct,
+  } = useVendorData();
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<FilterValue>({});
 
   useEffect(() => {
     if (!session?.user?.id) return;
-  
-    const loadProducts = async () => {
-      try {
-        const vendorProducts = await productService.getVendorProducts(session.user.id);
-        if (!Array.isArray(vendorProducts)) {
-          console.error('vendorProducts is not an array:', vendorProducts);
-          return;
-        }
-        setAllProducts(vendorProducts);
-        setProducts(vendorProducts);
-      } catch (error) {
-        console.error('Error loading products:', error); // Debug log
+    setLoading(true);
+    fetchProducts(session.user.id)
+      .catch(() => {
         toast({
           title: 'Error loading products',
           description: 'Could not load your products. Please try again later.',
           variant: 'destructive',
         });
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProducts();
-  }, [session?.user?.id, toast]);
-  
+      })
+      .finally(() => setLoading(false));
+  }, [session?.user?.id, toast, fetchProducts]);
+
+  useEffect(() => {
+    handleFilterChange(activeFilters);
+    // eslint-disable-next-line
+  }, [products, searchQuery]);
+
   const handleFilterChange = (filters: FilterValue) => {
     setActiveFilters(filters);
-
-    let filtered = [...allProducts];
-
+    let filtered = [...products];
     if (filters.category) {
       filtered = filtered.filter(p => p.category === filters.category);
     }
-
     if (filters.status) {
       filtered = filtered.filter(p => {
         const status =
@@ -93,12 +89,10 @@ const ProductManagement: React.FC = () => {
         return status === filters.status;
       });
     }
-
     if (Array.isArray(filters.price)) {
       const [min, max] = filters.price;
       filtered = filtered.filter(p => p.price >= min && p.price <= max);
     }
-
     if (searchQuery) {
       filtered = filtered.filter(
         p =>
@@ -106,22 +100,17 @@ const ProductManagement: React.FC = () => {
           p.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    setProducts(filtered);
+    setFilteredProducts(filtered);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    handleFilterChange(activeFilters);
   };
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      await productService.deleteProduct(productId);
-      const updated = allProducts.filter(p => p.id !== productId);
-      setAllProducts(updated);
-      setProducts(updated);
+      await deleteProduct(productId);
       toast({
         title: 'Product deleted',
         description: 'Your product has been deleted successfully.',
@@ -137,12 +126,7 @@ const ProductManagement: React.FC = () => {
 
   const handleUpdateStock = async (productId: string, quantity: number) => {
     try {
-      await productService.updateProductStock(productId, quantity);
-      const updated = allProducts.map(p =>
-        p.id === productId ? { ...p, stock_quantity: quantity } : p
-      );
-      setAllProducts(updated);
-      handleFilterChange(activeFilters);
+      await updateProduct(productId, { stock_quantity: quantity });
       toast({
         title: 'Stock updated',
         description: 'Product stock has been updated successfully.',
@@ -157,8 +141,7 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleProductAdded = (product: Product) => {
-    const updated = [product, ...allProducts];
-    setAllProducts(updated);
+    // No need to update state, context will update automatically
     handleFilterChange(activeFilters);
   };
 
@@ -169,9 +152,9 @@ const ProductManagement: React.FC = () => {
         <AddProductDialog onProductsAdded={products => handleProductAdded(products[0])} />
       </div>
 
-      {products.length > 0 && <QuickActions actions={productsQuickActions} />}
+      {filteredProducts.length > 0 && <QuickActions actions={productsQuickActions} />}
 
-      {products.length > 0 && (
+      {filteredProducts.length > 0 && (
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -193,12 +176,12 @@ const ProductManagement: React.FC = () => {
       )}
      
       <ProductList
-        products={products}
+        products={filteredProducts}
         onDeleteProduct={handleDeleteProduct}
         loading={loading}
       />
 
-      {products.length === 0 && !loading && (
+      {filteredProducts.length === 0 && !loading && (
         <div className="text-center text-muted-foreground">
           No products in the database. You can add one by clicking the button above.
         </div>

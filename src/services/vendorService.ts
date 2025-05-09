@@ -2,7 +2,6 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { VendorProfile } from '@/types/VendorSchema';
 
-
 export async function createVendorProfile(
   supabase: SupabaseClient,
   profile: VendorProfile,
@@ -12,13 +11,11 @@ export async function createVendorProfile(
   let uploadedImagePublicId: string | undefined;
 
   try {
-    // Upload image if provided
     if (imageFile) {
       imageUrl = await uploadToCloudinary(imageFile);
       uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
     }
 
-    // Create vendor profile with correct column names
     const { error: profileError } = await supabase
       .from('vendors')
       .insert([
@@ -38,7 +35,6 @@ export async function createVendorProfile(
 
     if (profileError) throw profileError;
   } catch (error) {
-    // If profile creation fails and we uploaded an image, delete it
     if (uploadedImagePublicId) {
       await deleteFromCloudinary(uploadedImagePublicId);
     }
@@ -57,7 +53,6 @@ export async function updateVendorProfile(
   let oldImagePublicId: string | undefined;
 
   try {
-    // Get current profile to check for existing image
     const { data: currentProfile, error: fetchError } = await supabase
       .from('vendors')
       .select('banner_image_url')
@@ -66,18 +61,15 @@ export async function updateVendorProfile(
 
     if (fetchError) throw fetchError;
 
-    // If there's a new image, upload it
     if (imageFile) {
       imageUrl = await uploadToCloudinary(imageFile);
       uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
       
-      // If there was an old image, mark it for deletion
       if (currentProfile?.banner_image_url) {
         oldImagePublicId = getPublicIdFromUrl(currentProfile.banner_image_url);
       }
     }
 
-    // Update profile with correct column names
     const { error: updateError } = await supabase
       .from('vendors')
       .update({
@@ -95,12 +87,10 @@ export async function updateVendorProfile(
 
     if (updateError) throw updateError;
 
-    // If update was successful and there was an old image, delete it
     if (oldImagePublicId) {
       await deleteFromCloudinary(oldImagePublicId);
     }
   } catch (error) {
-    // If update fails and we uploaded a new image, delete it
     if (uploadedImagePublicId) {
       await deleteFromCloudinary(uploadedImagePublicId);
     }
@@ -110,7 +100,6 @@ export async function updateVendorProfile(
 
 export async function getVendorStats(supabase: SupabaseClient, userId: string) {
   try {
-    // Get total products
     const { count: totalProducts, error: productsError } = await supabase
       .from('products')
       .select('*', { count: 'exact', head: true })
@@ -118,7 +107,6 @@ export async function getVendorStats(supabase: SupabaseClient, userId: string) {
 
     if (productsError) throw productsError;
 
-    // Get total orders
     const { count: totalOrders, error: ordersError } = await supabase
       .from('orders')
       .select('*', { count: 'exact', head: true })
@@ -126,18 +114,15 @@ export async function getVendorStats(supabase: SupabaseClient, userId: string) {
 
     if (ordersError) throw ordersError;
 
-    // Get total revenue
     const { data: orders, error: revenueError } = await supabase
       .from('orders')
       .select('total_amount')
-      .eq('vendor_id', userId)
-      .eq('status', 'completed');
+      .eq('vendor_id', userId);
 
     if (revenueError) throw revenueError;
 
     const totalRevenue = orders?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
 
-    // Get recent orders
     const { data: recentOrders, error: recentOrdersError } = await supabase
       .from('orders')
       .select(`
@@ -177,4 +162,4 @@ export async function getVendorProfile(supabase: SupabaseClient, userId: string)
   } catch (error) {
     throw error;
   }
-} 
+}

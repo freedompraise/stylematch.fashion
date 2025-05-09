@@ -11,39 +11,6 @@ export interface UserMetadata {
   store_name: string;
 }
 
-// Order Types
-export interface Order {
-  id: string;
-  product_id: string;
-  vendor_id: string;
-  customer_name: string;
-  customer_phone: string;
-  status: OrderStatus;
-  delivery_location: string;
-  delivery_date: string;
-  total_amount: number;
-  created_at: string;
-  updated_at: string;
-  customer?: {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-  };
-}
-
-export interface OrderItem {
-  id: string;
-  order_id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-  size: string;
-  color: string;
-}
-
-export type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'delivered' | 'cancelled' | 'completed';
-
 // Address Type
 export interface Address {
   street: string;
@@ -103,3 +70,4 @@ export interface RouteConfig {
   element: React.ComponentType;
   isProtected: boolean;
 } 
+
