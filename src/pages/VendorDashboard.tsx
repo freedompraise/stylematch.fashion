@@ -48,7 +48,8 @@ const VendorDashboard: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<ProductWithSales[]>([])
   const [salesData, setSalesData] = useState<{ name: string; sales: number }[]>([])
-  const [hasData, setHasData] = useState(false)
+  const [hasProducts, setHasProducts] = useState(false)
+  const [hasOrders, setHasOrders] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,8 +64,14 @@ const VendorDashboard: React.FC = () => {
           lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
         })
         setRecentOrders(vendorStats.recentOrders as Order[])
-       
-        setHasData(vendorStats.totalOrders > 0)
+        setHasProducts(products.length > 0)
+        setHasOrders(vendorStats.totalOrders > 0)
+        setTopProducts(products
+          .map(p => ({ ...p, sales: p.sales_count || 0 }))
+          .sort((a, b) => (b.sales || 0) - (a.sales || 0))
+          .slice(0, 5)
+        )
+        setSalesData([])
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         toast.error('Failed to load dashboard data')
@@ -93,7 +100,7 @@ const VendorDashboard: React.FC = () => {
     return <DashboardLoadingState />
   }
 
-  if (!hasData) {
+  if (!hasProducts) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -121,7 +128,7 @@ const VendorDashboard: React.FC = () => {
         />
         <SalesChart data={salesData} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RecentOrders orders={recentOrders} />
+          {hasOrders ? <RecentOrders orders={recentOrders} /> : null}
           <TopProducts products={topProducts} />
         </div>
       </div>
