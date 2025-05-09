@@ -11,64 +11,6 @@ export interface UserMetadata {
   store_name: string;
 }
 
-// Vendor Types
-export interface VendorProfile {
-  id?: string;
-  user_id: string;
-  store_name: string;
-  full_name: string;
-  bio?: string;
-  instagram_link?: string;
-  facebook_link?: string;
-  wabusiness_link?: string;
-  bank_name?: string;
-  account_number?: number;
-  account_name?: string;
-  image_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Product Types
-export interface Product {
-  id: string;
-  vendor_id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  size: string[];
-  color: string[];
-  images: string[];
-  stock: number;
-  created_at: string;
-  updated_at: string;
-}
-
-// Order Types
-export interface Order {
-  id: string;
-  customer_id: string;
-  vendor_id: string;
-  status: OrderStatus;
-  total_amount: number;
-  shipping_address: Address;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface OrderItem {
-  id: string;
-  order_id: string;
-  product_id: string;
-  quantity: number;
-  price: number;
-  size: string;
-  color: string;
-}
-
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-
 // Address Type
 export interface Address {
   street: string;
@@ -128,3 +70,4 @@ export interface RouteConfig {
   element: React.ComponentType;
   isProtected: boolean;
 } 
+

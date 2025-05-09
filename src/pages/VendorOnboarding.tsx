@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useSession } from '@/contexts/SessionContext';
-import { updateVendorProfile } from '@/services/vendorService';
+import { useVendorData } from '@/services/vendorDataService';
 import { toast } from 'sonner';
 import { OnboardingFormValues } from '@/types';
 
@@ -31,6 +31,7 @@ const VendorOnboarding: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { supabase, session } = useSession();
+  const { updateVendorProfile } = useVendorData();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
@@ -95,7 +96,6 @@ const VendorOnboarding: React.FC = () => {
     try {
       setIsLoading(true);
       await updateVendorProfile(
-        supabase,
         session.user.id,
         {
           bio: data.bio,

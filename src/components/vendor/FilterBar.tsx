@@ -1,50 +1,104 @@
+import React from 'react';
+import { Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Filter } from "lucide-react";
-
-interface FilterOption {
+export type FilterOption = {
   label: string;
   value: string;
-}
+};
+
+export type FilterConfig = {
+  id: string;
+  label: string;
+  type: 'select' | 'range' | 'checkbox';
+  options?: FilterOption[];
+  min?: number;
+  max?: number;
+  step?: number;
+};
 
 interface FilterBarProps {
-  filters: {
-    [key: string]: FilterOption[];
-  };
-  onFilterChange: (filter: string, value: string) => void;
+  className?: string;
 }
 
-export function FilterBar({ filters, onFilterChange }: FilterBarProps) {
+export function FilterBar({ className }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
-      <div className="flex items-center gap-2">
-        <Filter className="w-4 h-4" />
-        <span className="font-medium">Filters</span>
+    <div className={cn("mb-4", className)}>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          <span>Filters</span>
+          <ChevronDown className="h-4 w-4" />
+        </Button>
       </div>
-      
-      {Object.entries(filters).map(([filterName, options]) => (
-        <div key={filterName} className="flex items-center gap-2">
-          <select
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-            onChange={(e) => onFilterChange(filterName, e.target.value)}
-            defaultValue=""
-          >
-            <option value="" disabled>
-              {filterName}
-            </option>
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
-      
-      <Button variant="outline" size="sm" className="ml-auto">
-        Clear Filters
-      </Button>
+
+      <Collapsible>
+        <CollapsibleContent className="mt-2 space-y-4 rounded-md border p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Example Select Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clothing">Clothing</SelectItem>
+                  <SelectItem value="shoes">Shoes</SelectItem>
+                  <SelectItem value="accessories">Accessories</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Example Range Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Price Range</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="Min"
+                  className="w-24"
+                />
+                <span>to</span>
+                <Input
+                  type="number"
+                  placeholder="Max"
+                  className="w-24"
+                />
+              </div>
+            </div>
+
+            {/* Example Checkbox Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Size</label>
+              <div className="space-y-2">
+                {['XS', 'S', 'M', 'L', 'XL'].map((size) => (
+                  <div key={size} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`size-${size}`}
+                      className="mr-2 h-4 w-4 rounded border-gray-300"
+                    />
+                    <label htmlFor={`size-${size}`} className="text-sm">{size}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button>Apply Filters</Button>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

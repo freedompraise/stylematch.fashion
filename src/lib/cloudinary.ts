@@ -1,10 +1,10 @@
 // cloudinary.ts
-
+import crypto from 'crypto';
 export async function uploadToCloudinary(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+    formData.append('upload_preset', "stylematch");
 
     fetch(
       `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
@@ -14,8 +14,16 @@ export async function uploadToCloudinary(file: File): Promise<string> {
       }
     )
       .then((response) => response.json())
-      .then((data) => resolve(data.secure_url))
-      .catch((error) => reject(error));
+      .then((data) => {
+        if (!data.secure_url) {
+          reject('Image upload failed: no URL returned');
+        }
+        resolve(data.secure_url)
+      })
+      .catch((error) => {
+        console.error("Error during Cloudinary upload:", error);
+        reject(error);
+      });
   });
 }
 
@@ -38,26 +46,32 @@ export async function deleteFromCloudinary(publicId: string): Promise<void> {
       }
     )
       .then((response) => response.json())
-      .then(() => resolve())
-      .catch((error) => reject(error));
+      .then((data) => {
+        if (data.error) {
+          reject(data.error);
+        }else {
+          resolve();
+        }
+      })
+      .catch((error) => {
+        console.error("Error during Cloudinary delete:", error);
+        reject(error);
+      });
   });
 }
 
 export const getPublicIdFromUrl = (url: string) => {
   if (!url) {
-      console.error("Image URL is missing!");
-      return "";
+    console.error("Image URL is missing!");
+    return "";
   }
-  return url.match(/(?:\/v\d+\/)?([^/.]+)(?:\.[a-z]+)?$/)?.[1] || "";
+  const publicId = url.match(/(?:\/v\d+\/)?([^/.]+)(?:\.[a-z]+)?$/)?.[1] || "";
+  return publicId;
 };
 
 function generateSignature(publicId: string, timestamp: number): string {
-  const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}${import.meta.env.VITE_CLOUDINARY_API_SECRET || ''}`;
-  let hash = 0;
-  for (let i = 0; i < paramsToSign.length; i++) {
-    const char = paramsToSign.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString(16);
+  const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}${import.meta.env.VITE_CLOUDINARY_API_SECRET}`;
+  const hash = crypto.createHash('sha1').update(paramsToSign).digest('hex');
+  return hash;
 }
+

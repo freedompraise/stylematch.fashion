@@ -10,25 +10,22 @@ import ProductManagement from '@/pages/ProductManagement';
 import OrderManagement from '@/pages/OrderManagement';
 import Storefront from '@/pages/Storefront';
 import NotFound from '@/pages/NotFound';
-import { VendorLayout } from '@/components/vendor/VendorLayout';
+import VendorLayout from '@/components/layouts/VendorLayout';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useSession();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const { session } = useSession();
 
   if (!session) {
     return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;
+};
+
+// Vendor layout wrapper
+const VendorRoute = ({ children }: { children: React.ReactNode }) => {
+  return <VendorLayout>{children}</VendorLayout>;
 };
 
 export default function AppRoutes() {
@@ -55,9 +52,9 @@ export default function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <VendorLayout>
+            <VendorRoute>
               <VendorDashboard />
-            </VendorLayout>
+            </VendorRoute>
           </ProtectedRoute>
         }
       />
@@ -65,9 +62,19 @@ export default function AppRoutes() {
         path="/products"
         element={
           <ProtectedRoute>
-            <VendorLayout>
+            <VendorRoute>
               <ProductManagement />
-            </VendorLayout>
+            </VendorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/products/:category"
+        element={
+          <ProtectedRoute>
+            <VendorRoute>
+              <ProductManagement />
+            </VendorRoute>
           </ProtectedRoute>
         }
       />
@@ -75,9 +82,48 @@ export default function AppRoutes() {
         path="/orders"
         element={
           <ProtectedRoute>
-            <VendorLayout>
+            <VendorRoute>
               <OrderManagement />
-            </VendorLayout>
+            </VendorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ProtectedRoute>
+            <VendorRoute>
+              <div className="p-6">
+                <h1 className="text-3xl font-bold">Customers</h1>
+                <p className="mt-4">Customer management page coming soon.</p>
+              </div>
+            </VendorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payments"
+        element={
+          <ProtectedRoute>
+            <VendorRoute>
+              <div className="p-6">
+                <h1 className="text-3xl font-bold">Payments</h1>
+                <p className="mt-4">Payment management page coming soon.</p>
+              </div>
+            </VendorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <VendorRoute>
+              <div className="p-6">
+                <h1 className="text-3xl font-bold">Settings</h1>
+                <p className="mt-4">Settings page coming soon.</p>
+              </div>
+            </VendorRoute>
           </ProtectedRoute>
         }
       />
