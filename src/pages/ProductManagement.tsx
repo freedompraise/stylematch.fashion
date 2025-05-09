@@ -15,13 +15,7 @@ const filterConfigs: FilterConfig[] = [
     id: 'category',
     label: 'Category',
     type: 'select',
-    options: [
-      { label: 'All Categories', value: '' },
-      { label: 'Dresses', value: 'Dresses' },
-      { label: 'Tops', value: 'Tops' },
-      { label: 'Bottoms', value: 'Bottoms' },
-      { label: 'Accessories', value: 'Accessories' },
-    ],
+    options: [{ label: 'All Categories', value: '' }],
   },
   {
     id: 'status',
@@ -47,19 +41,27 @@ const filterConfigs: FilterConfig[] = [
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
   const { session } = useSession();
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<FilterValue>({});
 
   useEffect(() => {
+    if (!session?.user?.id) return;
+  
     const loadProducts = async () => {
       try {
-        if (session?.user?.id) {
-          const vendorProducts = await productService.getVendorProducts(session.user.id);
-          setProducts(vendorProducts);
+        const vendorProducts = await productService.getVendorProducts(session.user.id);
+        console.log('Fetched products:', vendorProducts); // Debug log
+        if (!Array.isArray(vendorProducts)) {
+          console.error('vendorProducts is not an array:', vendorProducts);
+          return;
         }
-      } catch {
+        setAllProducts(vendorProducts);
+        setProducts(vendorProducts);
+      } catch (error) {
+        console.error('Error loading products:', error); // Debug log
         toast({
           title: 'Error loading products',
           description: 'Could not load your products. Please try again later.',
@@ -69,27 +71,24 @@ const ProductManagement: React.FC = () => {
         setLoading(false);
       }
     };
-
     loadProducts();
-  }, [session?.user?.id]);
-
+  }, [session?.user?.id, toast]);
+  
   const handleFilterChange = (filters: FilterValue) => {
     setActiveFilters(filters);
 
-    let filteredProducts = [...products];
+    let filtered = [...allProducts];
 
     if (filters.category) {
-      filteredProducts = filteredProducts.filter(
-        product => product.category === filters.category
-      );
+      filtered = filtered.filter(p => p.category === filters.category);
     }
 
     if (filters.status) {
-      filteredProducts = filteredProducts.filter(product => {
+      filtered = filtered.filter(p => {
         const status =
-          product.stock_quantity <= 5 && product.stock_quantity > 0
+          p.stock_quantity <= 5 && p.stock_quantity > 0
             ? 'Low Stock'
-            : product.stock_quantity === 0
+            : p.stock_quantity === 0
             ? 'Out of Stock'
             : 'In Stock';
         return status === filters.status;
@@ -97,21 +96,19 @@ const ProductManagement: React.FC = () => {
     }
 
     if (Array.isArray(filters.price)) {
-      const [min, max] = filters.price as [number, number];
-      filteredProducts = filteredProducts.filter(
-        product => product.price >= min && product.price <= max
-      );
+      const [min, max] = filters.price;
+      filtered = filtered.filter(p => p.price >= min && p.price <= max);
     }
 
     if (searchQuery) {
-      filteredProducts = filteredProducts.filter(
-        product =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.category.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(
+        p =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.category.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    setProducts(filteredProducts);
+    setProducts(filtered);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +120,9 @@ const ProductManagement: React.FC = () => {
   const handleDeleteProduct = async (productId: string) => {
     try {
       await productService.deleteProduct(productId);
-      setProducts(prev => prev.filter(p => p.id !== productId));
+      const updated = allProducts.filter(p => p.id !== productId);
+      setAllProducts(updated);
+      setProducts(updated);
       toast({
         title: 'Product deleted',
         description: 'Your product has been deleted successfully.',
@@ -140,9 +139,11 @@ const ProductManagement: React.FC = () => {
   const handleUpdateStock = async (productId: string, quantity: number) => {
     try {
       await productService.updateProductStock(productId, quantity);
-      setProducts(prev =>
-        prev.map(p => (p.id === productId ? { ...p, stock: quantity } : p))
+      const updated = allProducts.map(p =>
+        p.id === productId ? { ...p, stock_quantity: quantity } : p
       );
+      setAllProducts(updated);
+      handleFilterChange(activeFilters);
       toast({
         title: 'Stock updated',
         description: 'Product stock has been updated successfully.',
@@ -157,7 +158,9 @@ const ProductManagement: React.FC = () => {
   };
 
   const handleProductAdded = (product: Product) => {
-    setProducts(prev => [product, ...prev]);
+    const updated = [product, ...allProducts];
+    setAllProducts(updated);
+    handleFilterChange(activeFilters);
   };
 
   return (
@@ -189,14 +192,14 @@ const ProductManagement: React.FC = () => {
           />
         </div>
       )}
-
+     
       <ProductList
         products={products}
-        onDeleteProduct={handleDeleteProduct} onUpdatestock_quantity={function (productId: string, quantity: number): void {
-          throw new Error('Function not implemented.');
-        } }        
+        onDeleteProduct={handleDeleteProduct}
+        loading={loading}
       />
-      {products.length === 0 && (
+
+      {products.length === 0 && !loading && (
         <div className="text-center text-muted-foreground">
           No products in the database. You can add one by clicking the button above.
         </div>

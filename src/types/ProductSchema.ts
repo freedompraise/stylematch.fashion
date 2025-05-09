@@ -1,4 +1,4 @@
-import { z } from 'zod'; // Ensure zod is correctly imported
+import { z } from 'zod';
 
 export const createProductInputSchema = z.object({
   vendor_id: z.string(),
@@ -29,14 +29,28 @@ export const productSchema = z.object({
   price: z.number().min(0),
   stock_quantity: z.number().min(0),
   category: z.string().min(1),
-  color: z.array(z.string()),
-  size: z.array(z.string()),
-  discount_price: z.number().optional(),
-  discount_start: z.date().optional(),
-  discount_end: z.date().optional(),
+  color: z.union([z.string(), z.array(z.string())]).transform(val => 
+    typeof val === 'string' ? [val] : val
+  ),
+  size: z.union([z.string(), z.array(z.string())]).transform(val => 
+    typeof val === 'string' ? [val] : val
+  ),
+  discount_price: z.number().nullable().optional(),
+  discount_start: z.string().nullable().optional().transform(val => 
+    val ? new Date(val) : undefined
+  ),
+  discount_end: z.string().nullable().optional().transform(val => 
+    val ? new Date(val) : undefined
+  ),
   images: z.array(z.string().url()).optional(),
   is_hottest_offer: z.boolean().default(false),
-  created_at: z.date(),
-  updated_at: z.date(),
+  created_at: z.string().transform(val => new Date(val)),
+  updated_at: z.string().transform(val => new Date(val)),
 });
+
 export type Product = z.infer<typeof productSchema>;
+
+export interface ProductWithSales extends Product {
+  sales: number;
+  sales_count?: number;
+}

@@ -32,7 +32,7 @@ export async function createProducts(
         discount_price: p.discount_price,
         discount_start: p.discount_start,
         discount_end: p.discount_end,
-        images: [],                // we’ll overwrite below
+        images: [], 
         is_hottest_offer: p.is_hottest_offer,
       });
 
@@ -163,8 +163,35 @@ export async function getVendorProducts(vendorId: string): Promise<Product[]> {
     .eq('vendor_id', vendorId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data.map(product => productSchema.parse(product));
+  if (error) {
+    console.error('Supabase error:', error);
+    throw error;
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  try {
+    const parsedProducts = data.map(product => {
+      // Transform the data before parsing
+      const transformedProduct = {
+        ...product,
+        color: Array.isArray(product.color) ? product.color : [product.color],
+        size: Array.isArray(product.size) ? product.size : [product.size],
+        discount_price: product.discount_price || null,
+        discount_start: product.discount_start || null,
+        discount_end: product.discount_end || null,
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+      };
+      return productSchema.parse(transformedProduct);
+    });
+    return parsedProducts;
+  } catch (parseError) {
+    console.error('Error parsing products:', parseError);
+    throw parseError;
+  }
 }
 
 export async function getProduct(productId: string): Promise<Product> {

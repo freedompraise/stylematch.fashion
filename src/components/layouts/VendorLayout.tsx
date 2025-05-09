@@ -39,10 +39,10 @@ const navigationItems = [
     path: '/products',
     subItems: [
       { title: 'All Products', path: '/products' },
-      { title: 'Dresses', path: '/products/dresses' },
-      { title: 'Tops', path: '/products/tops' },
-      { title: 'Bottoms', path: '/products/bottoms' },
-      { title: 'Accessories', path: '/products/accessories' }
+      // { title: 'Dresses', path: '/products/dresses' },
+      // { title: 'Tops', path: '/products/tops' },
+      // { title: 'Bottoms', path: '/products/bottoms' },
+      // { title: 'Accessories', path: '/products/accessories' }
     ]
   },
   { title: 'Orders', icon: ShoppingCart, path: '/orders' },
