@@ -24,7 +24,6 @@ interface ProductListProps {
 }
 
 export function ProductList({ products, onDeleteProduct, loading }: ProductListProps) {
-  console.log('ProductList props:', { products, loading }); // Debug log
 
   if (loading) {
     return (
@@ -57,7 +56,6 @@ export function ProductList({ products, onDeleteProduct, loading }: ProductListP
         </TableHeader>
         <TableBody>
           {products.map((product) => {
-            console.log('Rendering product:', product); // Debug log
             return (
               <TableRow key={product.id}>
                 <TableCell>

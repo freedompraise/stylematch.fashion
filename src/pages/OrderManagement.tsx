@@ -149,7 +149,6 @@ const OrderManagement: React.FC = () => {
   };
   
   const updateOrderStatus = (orderId: string, newStatus: string) => {
-    // In a real app, this would make an API call to update the order status
     console.log(`Updating order ${orderId} to status: ${newStatus}`);
   };
   

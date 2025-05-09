@@ -40,7 +40,6 @@ export async function createProducts(
     let imageUrl: string;
     try {
       imageUrl = await uploadToCloudinary(p.image);
-      console.log('Uploaded Image URL:', imageUrl);
     } catch (err) {
       console.error('Image upload failed:', err);
       throw err;

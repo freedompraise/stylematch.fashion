@@ -53,7 +53,6 @@ const ProductManagement: React.FC = () => {
     const loadProducts = async () => {
       try {
         const vendorProducts = await productService.getVendorProducts(session.user.id);
-        console.log('Fetched products:', vendorProducts); // Debug log
         if (!Array.isArray(vendorProducts)) {
           console.error('vendorProducts is not an array:', vendorProducts);
           return;
