@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import { z } from 'zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
   DialogClose
 } from '@/components/ui/dialog';
@@ -31,36 +31,10 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from '@/contexts/SessionContext';
-import { Product } from '@/types/ProductSchema';
+import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
 import * as productService from '@/services/productService';
-import { 
-  Upload, 
-  X, 
-  Image, 
-  Plus, 
-  Instagram,
-  Trash2
-} from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
-
-// Product schema for validation
-const productSchema = z.object({
-  products: z.array(z.object({
-    name: z.string().min(1, 'Name is required'),
-    description: z.string().min(1, 'Description is required'),
-    price: z.coerce.number().min(0, 'Price must be a positive number'),
-    category: z.string().min(1, 'Category is required'),
-    size: z.array(z.string()).min(1, 'At least one size is required'),
-    color: z.array(z.string()).min(1, 'At least one color is required'),
-    stock: z.coerce.number().min(0, 'Stock must be a positive number'),
-    discount_price: z.coerce.number().optional(),
-    discount_start: z.date().optional(),
-    discount_end: z.date().optional(),
-    is_hottest_offer: z.boolean().default(false),
-  }))
-});
-
-type ProductFormValues = z.infer<typeof productSchema>;
 
 interface AddProductDialogProps {
   onProductsAdded: (products: Product[]) => void;
@@ -74,53 +48,44 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
 
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+  const form = useForm<{ root: ProductFormValues }>({
+    resolver: zodResolver(z.object({ root: productsSchema })),
     defaultValues: {
-      products: [{
+      root: [{
         name: '',
         description: '',
         price: 0,
+        stock_quantity: 0,
         category: '',
-        size: [],
         color: [],
-        stock: 0,
-        discount_price: undefined,
-        discount_start: undefined,
-        discount_end: undefined,
-        is_hottest_offer: false,
+        size: [],
+        vendor_id: session?.user?.id || '',
       }]
     }
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "root" // Now this correctly references the array field
+  });
+
   const addProduct = () => {
-    const currentProducts = form.getValues('products');
-    form.setValue('products', [
-      ...currentProducts,
-      {
-        name: '',
-        description: '',
-        price: 0,
-        category: '',
-        size: [],
-        color: [],
-        stock: 0,
-        discount_price: undefined,
-        discount_start: undefined,
-        discount_end: undefined,
-        is_hottest_offer: false,
-      }
-    ]);
+    append({
+      name: '',
+      description: '',
+      price: 0,
+      stock_quantity: 0,
+      category: '',
+      color: [],
+      size: [],
+      vendor_id: session?.user?.id || '',
+    });
     setProductImages([...productImages, null]);
     setPreviewUrls([...previewUrls, null]);
   };
 
   const removeProduct = (index: number) => {
-    const currentProducts = form.getValues('products');
-    const newProducts = currentProducts.filter((_, i) => i !== index);
-    form.setValue('products', newProducts);
-    
-    // Remove image and preview URL
+    remove(index);
     const newImages = productImages.filter((_, i) => i !== index);
     const newPreviewUrls = previewUrls.filter((_, i) => i !== index);
     setProductImages(newImages);
@@ -139,7 +104,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     setPreviewUrls(newUrls);
   };
 
-  const onSubmit = async (data: ProductFormValues) => {
+  const onSubmit = async (data: { root: ProductFormValues }) => {
     if (!session?.user?.id) {
       toast({
         title: "Authentication required",
@@ -149,7 +114,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       return;
     }
 
-    // Check if all products have images
     if (productImages.some(image => !image)) {
       toast({
         title: "Images required",
@@ -161,19 +125,10 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
 
     try {
       const createdProducts = await productService.createProducts(
-        data.products.map((product, index) => ({
-          name: product.name,
-          description: product.description,
-          price: product.price,
-          category: product.category,
-          stock: product.stock,
-          color: product.color,
-          size: product.size,
-          discount_price: product.discount_price,
-          discount_start: product.discount_start,
-          discount_end: product.discount_end,
-          is_hottest_offer: product.is_hottest_offer,
+        data.root.map((product, index) => ({
+          ...product,
           vendor_id: session.user.id,
+          images: previewUrls[index] ? [previewUrls[index]!] : [],
           image: productImages[index]!
         }))
       );
@@ -184,7 +139,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         description: "Your products have been created successfully."
       });
       
-      // Reset form and close dialog
       form.reset();
       setProductImages([]);
       setPreviewUrls([]);
@@ -210,7 +164,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         <DialogHeader>
           <DialogTitle>Add New Products</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
@@ -220,8 +174,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
           <TabsContent value="manual">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {form.getValues('products').map((_, index) => (
-                  <div key={index} className="space-y-6 p-4 border rounded-lg relative">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="space-y-6 p-4 border rounded-lg relative">
                     <Button
                       type="button"
                       variant="ghost"
@@ -236,7 +190,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`products.${index}.name`}
+                      name={`root.${index}.name`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Name</FormLabel>
@@ -250,7 +204,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`products.${index}.description`}
+                      name={`root.${index}.description`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Description</FormLabel>
@@ -265,12 +219,16 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name={`products.${index}.price`}
+                        name={`root.${index}.price`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Price</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} />
+                              <Input 
+                                type="number" 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -279,12 +237,16 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                       
                       <FormField
                         control={form.control}
-                        name={`products.${index}.stock`}
+                        name={`root.${index}.stock_quantity`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Stock</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} />
+                              <Input 
+                                type="number" 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -294,13 +256,13 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`products.${index}.category`}
+                      name={`root.${index}.category`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -325,13 +287,13 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={size}
                             type="button"
-                            variant={form.getValues(`products.${index}.size`).includes(size) ? 'default' : 'outline'}
+                            variant={((form.getValues(`root.${index}.size`) as string[]) || []).includes(size) ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentSizes = form.getValues(`products.${index}.size`);
+                              const currentSizes = (form.getValues(`root.${index}.size`) as string[]) || [];
                               const newSizes = currentSizes.includes(size)
                                 ? currentSizes.filter(s => s !== size)
                                 : [...currentSizes, size];
-                              form.setValue(`products.${index}.size`, newSizes);
+                              form.setValue(`root.${index}.size`, newSizes);
                             }}
                             className="h-8"
                           >
@@ -339,11 +301,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           </Button>
                         ))}
                       </div>
-                      {form.formState.errors.products?.[index]?.size && (
-                        <p className="text-sm text-red-500">
-                          {form.formState.errors.products[index]?.size?.message}
-                        </p>
-                      )}
+                      <FormMessage>
+                        {form.formState.errors?.root?.[index]?.['size']?.message}
+                      </FormMessage>
                     </div>
                     
                     <div className="space-y-2">
@@ -353,13 +313,13 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={color}
                             type="button"
-                            variant={form.getValues(`products.${index}.color`).includes(color) ? 'default' : 'outline'}
+                            variant={((form.getValues(`root.${index}.color`) as string[]) || []).includes(color) ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentColors = form.getValues(`products.${index}.color`);
+                              const currentColors = (form.getValues(`root.${index}.color`) as string[]) || [];
                               const newColors = currentColors.includes(color)
                                 ? currentColors.filter(c => c !== color)
                                 : [...currentColors, color];
-                              form.setValue(`products.${index}.color`, newColors);
+                              form.setValue(`root.${index}.color`, newColors);
                             }}
                             className="h-8"
                           >
@@ -367,11 +327,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           </Button>
                         ))}
                       </div>
-                      {form.formState.errors.products?.[index]?.color && (
-                        <p className="text-sm text-red-500">
-                          {form.formState.errors.products[index]?.color?.message}
-                        </p>
-                      )}
+                      <FormMessage>
+                        {form.formState.errors?.root?.[index]?.['color']?.message}
+                      </FormMessage>
                     </div>
                     
                     <div className="space-y-2">
@@ -415,4 +373,4 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       </DialogContent>
     </Dialog>
   );
-} 
+}
