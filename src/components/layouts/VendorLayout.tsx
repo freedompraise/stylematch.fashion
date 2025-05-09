@@ -1,3 +1,5 @@
+// VendorLayout.tsx
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -8,8 +10,7 @@ import {
   CreditCard,
   Settings,
   Search,
-  Menu,
-  X
+  Menu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,13 +38,7 @@ const navigationItems = [
     title: 'Products',
     icon: Package,
     path: '/products',
-    subItems: [
-      { title: 'All Products', path: '/products' },
-      // { title: 'Dresses', path: '/products/dresses' },
-      // { title: 'Tops', path: '/products/tops' },
-      // { title: 'Bottoms', path: '/products/bottoms' },
-      // { title: 'Accessories', path: '/products/accessories' }
-    ]
+    subItems: [{ title: 'All Products', path: '/products' }]
   },
   { title: 'Orders', icon: ShoppingCart, path: '/orders' },
   { title: 'Customers', icon: Users, path: '/customers' },
@@ -80,12 +75,16 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-screen overflow-hidden bg-background">
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background text-sidebar-foreground">
-          <SidebarHeader className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-            <Link to="/dashboard" className="text-xl font-bricolage font-bold text-primary">
-              StyleMatch
-            </Link>
-            <SidebarTrigger className="lg:hidden" />
-          </SidebarHeader>
+        <SidebarHeader className="flex h-16 items-center px-4 border-b border-sidebar-border">
+  <Link
+    to="/dashboard"
+    className="flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-primary hover:bg-sidebar-accent/50"
+  >
+    <span className="text-base font-bricolage font-bold leading-none">StyleMatch</span>
+  </Link>
+</SidebarHeader>
+
+
           <SidebarContent className="flex flex-col gap-2 p-4">
             {navigationItems.map((item) => (
               <div key={item.path} className="flex flex-col">
@@ -126,9 +125,11 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
 
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex h-16 items-center justify-between border-b px-4 bg-white">
-            <SidebarTrigger className="lg:hidden">
-              <Menu className="h-5 w-5" />
-            </SidebarTrigger>
+            <div className="flex items-center gap-2">
+              <SidebarTrigger>
+                <Menu className="h-5 w-5" />
+              </SidebarTrigger>
+            </div>
             <Button
               variant="outline"
               size="sm"
