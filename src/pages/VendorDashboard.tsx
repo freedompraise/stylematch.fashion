@@ -66,10 +66,14 @@ const VendorDashboard: React.FC = () => {
         setRecentOrders(vendorStats.recentOrders as Order[])
         setHasProducts(products.length > 0)
         setHasOrders(vendorStats.totalOrders > 0)
-        setTopProducts(products
-          .map(p => ({ ...p, sales: p.sales_count || 0 }))
-          .sort((a, b) => (b.sales || 0) - (a.sales || 0))
-          .slice(0, 5)
+        setTopProducts(
+          products
+            .map(p => ({
+              ...p,
+              sales: recentOrders.filter(order => order.product_id === p.id).length
+            }))
+            .sort((a, b) => b.sales - a.sales)
+            .slice(0, 5)
         )
         setSalesData([])
       } catch (error) {
