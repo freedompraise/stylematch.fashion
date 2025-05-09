@@ -35,12 +35,14 @@ import { useVendorData } from '@/services/vendorDataService';
 import { OrderStatus } from '@/types/OrderSchema';
 
 const statusOptions = [
-  'all',
-  'pending',
-  'processing',
-  'shipped',
-  'delivered',
-  'cancelled'
+  'All Orders',
+  'Pending',
+  'Processing',
+  'Shipped',
+  'Delivered',
+  'Cancelled',
+  'Completed',
+  'Confirmed',
 ];
 
 const OrderManagement: React.FC = () => {
@@ -56,12 +58,12 @@ const OrderManagement: React.FC = () => {
     fetchOrders(session.user.id);
     // eslint-disable-next-line
   }, [session?.user?.id, fetchOrders]);
-
+  
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) || '');
+      order.id?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (order.customer_info?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || '');
     const matchesStatus = selectedStatus === 'All Orders' || order.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
@@ -73,15 +75,15 @@ const OrderManagement: React.FC = () => {
         : [...prev, orderId]
     );
   };
-
+  
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateOrder(orderId, { status: newStatus.toLowerCase() as OrderStatus });
+      await updateOrder(orderId, { status: newStatus as OrderStatus });
     } catch (e) {
       // handle error/toast
     }
   };
-
+  
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Pending':
@@ -94,11 +96,15 @@ const OrderManagement: React.FC = () => {
         return <Check size={16} className="text-green-500" />;
       case 'Cancelled':
         return <X size={16} className="text-red-500" />;
+      case 'Confirmed':
+        return <Check size={16} className="text-blue-500" />;
+      case 'Completed':
+        return <Check size={16} className="text-green-700" />;
       default:
         return <Clock size={16} className="text-gray-500" />;
     }
   };
-
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending':
@@ -111,6 +117,10 @@ const OrderManagement: React.FC = () => {
         return 'bg-green-100 text-green-800';
       case 'Cancelled':
         return 'bg-red-100 text-red-800';
+      case 'Confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'Completed':
+        return 'bg-green-200 text-green-900';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -177,7 +187,7 @@ const OrderManagement: React.FC = () => {
                       />
                       <div>
                         <p className="font-medium text-baseContent">{order.id}</p>
-                        <p className="text-sm text-baseContent-secondary">{order.customer_name}</p>
+                        <p className="text-sm text-baseContent-secondary">{order.customer_info?.name}</p>
                       </div>
                     </div>
                   </div>
@@ -262,11 +272,9 @@ const OrderManagement: React.FC = () => {
                                         <SelectValue placeholder="Update Status" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Processing">Processing</SelectItem>
-                                        <SelectItem value="Shipped">Shipped</SelectItem>
-                                        <SelectItem value="Delivered">Delivered</SelectItem>
-                                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                        {statusOptions.filter(s => s !== 'All Orders').map((status) => (
+                                          <SelectItem key={status} value={status}>{status}</SelectItem>
+                                        ))}
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -277,7 +285,7 @@ const OrderManagement: React.FC = () => {
                               <div className="space-y-4">
                                 <div className="bg-gray-50 p-4 rounded-lg">
                                   <p className="text-sm text-gray-500 mb-1">Customer Name</p>
-                                  <p className="font-medium">{selectedOrder.customer_name}</p>
+                                  <p className="font-medium">{selectedOrder.customer_info?.name}</p>
                                 </div>
                                 {/* Add more customer info fields as needed */}
                               </div>
@@ -329,11 +337,9 @@ const OrderManagement: React.FC = () => {
                           <SelectValue placeholder="Update Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Processing">Processing</SelectItem>
-                          <SelectItem value="Shipped">Shipped</SelectItem>
-                          <SelectItem value="Delivered">Delivered</SelectItem>
-                          <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          {statusOptions.filter(s => s !== 'All Orders').map((status) => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button variant="outline">Print Invoice</Button>

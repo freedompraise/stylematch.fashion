@@ -56,29 +56,15 @@ const VendorDashboard: React.FC = () => {
       setIsLoading(true)
       try {
         const vendorStats = await getVendorStats(session.user.id)
-        const totalOrders = vendorStats.totalOrders || 0
-        const totalSales = vendorStats.totalRevenue || 0
-        const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0
         setStats({
-          totalSales,
-          totalOrders,
-          averageOrderValue,
+          totalSales: vendorStats.totalRevenue,
+          totalOrders: vendorStats.totalOrders,
+          averageOrderValue: vendorStats.totalOrders > 0 ? vendorStats.totalRevenue / vendorStats.totalOrders : 0,
           lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
         })
         setRecentOrders(vendorStats.recentOrders as Order[])
-        // Optionally, calculate topProducts and salesData here
-        const salesByMonth = (vendorStats.recentOrders || []).reduce((acc, order) => {
-          const month = new Date(order.created_at).toLocaleString('default', { month: 'short' })
-          acc[month] = (acc[month] || 0) + (order.total_amount || 0)
-          return acc
-        }, {} as Record<string, number>)
-        setSalesData(
-          Object.entries(salesByMonth).map(([name, sales]) => ({
-            name,
-            sales: sales as number
-          }))
-        )
-        setHasData(totalOrders > 0)
+       
+        setHasData(vendorStats.totalOrders > 0)
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         toast.error('Failed to load dashboard data')

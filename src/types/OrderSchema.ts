@@ -1,3 +1,5 @@
+// order.ts
+
 import { z } from 'zod';
 
 export const orderStatusSchema = z.enum([
@@ -25,21 +27,17 @@ export const orderSchema = z.object({
   id: z.string().uuid(),
   product_id: z.string().uuid(),
   vendor_id: z.string().uuid(),
-  customer_name: z.string(),
-  customer_phone: z.string(),
   status: orderStatusSchema,
   delivery_location: z.string(),
   delivery_date: z.string(), // ISO string
   total_amount: z.number().min(0),
   created_at: z.string(), // ISO string
   updated_at: z.string(), // ISO string
-  customer: z
-    .object({
-      name: z.string(),
-      email: z.string(),
-      phone: z.string(),
-      address: z.string(),
-    })
-    .optional(),
+  customer_info: z.object({
+    name: z.string(),
+    phone: z.string(),
+    email:z.string().email(),
+    address: z.string(),
+  }),
 });
-export type Order = z.infer<typeof orderSchema>; 
+export type Order = z.infer<typeof orderSchema>;
