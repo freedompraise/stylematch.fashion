@@ -1,3 +1,4 @@
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import Index from '@/pages/Index';
@@ -131,4 +132,4 @@ export default function AppRoutes() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
-} 
+}
