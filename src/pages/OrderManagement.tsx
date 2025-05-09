@@ -32,8 +32,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSession } from '@/contexts/SessionContext';
 import { useVendorData } from '@/services/vendorDataService';
+import { OrderStatus } from '@/types/OrderSchema';
 
-const statusOptions = ['All Orders', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+const statusOptions = [
+  'all',
+  'pending',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled'
+];
 
 const OrderManagement: React.FC = () => {
   const { session } = useSession();
@@ -68,7 +76,7 @@ const OrderManagement: React.FC = () => {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateOrder(orderId, { status: newStatus });
+      await updateOrder(orderId, { status: newStatus.toLowerCase() as OrderStatus });
     } catch (e) {
       // handle error/toast
     }

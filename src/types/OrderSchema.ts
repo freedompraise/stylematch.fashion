@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const orderStatusSchema = z.enum([
-  'pending',
-  'confirmed',
-  'processing',
-  'delivered',
-  'cancelled',
-  'completed',
+  'Pending',
+  'Confirmed',
+  'Processing',
+  'Delivered',
+  'Cancelled',
+  'Completed',
 ]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
