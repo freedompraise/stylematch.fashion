@@ -1,5 +1,5 @@
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
-import { Product } from '@/types';
+import { Product } from '@/types/ProductSchema';
 import supabase from '@/lib/supabaseClient';
 
 export interface CreateProductInput {

@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from '@/contexts/SessionContext';
-import { Product } from '@/types';
+import { Product } from '@/types/ProductSchema';
 import * as productService from '@/services/productService';
 import { 
   Upload, 

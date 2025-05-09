@@ -19,19 +19,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Product } from '@/types';
+import { Product } from '@/types/ProductSchema';
 import CloudinaryImage from '@/components/CloudinaryImage';
 
 interface ProductListProps {
   products: Product[];
   onDeleteProduct: (productId: string) => void;
-  onUpdateStock: (productId: string, quantity: number) => void;
+  onUpdatestock_quantity: (productId: string, quantity: number) => void;
 }
 
 export function ProductList({
   products,
   onDeleteProduct,
-  onUpdateStock
+  onUpdatestock_quantity
 }: ProductListProps) {
   return (
     <div className="rounded-md border">
@@ -41,7 +41,7 @@ export function ProductList({
             <TableHead>Product</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
+            <TableHead>stock_quantity</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="w-[70px]"></TableHead>
           </TableRow>
@@ -63,22 +63,22 @@ export function ProductList({
               </TableCell>
               <TableCell>{product.category}</TableCell>
               <TableCell>${product.price.toLocaleString()}</TableCell>
-              <TableCell>{product.stock} in stock</TableCell>
+              <TableCell>{product.stock_quantity} in stock_quantity</TableCell>
               <TableCell>
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    product.stock <= 5 && product.stock > 0
+                    product.stock_quantity <= 5 && product.stock_quantity > 0
                       ? 'bg-yellow-100 text-yellow-800'
-                      : product.stock === 0
+                      : product.stock_quantity === 0
                       ? 'bg-red-100 text-red-800'
                       : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  {product.stock <= 5 && product.stock > 0
-                    ? 'Low Stock'
-                    : product.stock === 0
-                    ? 'Out of Stock'
-                    : 'In Stock'}
+                  {product.stock_quantity <= 5 && product.stock_quantity > 0
+                    ? 'Low stock_quantity'
+                    : product.stock_quantity === 0
+                    ? 'Out of stock_quantity'
+                    : 'In stock_quantity'}
                 </span>
               </TableCell>
               <TableCell>

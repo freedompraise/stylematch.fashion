@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { useSession } from '@/contexts/SessionContext';
-import { Product } from '@/types';
+import { Product } from '@/types/ProductSchema';
 import * as productService from '@/services/productService';
 import { FilterBar, FilterConfig, FilterValue } from '@/components/vendor/FilterBar';
 import { QuickActions, productsQuickActions } from '@/components/vendor/QuickActions';
@@ -87,9 +87,9 @@ const ProductManagement: React.FC = () => {
     if (filters.status) {
       filteredProducts = filteredProducts.filter(product => {
         const status =
-          product.stock <= 5 && product.stock > 0
+          product.stock_quantity <= 5 && product.stock_quantity > 0
             ? 'Low Stock'
-            : product.stock === 0
+            : product.stock_quantity === 0
             ? 'Out of Stock'
             : 'In Stock';
         return status === filters.status;
@@ -192,8 +192,9 @@ const ProductManagement: React.FC = () => {
 
       <ProductList
         products={products}
-        onDeleteProduct={handleDeleteProduct}
-        onUpdateStock={handleUpdateStock}
+        onDeleteProduct={handleDeleteProduct} onUpdatestock_quantity={function (productId: string, quantity: number): void {
+          throw new Error('Function not implemented.');
+        } }        
       />
       {products.length === 0 && (
         <div className="text-center text-muted-foreground">

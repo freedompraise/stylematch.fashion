@@ -11,48 +11,6 @@ export interface UserMetadata {
   store_name: string;
 }
 
-// Vendor Types
-export interface VendorProfile {
-  id?: string;
-  user_id: string;
-  store_name: string;
-  full_name: string;
-  bio?: string;
-  instagram_link?: string;
-  facebook_link?: string;
-  wabusiness_link?: string;
-  bank_name?: string;
-  account_number?: number;
-  account_name?: string;
-  image_url?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Product Types
-export interface Product {
-  id: string;
-  vendor_id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  size: string[];
-  color: string[];
-  images: string[];
-  stock: number;
-  isDiscounted: boolean;
-  discountPercentage: number;
-  isHottestOffer: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProductWithSales extends Product {
-  sales: number;
-  sales_count?: number; // For backward compatibility
-}
-
 // Order Types
 export interface Order {
   id: string;
