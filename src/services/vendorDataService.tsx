@@ -3,7 +3,6 @@ import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, createProductInputSchema } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
-import { SupabaseClient } from '@supabase/supabase-js';
 
 export type VendorDataContextType = {
   products: Product[];
