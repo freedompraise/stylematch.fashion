@@ -1,38 +1,90 @@
-import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+  getPublicIdFromUrl,
+} from '@/lib/cloudinary';
 import supabase from '@/lib/supabaseClient';
-import { createProductInputSchema, productSchema, CreateProductInput, Product } from '@/types/ProductSchema';
+import {
+  createProductInputSchema,
+  CreateProductInput,
+productSchema,
+  Product,
+} from '@/types/ProductSchema';
 
-export async function createProducts(products: CreateProductInput[]): Promise<Product[]> {
-  const createdProducts: Product[] = [];
-  const uploadedImagePublicIds: string[] = [];
+export async function createProducts(
+  products: (CreateProductInput & { image: File })[]
+): Promise<Product[]> {
+  const created: Product[] = [];
+  const uploadedIds: string[] = [];
 
-  try {
-    for (const product of products) {
-      const parsedProduct = createProductInputSchema.parse(product);
-      const imageUrl = await uploadToCloudinary(new File([parsedProduct.images[0]], 'image.jpg'));
-      const publicId = getPublicIdFromUrl(imageUrl);
-      uploadedImagePublicIds.push(publicId);
+  for (const p of products) {
+    // 1) validate your _input_ shape
+    const { name, description, price, stock_quantity, category, color, size, discount_price, discount_start, discount_end, is_hottest_offer, vendor_id } =
+      createProductInputSchema.parse({
+        vendor_id: p.vendor_id,
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        stock_quantity: p.stock_quantity,
+        category: p.category,
+        color: p.color,
+        size: p.size,
+        discount_price: p.discount_price,
+        discount_start: p.discount_start,
+        discount_end: p.discount_end,
+        images: [],                // we’ll overwrite below
+        is_hottest_offer: p.is_hottest_offer,
+      });
 
-      const { data: newProduct, error } = await supabase
-        .from('products')
-        .insert([{
-          ...parsedProduct,
-          images: [imageUrl],
-          stock: parsedProduct.stock_quantity,
-          vendor_id: parsedProduct.vendor_id,
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      createdProducts.push(productSchema.parse(newProduct));
+    // 2) upload
+    let imageUrl: string;
+    try {
+      imageUrl = await uploadToCloudinary(p.image);
+      console.log('Uploaded Image URL:', imageUrl);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      throw err;
     }
-    return createdProducts;
-  } catch (error) {
-    await Promise.all(uploadedImagePublicIds.map(publicId => deleteFromCloudinary(publicId)));
-    throw error;
+    const publicId = getPublicIdFromUrl(imageUrl);
+    uploadedIds.push(publicId);
+
+    // 3) insert row
+    const { data: row, error } = await supabase
+      .from('products')
+      .insert([
+        {
+          vendor_id,
+          name,
+          description,
+          price,
+          stock_quantity,
+          category,
+          color,
+          size,
+          discount_price,
+          discount_start,
+          discount_end,
+          is_hottest_offer,
+          images: [imageUrl],
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error inserting product:', error);
+      // roll back uploaded image
+      await deleteFromCloudinary(publicId).catch(console.error);
+      throw error;
+    }
+
+    // 4) push raw row as Product
+    created.push(row as Product);
   }
+
+  return created;
 }
+
 
 export async function updateProduct(
   productId: string,

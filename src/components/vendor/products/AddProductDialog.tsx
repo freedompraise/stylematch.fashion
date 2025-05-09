@@ -124,12 +124,12 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     }
 
     try {
+      // Let productService handle the image upload
       const createdProducts = await productService.createProducts(
         data.root.map((product, index) => ({
           ...product,
           vendor_id: session.user.id,
-          images: previewUrls[index] ? [previewUrls[index]!] : [],
-          image: productImages[index]!
+          image: productImages[index]!, // Pass the File object directly
         }))
       );
 
@@ -138,7 +138,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         title: "Products created",
         description: "Your products have been created successfully."
       });
-      
+
       form.reset();
       setProductImages([]);
       setPreviewUrls([]);
@@ -149,6 +149,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         description: "Could not create your products. Please try again.",
         variant: "destructive"
       });
+      console.error("Error during product creation process:", error);
     }
   };
 
