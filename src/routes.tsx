@@ -1,8 +1,12 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+// routes.tsx
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
+import { useContext, useEffect, useState } from 'react';
+import { useVendorData } from './services/vendorDataService';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/auth/callback';
+import { Loader2 } from 'lucide-react';
 import VendorOnboarding from '@/pages/VendorOnboarding';
 import VendorDashboard from '@/pages/VendorDashboard';
 import ProductManagement from '@/pages/ProductManagement';
@@ -15,16 +19,61 @@ import SettingsStore from '@/pages/SettingsStore';
 import SettingsPayout from '@/pages/SettingsPayout';
 import SettingsDangerZone from '@/pages/SettingsDangerZone';
 
-// Protected route wrapper
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useSession();
 
+
   if (session.loading) {
-    return <div className="flex items-center justify-center min-h-screen text-lg">Loading...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-lg">
+      <Loader2 className="animate-spin" size={24} />
+      <span className="ml-2">Loading...</span>
+    </div>;
+  }
+
+  if (session.user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session } = useSession();
+  const { getVendorProfile } = useVendorData();
+  const [checkingVendor, setCheckingVendor] = useState(true);
+  const [redirectToOnboarding, setRedirectToOnboarding] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkVendor = async () => {
+      if (session.user) {
+        try {
+          const vendor = await getVendorProfile(session.user.id);
+          if (!vendor && location.pathname !== '/onboarding') {
+            setRedirectToOnboarding(true);
+          }
+        } catch (error) {
+          console.error('Error checking vendor profile:', error);
+        }
+      }
+      setCheckingVendor(false);
+    };
+    checkVendor();
+  }, [session.user, getVendorProfile, location.pathname]);
+
+  if (session.loading || checkingVendor) {
+    return <div className="flex items-center justify-center min-h-screen text-lg">
+      <Loader2 className="animate-spin" size={24} />
+      <span className="ml-2">Loading...</span>
+    </div>;
   }
 
   if (!session.user) {
     return <Navigate to="/auth" replace />;
+  }
+
+  if (redirectToOnboarding) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
@@ -41,13 +90,11 @@ const VendorRoutes = () => {
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
+      <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/store/:id" element={<Storefront />} />
 
-      {/* Protected vendor routes */}
       <Route
         path="/onboarding"
         element={
@@ -56,8 +103,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      
-      {/* Vendor routes with layout */}
+
       <Route
         element={
           <ProtectedRoute>
@@ -95,7 +141,6 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

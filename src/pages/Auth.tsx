@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,6 @@ import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { useSession } from '@/contexts/SessionContext';
 import { toast } from 'sonner';
-import { Navigate } from 'react-router-dom';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -43,14 +42,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const { supabase, session } = useSession();
-
-  if (session) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  const loginForm = useForm<LoginFormValues>({
+  const navigate = useNavigate();  const { supabase, session } = useSession();  const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
