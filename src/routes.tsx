@@ -19,7 +19,11 @@ import SettingsDangerZone from '@/pages/SettingsDangerZone';
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useSession();
 
-  if (!session) {
+  if (session.loading) {
+    return <div className="flex items-center justify-center min-h-screen text-lg">Loading...</div>;
+  }
+
+  if (!session.user) {
     return <Navigate to="/auth" replace />;
   }
 

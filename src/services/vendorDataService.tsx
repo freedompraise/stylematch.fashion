@@ -32,6 +32,7 @@ export type VendorDataContextType = {
   getVendorProfile: (userId: string, force?: boolean) => Promise<VendorProfile | null>;
   createVendorProfile: (profile: VendorProfile, imageFile?: File) => Promise<void>;
   updateVendorProfile: (userId: string, updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
+  resetVendorData: () => void;
 };
 
 const VendorDataContext = createContext<VendorDataContextType | undefined>(undefined);
@@ -284,6 +285,15 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [products, orders, productsLoaded, ordersLoaded, fetchProducts, fetchOrders]);
 
+  const resetVendorData = useCallback(() => {
+    setProducts([]);
+    setOrders([]);
+    setProductsLoaded(false);
+    setOrdersLoaded(false);
+    setVendorProfile(null);
+    setVendorProfileLoaded(false);
+  }, []);
+
   return (
     <VendorDataContext.Provider
       value={{
@@ -308,6 +318,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getVendorProfile,
         createVendorProfile,
         updateVendorProfile,
+        resetVendorData,
       }}
     >
       {children}
