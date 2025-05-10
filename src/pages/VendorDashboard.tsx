@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { toast } from 'sonner'
 import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
 import { useSession } from '@/contexts/SessionContext'
@@ -12,6 +11,7 @@ import RecentOrders from '@/components/dashboard/RecentOrders'
 import TopProducts from '@/components/dashboard/TopProducts'
 import DashboardEmptyState from '@/components/dashboard/DashboardEmptyState'
 import DashboardLoadingState from '@/components/dashboard/DashboardLoadingState'
+import { toast } from '@/components/ui/use-toast'
 import { 
   TrendingUp, 
   Package, 
@@ -78,7 +78,11 @@ const VendorDashboard: React.FC = () => {
         setSalesData([])
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
-        toast.error('Failed to load dashboard data')
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch dashboard data.',
+          variant: 'destructive'  
+        })
       } finally {
         setIsLoading(false)
       }
@@ -122,7 +126,6 @@ const VendorDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <DashboardHeader
           onAddProduct={navigateToProducts}
-          onSignOut={handleSignOut}
         />
         <DashboardStats
           totalSales={stats.totalSales}

@@ -106,8 +106,9 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .from('vendors')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle();
+      .single();
     if (error) return null;
+    console.log('Fetched vendor profile:', data);
     setVendorProfile(data as VendorProfile);
     setVendorProfileLoaded(true);
     return data as VendorProfile;
