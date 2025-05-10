@@ -76,7 +76,7 @@ const SettingsStore: React.FC = () => {
                 onClick={() => {
                   const storeName = form.getValues('store_name');
                   if (!storeName) return;
-                  const link = `https://stylematch.fashion/${storeName}`;
+                  const link = `https://stylematch.fashion/store/${storeName}`;
                   navigator.clipboard.writeText(link);
                   toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
                 }}

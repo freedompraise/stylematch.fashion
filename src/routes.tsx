@@ -88,7 +88,7 @@ export default function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/store/:id" element={<Storefront />} />
+      <Route path="/store/:name" element={<Storefront />} />
 
       <Route
         path="/onboarding"
