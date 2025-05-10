@@ -49,8 +49,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       if (session.user) {
         try {
           const vendor = await getVendorProfile(session.user.id);
-          if (!vendor && location.pathname !== '/onboarding') {
+          if (!vendor) {
             setRedirectToOnboarding(true);
+          } else {
+            setRedirectToOnboarding(false);
           }
         } catch (error) {
           console.error('Error checking vendor profile:', error);
@@ -59,7 +61,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       setCheckingVendor(false);
     };
     checkVendor();
-  }, [session.user, getVendorProfile, location.pathname]);
+  }, [session.user, getVendorProfile]);
 
   if (session.loading || checkingVendor) {
     return <div className="flex items-center justify-center min-h-screen text-lg">

@@ -51,7 +51,7 @@ const VendorOnboarding: React.FC = () => {
     const loadVendorData = async () => {
       if (!session?.user) return;
       try {
-        const data = await getVendorProfile(session.user.id, true);
+        const data = await getVendorProfile(session.user.id);
         if (data) {
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
