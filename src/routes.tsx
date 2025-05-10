@@ -10,6 +10,10 @@ import OrderManagement from '@/pages/OrderManagement';
 import Storefront from '@/pages/Storefront';
 import NotFound from '@/pages/NotFound';
 import VendorLayout from '@/components/layouts/VendorLayout';
+import SettingsProfile from '@/pages/SettingsProfile';
+import SettingsStore from '@/pages/SettingsStore';
+import SettingsPayout from '@/pages/SettingsPayout';
+import SettingsDangerZone from '@/pages/SettingsDangerZone';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -79,15 +83,12 @@ export default function AppRoutes() {
             </div>
           } 
         />
-        <Route 
-          path="settings" 
-          element={
-            <div className="p-6">
-              <h1 className="text-3xl font-bold">Settings</h1>
-              <p className="mt-4">Settings page coming soon.</p>
-            </div>
-          } 
-        />
+        <Route path="settings">
+          <Route index element={<SettingsProfile />} />
+          <Route path="store" element={<SettingsStore />} />
+          <Route path="payout" element={<SettingsPayout />} />
+          <Route path="danger" element={<SettingsDangerZone />} />
+        </Route>
       </Route>
 
       {/* Catch-all route */}

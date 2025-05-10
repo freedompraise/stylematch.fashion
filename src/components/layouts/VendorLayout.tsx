@@ -43,7 +43,17 @@ const navigationItems = [
   { title: 'Orders', icon: ShoppingCart, path: '/orders' },
   { title: 'Customers', icon: Users, path: '/customers' },
   { title: 'Payments', icon: CreditCard, path: '/payments' },
-  { title: 'Settings', icon: Settings, path: '/settings' }
+  {
+    title: 'Settings',
+    icon: Settings,
+    path: '/settings',
+    subItems: [
+      { title: 'Profile', path: '/settings' },
+      { title: 'Store', path: '/settings/store' },
+      { title: 'Payout', path: '/settings/payout' },
+      { title: 'Danger Zone', path: '/settings/danger' },
+    ]
+  }
 ];
 
 interface VendorLayoutProps {
