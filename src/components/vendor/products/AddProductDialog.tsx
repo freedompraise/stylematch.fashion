@@ -35,6 +35,7 @@ import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchem
 import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
+import { FormActions } from '@/components/ui/form-actions';
 
 interface AddProductDialogProps {
   onProductsAdded: (products: Product[]) => void;
@@ -115,15 +116,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       return;
     }
 
-    if (productImages.some(image => !image)) {
-      toast({
-        title: "Images required",
-        description: "Please add an image for each product.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       // Use the new context service for image upload and creation
       const createdProducts = await createProducts(
@@ -137,7 +129,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       onProductsAdded(createdProducts);
       toast({
         title: "Products created",
-        description: "Your products have been created successfully."
+        description: "Your products have been created successfully.",
+        variant: "default"
       });
 
       form.reset();
@@ -357,12 +350,18 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     Add Another Product
                   </Button>
                   
-                  <div className="space-x-2">
-                    <DialogClose asChild>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="submit">Create Products</Button>
-                  </div>
+                  <FormActions
+                  
+                    onCancel={() => {
+                      form.reset();
+                      setProductImages([]);
+                      setPreviewUrls([]);
+                      
+                      setOpen(false);
+
+                      
+                    }}
+                  />
                 </div>
               </form>
             </Form>

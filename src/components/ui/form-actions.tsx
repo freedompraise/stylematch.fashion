@@ -2,12 +2,21 @@ import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
-interface ProductFormActionsProps {
+interface FormActionsProps {
   onCancel: () => void;
   isSubmitting?: boolean;
+  submitText?: string;
+  submittingText?: string;
+  cancelText?: string;
 }
 
-export function ProductFormActions({ onCancel, isSubmitting = false }: ProductFormActionsProps) {
+export function FormActions({ 
+  onCancel, 
+  isSubmitting = false,
+  submitText = 'Save',
+  submittingText = 'Saving...',
+  cancelText = 'Cancel'
+}: FormActionsProps) {
   const { formState: { isValid } } = useFormContext();
 
   return (
@@ -18,7 +27,7 @@ export function ProductFormActions({ onCancel, isSubmitting = false }: ProductFo
         onClick={onCancel}
         disabled={isSubmitting}
       >
-        Cancel
+        {cancelText}
       </Button>
       <Button
         type="submit"
@@ -27,12 +36,12 @@ export function ProductFormActions({ onCancel, isSubmitting = false }: ProductFo
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Saving...
+            {submittingText}
           </>
         ) : (
-          'Save Product'
+          submitText
         )}
       </Button>
     </div>
   );
-} 
+}
