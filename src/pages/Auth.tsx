@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,9 +17,8 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
 import Logo from '@/components/Logo';
-import { useSession } from '@/contexts/SessionContext';
-import { toast } from 'sonner';
-import { Navigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { AuthService } from '@/services/authService';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -40,15 +39,11 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-const Auth: React.FC = () => {
+const Auth = (): JSX.Element => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { supabase, session } = useSession();
-
-  if (session) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const authService = new AuthService();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -72,15 +67,10 @@ const Auth: React.FC = () => {
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
-      if (error) throw error;
+      await authService.signIn(data.email, data.password);
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in');
+      
     } finally {
       setIsLoading(false);
     }
@@ -89,41 +79,23 @@ const Auth: React.FC = () => {
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     try {
       setIsLoading(true);
-
-      const { error: signUpError } = await supabase.auth.signUp({
+      await authService.signUp({
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            full_name: data.name,
-            store_name: data.store_name,
-          },
-        },
+        store_name: data.store_name,
+        name: data.name,
       });
-
-      if (signUpError) throw signUpError;
-
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!userData.user) throw new Error('User info not available after sign up');
-
-      const { error: profileError } = await supabase
-        .from('vendors')
-        .insert([
-          {
-            user_id: userData.user.id,
-            store_name: data.store_name,
-            full_name: data.name,
-          },
-        ]);
-
-      if (profileError) throw profileError;
-
-      toast.success('Account created successfully! Please check your email to verify your account.');
+      toast({
+        title: 'Account created',
+        description: 'Your account has been created successfully. Please check your email for verification.',
+      });
       navigate('/onboarding');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create account');
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create account',
+        variant: 'destructive',
+      })
     } finally {
       setIsLoading(false);
     }
@@ -132,16 +104,13 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) throw error;
+      await authService.signInWithGoogle(`${window.location.origin}/auth/callback`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to sign in with Google',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -152,12 +121,7 @@ const Auth: React.FC = () => {
     if (toLogin) {
       registerForm.reset();
     } else {
-      loginForm.reset();const handleTabSwitch = (toLogin: boolean) => {
-        setIsLogin(toLogin);
-        if (toLogin) {
-          registerForm.reset();
-        }
-      };
+      loginForm.reset();
     }
   };
 

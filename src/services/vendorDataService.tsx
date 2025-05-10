@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+// VendorDataProvider.tsx
+
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, createProductInputSchema } from '@/types/ProductSchema';
-import { Order, OrderStatus } from '@/types/OrderSchema';
+import { Order } from '@/types/OrderSchema';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { VendorProfile } from '@/types/VendorSchema';
 
@@ -32,6 +34,7 @@ export type VendorDataContextType = {
   getVendorProfile: (userId: string, force?: boolean) => Promise<VendorProfile | null>;
   createVendorProfile: (profile: VendorProfile, imageFile?: File) => Promise<void>;
   updateVendorProfile: (userId: string, updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
+  resetVendorData: () => void;
 };
 
 const VendorDataContext = createContext<VendorDataContextType | undefined>(undefined);
@@ -43,6 +46,25 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [ordersLoaded, setOrdersLoaded] = useState(false);
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
   const [vendorProfileLoaded, setVendorProfileLoaded] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('vendor_profile');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setVendorProfile(parsed);
+      setVendorProfileLoaded(true);
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user?.id && !vendorProfileLoaded) {
+        await getVendorProfile(session.user.id);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [vendorProfileLoaded]);
 
   const fetchProducts = useCallback(async (vendorId: string, force = false) => {
     if (productsLoaded && !force) return products;
@@ -70,7 +92,6 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return data as Order[];
   }, [orders, ordersLoaded]);
 
-  // Memoized product lookups
   const getProduct = useCallback(async (productId: string) => {
     const cached = products.find(p => p.id === productId);
     if (cached) return cached;
@@ -98,19 +119,25 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return products.filter(p => p.is_hottest_offer).slice(0, limit);
   }, [products]);
 
-  // Vendor profile CRUD
   const getVendorProfile = useCallback(async (userId: string, force = false) => {
-    if (vendorProfileLoaded && vendorProfile && !force) return vendorProfile;
+    if (!force && vendorProfile && vendorProfile.user_id === userId) {
+      return vendorProfile;
+    }
     const { data, error } = await supabase
       .from('vendors')
       .select('*')
       .eq('user_id', userId)
       .single();
     if (error) return null;
-    setVendorProfile(data as VendorProfile);
-    setVendorProfileLoaded(true);
-    return data as VendorProfile;
-  }, [vendorProfile, vendorProfileLoaded]);
+    console.log(['[getVendorProfile] data', data]);
+    if (data && typeof data === 'object') {
+      setVendorProfile(data as VendorProfile);
+      setVendorProfileLoaded(true);
+      localStorage.setItem('vendor_profile', JSON.stringify(data));
+      return data as VendorProfile;
+    }
+    return null;
+  }, [vendorProfile]);
 
   const createVendorProfile = useCallback(async (profile: VendorProfile, imageFile?: File) => {
     let imageUrl: string | undefined;
@@ -122,12 +149,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       const { error: profileError } = await supabase
         .from('vendors')
-        .insert([
-          {
-            ...profile,
-            banner_image_url: imageUrl,
-          },
-        ]);
+        .insert([{ ...profile, banner_image_url: imageUrl }]);
       if (profileError) throw profileError;
     } catch (error) {
       if (uploadedImagePublicId) {
@@ -157,10 +179,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       const { error: updateError } = await supabase
         .from('vendors')
-        .update({
-          ...updates,
-          banner_image_url: imageUrl,
-        })
+        .update({ ...updates, banner_image_url: imageUrl })
         .eq('user_id', userId);
       if (updateError) throw updateError;
       if (oldImagePublicId) {
@@ -174,42 +193,25 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  // Bulk create products with image upload and validation
-  const createProducts = async (
-    productsToCreate: (CreateProductInput & { image: File })[]
-  ): Promise<Product[]> => {
+  const createProducts = async (productsToCreate: (CreateProductInput & { image: File })[]) => {
     const created: Product[] = [];
     const uploadedIds: string[] = [];
     for (const p of productsToCreate) {
-      // 1) validate your _input_ shape
-      const parsed = createProductInputSchema.parse({
-        ...p,
-        images: [],
-      });
-      // 2) upload
+      const parsed = createProductInputSchema.parse({ ...p, images: [] });
       let imageUrl: string;
       try {
         imageUrl = await uploadToCloudinary(p.image);
       } catch (err) {
-        console.error('Image upload failed:', err);
         throw err;
       }
       const publicId = getPublicIdFromUrl(imageUrl);
       uploadedIds.push(publicId);
-      // 3) insert row
       const { data: row, error } = await supabase
         .from('products')
-        .insert([
-          {
-            ...parsed,
-            images: [imageUrl],
-          },
-        ])
+        .insert([{ ...parsed, images: [imageUrl] }])
         .select()
         .single();
       if (error) {
-        console.error('Error inserting product:', error);
-        // roll back uploaded image
         await deleteFromCloudinary(publicId).catch(console.error);
         throw error;
       }
@@ -263,26 +265,28 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const filterOrders = (criteria: (o: Order) => boolean) => orders.filter(criteria);
 
   const getVendorStats = useCallback(async (userId: string) => {
-    // Ensure products and orders are loaded
     if (!productsLoaded || !ordersLoaded) {
       await Promise.all([
         fetchProducts(userId),
         fetchOrders(userId)
       ]);
     }
-    // Calculate stats from cached data
     const totalProducts = products.length;
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
     const recentOrders = orders.slice(0, 5);
-    return {
-      totalProducts,
-      totalOrders,
-      totalRevenue,
-      recentOrders,
-      // Optionally, add more stats here if needed
-    };
+    return { totalProducts, totalOrders, totalRevenue, recentOrders };
   }, [products, orders, productsLoaded, ordersLoaded, fetchProducts, fetchOrders]);
+
+  const resetVendorData = useCallback(() => {
+    setProducts([]);
+    setOrders([]);
+    setProductsLoaded(false);
+    setOrdersLoaded(false);
+    setVendorProfile(null);
+    setVendorProfileLoaded(false);
+    localStorage.removeItem('vendor_profile');
+  }, []);
 
   return (
     <VendorDataContext.Provider
@@ -308,6 +312,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getVendorProfile,
         createVendorProfile,
         updateVendorProfile,
+        resetVendorData,
       }}
     >
       {children}
@@ -319,4 +324,4 @@ export function useVendorData() {
   const ctx = useContext(VendorDataContext);
   if (!ctx) throw new Error('useVendorData must be used within a VendorDataProvider');
   return ctx;
-} 
+}

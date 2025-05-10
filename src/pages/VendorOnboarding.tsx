@@ -11,7 +11,7 @@ import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from
 import Logo from '@/components/Logo';
 import { useSession } from '@/contexts/SessionContext';
 import { useVendorData } from '@/services/vendorDataService';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { OnboardingFormValues } from '@/types';
 
 const onboardingSchema = z.object({
@@ -31,7 +31,7 @@ const VendorOnboarding: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { supabase, session } = useSession();
-  const { updateVendorProfile } = useVendorData();
+  const { getVendorProfile, updateVendorProfile } = useVendorData();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
@@ -50,31 +50,18 @@ const VendorOnboarding: React.FC = () => {
   useEffect(() => {
     const loadVendorData = async () => {
       if (!session?.user) return;
-      
       try {
-        const { data, error } = await supabase
-          .from('vendors')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-          
-        if (error) throw error;
-        
+        const data = await getVendorProfile(session.user.id);
         if (data) {
-          // Set form values from existing data
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
           form.setValue('facebook_link', data.facebook_url || '');
           form.setValue('wabusiness_link', data.wabusiness_url || '');
-          
-          // Set payout info if available
           if (data.payout_info) {
             form.setValue('bank_name', data.payout_info.bank_name || '');
             form.setValue('account_number', data.payout_info.account_number || '');
             form.setValue('account_name', data.payout_info.account_name || '');
           }
-          
-          // Set image preview if available
           if (data.banner_image_url) {
             setUploadedImage(data.banner_image_url);
           }
@@ -83,13 +70,12 @@ const VendorOnboarding: React.FC = () => {
         console.error('Error loading vendor data:', error);
       }
     };
-    
     loadVendorData();
-  }, [session, supabase, form]);
+  }, [session, getVendorProfile, form]);
 
   const onSubmit = async (data: OnboardingFormValues) => {
     if (!session?.user) {
-      toast.error('No authenticated user found');
+      toast({ title: 'Error', description: 'User session not found', variant: 'destructive' });
       return;
     }
 
@@ -111,11 +97,18 @@ const VendorOnboarding: React.FC = () => {
         data.store_image?.[0]
       );
 
-      toast.success('Profile updated successfully!');
+      toast({
+        title: 'Onboarding Complete',
+        description: 'Your store profile has been successfully set up.',
+      });
       navigate('/dashboard');
     } catch (error) {
       console.error('Error during onboarding:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to complete onboarding');
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +145,11 @@ const VendorOnboarding: React.FC = () => {
     if (isValid) {
       setStep((prevStep) => prevStep + 1);
     } else {
-      toast.error('Please fill in all required fields before continuing.');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields correctly.',
+        variant: 'destructive',
+      })
     }
   };
 

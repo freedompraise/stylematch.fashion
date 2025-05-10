@@ -6,6 +6,7 @@ import supabase from '@/lib/supabaseClient';
 interface SessionContextType {
   session: Session;
   supabase: SupabaseClient;
+  signOutAndClear: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -19,6 +20,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log(["[supabase] session", session]);
       setSession({
         user: session?.user ?? null,
         loading: false,
@@ -38,8 +40,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const signOutAndClear = async () => {
+    await supabase.auth.signOut();
+    setSession({ user: null, loading: false });
+  };
+
   return (
-    <SessionContext.Provider value={{ session, supabase }}>
+    <SessionContext.Provider value={{ session, supabase, signOutAndClear }}>
       {children}
     </SessionContext.Provider>
   );
