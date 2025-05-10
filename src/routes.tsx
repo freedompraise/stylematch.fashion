@@ -1,7 +1,8 @@
 // routes.tsx
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVendorData } from './services/vendorDataService';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
@@ -19,75 +20,67 @@ import SettingsStore from '@/pages/SettingsStore';
 import SettingsPayout from '@/pages/SettingsPayout';
 import SettingsDangerZone from '@/pages/SettingsDangerZone';
 
+const FullscreenLoader = () => (
+  <div className="flex items-center justify-center min-h-screen text-lg">
+    <Loader2 className="animate-spin" size={24} />
+    <span className="ml-2">Loading...</span>
+  </div>
+);
+
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { session } = useSession();
 
-
-  if (session.loading) {
-    return <div className="flex items-center justify-center min-h-screen text-lg">
-      <Loader2 className="animate-spin" size={24} />
-      <span className="ml-2">Loading...</span>
-    </div>;
-  }
-
-  if (session.user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (session.loading) return <FullscreenLoader />;
+  if (session.user) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 };
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+type SessionGuardProps = {
+  children: React.ReactNode;
+  requireVendor?: boolean;
+  redirectIfVendorExists?: boolean;
+};
+
+const SessionGuard = ({ children, requireVendor, redirectIfVendorExists }: SessionGuardProps) => {
   const { session } = useSession();
   const { getVendorProfile } = useVendorData();
-  const [checkingVendor, setCheckingVendor] = useState(true);
-  const [redirectToOnboarding, setRedirectToOnboarding] = useState(false);
-  const location = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkVendor = async () => {
-      if (session.user) {
-        try {
-          const vendor = await getVendorProfile(session.user.id);
-          if (!vendor) {
-            setRedirectToOnboarding(true);
-          } else {
-            setRedirectToOnboarding(false);
-          }
-        } catch (error) {
-          console.error('Error checking vendor profile:', error);
-        }
+    const validate = async () => {
+      if (!session.user) {
+        setRedirectTo('/auth');
+        setChecking(false);
+        return;
       }
-      setCheckingVendor(false);
+
+      const vendor = await getVendorProfile(session.user.id);
+
+      if (requireVendor && !vendor) {
+        setRedirectTo('/onboarding');
+      } else if (redirectIfVendorExists && vendor) {
+        setRedirectTo('/dashboard');
+      }
+
+      setChecking(false);
     };
-    checkVendor();
-  }, [session.user, getVendorProfile]);
 
-  if (session.loading || checkingVendor) {
-    return <div className="flex items-center justify-center min-h-screen text-lg">
-      <Loader2 className="animate-spin" size={24} />
-      <span className="ml-2">Loading...</span>
-    </div>;
-  }
+    validate();
+  }, [session.user, getVendorProfile, requireVendor, redirectIfVendorExists]);
 
-  if (!session.user) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  if (redirectToOnboarding) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  if (session.loading || checking) return <FullscreenLoader />;
+  if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   return <>{children}</>;
 };
 
-const VendorRoutes = () => {
-  return (
-    <VendorLayout>
-      <Outlet />
-    </VendorLayout>
-  );
-};
+const VendorRoutes = () => (
+  <VendorLayout>
+    <Outlet />
+  </VendorLayout>
+);
 
 export default function AppRoutes() {
   return (
@@ -100,17 +93,17 @@ export default function AppRoutes() {
       <Route
         path="/onboarding"
         element={
-          <ProtectedRoute>
+          <SessionGuard redirectIfVendorExists>
             <VendorOnboarding />
-          </ProtectedRoute>
+          </SessionGuard>
         }
       />
 
       <Route
         element={
-          <ProtectedRoute>
+          <SessionGuard requireVendor>
             <VendorRoutes />
-          </ProtectedRoute>
+          </SessionGuard>
         }
       >
         <Route path="dashboard" element={<VendorDashboard />} />
