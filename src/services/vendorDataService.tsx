@@ -129,7 +129,6 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .eq('user_id', userId)
       .single();
     if (error) return null;
-    console.log(['[getVendorProfile] data', data]);
     if (data && typeof data === 'object') {
       setVendorProfile(data as VendorProfile);
       setVendorProfileLoaded(true);
@@ -160,6 +159,19 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const updateVendorProfile = useCallback(async (userId: string, updates: Partial<VendorProfile>, imageFile?: File) => {
+    // Always send the full payout_info structure if present
+    let fullUpdates = { ...updates };
+    if (updates.payout_info) {
+      // Ensure all required fields are present
+      const { account_number, bank_code, bank_name, recipient_code, account_name } = updates.payout_info as any;
+      fullUpdates.payout_info = {
+        account_number: account_number || '',
+        bank_code: bank_code || '',
+        bank_name: bank_name || '',
+        recipient_code: recipient_code || '',
+        account_name: account_name || '',
+      };
+    }
     let imageUrl: string | undefined;
     let uploadedImagePublicId: string | undefined;
     let oldImagePublicId: string | undefined;
@@ -179,7 +191,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       const { error: updateError } = await supabase
         .from('vendors')
-        .update({ ...updates, banner_image_url: imageUrl })
+        .update(fullUpdates)
         .eq('user_id', userId);
       if (updateError) throw updateError;
       if (oldImagePublicId) {

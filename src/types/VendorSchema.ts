@@ -9,8 +9,11 @@ export interface VendorProfile {
   phone?: string;
   banner_image_url?: string;
   payout_info?: {
-    bank_name?: string;
     account_number?: string;
+    bank_code?: string;
+    bank_name?: string;
+    recipient_code?: string;
     account_name?: string;
+    payout_mode?: string;
   };
 }

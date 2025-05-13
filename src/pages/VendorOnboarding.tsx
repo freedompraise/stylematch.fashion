@@ -20,8 +20,10 @@ const onboardingSchema = z.object({
   facebook_link: z.string().optional(),
   wabusiness_link: z.string().optional(),
   bank_name: z.string().min(2, { message: 'Bank name is required' }),
+  bank_code: z.string().min(2, { message: 'Bank code is required' }),
   account_number: z.string().min(10, { message: 'Valid account number required' }),
   account_name: z.string().min(2, { message: 'Account name is required' }),
+  payout_mode: z.enum(['automatic', 'manual']).default('automatic'),
   store_image: z.any().optional(),
 });
 
@@ -29,11 +31,14 @@ const VendorOnboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
+  const [resolvedAccountName, setResolvedAccountName] = useState('');
+  const [resolving, setResolving] = useState(false);
   const navigate = useNavigate();
   const { supabase, session } = useSession();
   const { getVendorProfile, updateVendorProfile } = useVendorData();
 
-  const form = useForm<OnboardingFormValues>({
+  const form = useForm<OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       bio: '',
@@ -41,10 +46,25 @@ const VendorOnboarding: React.FC = () => {
       facebook_link: '',
       wabusiness_link: '',
       bank_name: '',
+      bank_code: '',
       account_number: '',
       account_name: '',
+      payout_mode: 'automatic',
     },
   });
+
+  // Fetch banks from Paystack edge function
+  useEffect(() => {
+    fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list_banks' })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status && data.data) setBanks(data.data);
+      });
+  }, []);
 
   // Load existing vendor data if available
   useEffect(() => {
@@ -59,8 +79,11 @@ const VendorOnboarding: React.FC = () => {
           form.setValue('wabusiness_link', data.wabusiness_url || '');
           if (data.payout_info) {
             form.setValue('bank_name', data.payout_info.bank_name || '');
+            form.setValue('bank_code', data.payout_info.bank_code || '');
             form.setValue('account_number', data.payout_info.account_number || '');
             form.setValue('account_name', data.payout_info.account_name || '');
+            form.setValue('payout_mode', data.payout_info.payout_mode === 'manual' ? 'manual' : 'automatic');
+            setResolvedAccountName(data.payout_info.account_name || '');
           }
           if (data.banner_image_url) {
             setUploadedImage(data.banner_image_url);
@@ -73,7 +96,38 @@ const VendorOnboarding: React.FC = () => {
     loadVendorData();
   }, [session, getVendorProfile, form]);
 
-  const onSubmit = async (data: OnboardingFormValues) => {
+  // Resolve account name when bank_code and account_number are filled
+  const resolveAccountName = async (bank_code: string, account_number: string) => {
+    if (!bank_code || !account_number || account_number.length !== 10) return;
+    setResolving(true);
+    try {
+      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          action: 'resolve_account',
+          data: { bank_code, account_number }
+        })
+      });
+      const result = await response.json();
+      if (result.status && result.data && result.data.account_name) {
+        setResolvedAccountName(result.data.account_name);
+        form.setValue('account_name', result.data.account_name);
+      } else {
+        setResolvedAccountName('');
+        form.setValue('account_name', '');
+      }
+    } catch {
+      setResolvedAccountName('');
+      form.setValue('account_name', '');
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const onSubmit = async (data: OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }) => {
     if (!session?.user) {
       toast({ title: 'Error', description: 'User session not found', variant: 'destructive' });
       return;
@@ -81,6 +135,26 @@ const VendorOnboarding: React.FC = () => {
 
     try {
       setIsLoading(true);
+      // Create recipient via edge function
+      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          action: 'create_recipient',
+          data: {
+            account_number: data.account_number,
+            bank_code: data.bank_code,
+            account_name: data.account_name,
+            payout_mode: data.payout_mode,
+          }
+        })
+      });
+      const result = await response.json();
+      if (!result.status || result.status !== true) {
+        throw new Error(result.message || 'Failed to create recipient');
+      }
       await updateVendorProfile(
         session.user.id,
         {
@@ -89,9 +163,12 @@ const VendorOnboarding: React.FC = () => {
           facebook_url: data.facebook_link,
           wabusiness_url: data.wabusiness_link,
           payout_info: {
-            bank_name: data.bank_name,
+            bank_name: banks.find(b => b.code === data.bank_code)?.name || data.bank_name,
+            bank_code: data.bank_code,
             account_number: data.account_number,
             account_name: data.account_name,
+            recipient_code: result.data.recipient_code,
+            payout_mode: data.payout_mode,
           },
         },
         data.store_image?.[0]
@@ -135,7 +212,7 @@ const VendorOnboarding: React.FC = () => {
     } else if (step === 2) {
       return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     } else if (step === 3) {
-      return await form.trigger(['bank_name', 'account_number', 'account_name']);
+      return await form.trigger(['bank_name', 'bank_code', 'account_number', 'account_name', 'payout_mode']);
     }
     return true;
   };
@@ -356,28 +433,52 @@ const VendorOnboarding: React.FC = () => {
                     <p className="text-baseContent-secondary text-sm">
                       Set up how you'd like to receive payments from your sales
                     </p>
-                    
                     <FormField
                       control={form.control}
-                      name="bank_name"
+                      name="payout_mode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Bank Name</FormLabel>
+                          <FormLabel>Payout Mode</FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                              <Input 
-                                placeholder="Your bank name" 
-                                className="pl-10" 
-                                {...field} 
-                              />
-                            </div>
+                            <select {...field} className="input">
+                              <option value="automatic">Automatic</option>
+                              <option value="manual">Manual</option>
+                            </select>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+                    <FormField
+                      control={form.control}
+                      name="bank_code"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bank</FormLabel>
+                          <FormControl>
+                            <select
+                              {...field}
+                              className="input"
+                              onChange={async (e) => {
+                                field.onChange(e);
+                                const bank = banks.find(b => b.code === e.target.value);
+                                form.setValue('bank_name', bank?.name || '');
+                                if (form.getValues('account_number').length === 10) {
+                                  await resolveAccountName(e.target.value, form.getValues('account_number'));
+                                }
+                              }}
+                              value={form.watch('bank_code')}
+                            >
+                              <option value="">Select Bank</option>
+                              {banks.map((bank) => (
+                                <option key={bank.code} value={bank.code}>{bank.name}</option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="account_number"
@@ -385,16 +486,20 @@ const VendorOnboarding: React.FC = () => {
                         <FormItem>
                           <FormLabel>Account Number</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Your account number"
-                              {...field} 
+                            <Input
+                              {...field}
+                              maxLength={10}
+                              onBlur={async (e) => {
+                                if (form.getValues('bank_code') && e.target.value.length === 10) {
+                                  await resolveAccountName(form.getValues('bank_code'), e.target.value);
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
                     <FormField
                       control={form.control}
                       name="account_name"
@@ -402,11 +507,12 @@ const VendorOnboarding: React.FC = () => {
                         <FormItem>
                           <FormLabel>Account Name</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Name on account"
-                              {...field} 
-                            />
+                            <Input {...field} readOnly value={resolvedAccountName} />
                           </FormControl>
+                          {resolving && <div className="text-xs text-gray-500">Resolving account name...</div>}
+                          {!resolving && resolvedAccountName && (
+                            <div className="mt-1 text-green-700 text-sm">Account Name: <strong>{resolvedAccountName}</strong></div>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}

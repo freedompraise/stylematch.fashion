@@ -3,7 +3,7 @@ import { useSession } from '@/contexts/SessionContext';
 import { useVendorData } from '@/services/vendorDataService';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toast} from '@/components/ui/use-toast';
 import { useForm, FormProvider } from 'react-hook-form';
 import { FormActions } from '@/components/ui/form-actions';
 
@@ -18,7 +18,6 @@ interface ProfileFormData {
 const SettingsProfile: React.FC = () => {
   const { session } = useSession();
   const { getVendorProfile, updateVendorProfile } = useVendorData();
-  const { toast } = useToast();
 
   const form = useForm<ProfileFormData>({
     defaultValues: {
