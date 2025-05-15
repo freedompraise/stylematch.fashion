@@ -1,4 +1,4 @@
-n
+
 # StyleMatch
 
 A fashion-forward commerce platform built to empower vendors in Nigeria and beyond.
@@ -34,7 +34,7 @@ StyleMatch helps social vendors showcase their inventory, streamline orders, and
 Clone the repository:
 
 ```bash
-git clone https://github.com/[your-org]/stylematch.git
+git clone https://github.com/freedompraise/stylematch.fashion..git
 cd stylematch
 ````
 
