@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
-import { useSession } from '@/contexts/SessionContext'
+import { useVendor } from '@/contexts/VendorContext'
 import { useVendorData } from '@/services/vendorDataService'
 import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DashboardStats from '@/components/dashboard/DashboardStats'
@@ -33,7 +33,7 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { session } = useSession()
+  const { user, vendor } = useVendor()
   const {
     products,
     getVendorStats,
@@ -50,13 +50,12 @@ const VendorDashboard: React.FC = () => {
   const [salesData, setSalesData] = useState<{ name: string; sales: number }[]>([])
   const [hasProducts, setHasProducts] = useState(false)
   const [hasOrders, setHasOrders] = useState(false)
-
   useEffect(() => {
     const fetchData = async () => {
-      if (!session?.user?.id) return
+      if (!user?.id) return
       setIsLoading(true)
       try {
-        const vendorStats = await getVendorStats(session.user.id)
+        const vendorStats = await getVendorStats(user.id)
         setStats({
           totalSales: vendorStats.totalRevenue,
           totalOrders: vendorStats.totalOrders,
@@ -88,12 +87,11 @@ const VendorDashboard: React.FC = () => {
       }
     }
     fetchData()
-    // eslint-disable-next-line
-  }, [session?.user?.id, getVendorStats, products.length])
-
+  }, [user?.id, getVendorStats, products.length])
+  const { signOut } = useVendor();
+  
   const handleSignOut = async () => {
-    // You may want to clear the context here if needed
-    navigate('/')
+    await signOut();
   }
 
   const navigateToProducts = () => {

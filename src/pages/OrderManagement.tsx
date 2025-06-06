@@ -30,7 +30,7 @@ import {
   DialogClose
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
 import { OrderStatus } from '@/types/OrderSchema';
 
@@ -46,7 +46,7 @@ const statusOptions = [
 ];
 
 const OrderManagement: React.FC = () => {
-  const { session } = useSession();
+  const { user } = useVendor();
   const { orders, fetchOrders, updateOrder, deleteOrder } = useVendorData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All Orders');
@@ -54,10 +54,10 @@ const OrderManagement: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
-    fetchOrders(session.user.id);
+    if (!user?.id) return;
+    fetchOrders(user.id);
     // eslint-disable-next-line
-  }, [session?.user?.id, fetchOrders]);
+  }, [user?.id, fetchOrders]);
   
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {

@@ -19,6 +19,7 @@ import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { toast } from '@/hooks/use-toast';
 import { AuthService } from '@/services/authService';
+import { useVendor } from '@/contexts/VendorContext';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -63,14 +64,20 @@ const Auth = (): JSX.Element => {
       name: '',
     },
   });
+  const { refreshVendor } = useVendor();
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
       await authService.signIn(data.email, data.password);
+      await refreshVendor();
       navigate('/dashboard');
     } catch (error) {
-      
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to sign in',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -85,6 +92,7 @@ const Auth = (): JSX.Element => {
         store_name: data.store_name,
         name: data.name,
       });
+      await refreshVendor();
       toast({
         title: 'Account created',
         description: 'Your account has been created successfully. Please check your email for verification.',
@@ -95,7 +103,7 @@ const Auth = (): JSX.Element => {
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to create account',
         variant: 'destructive',
-      })
+      });
     } finally {
       setIsLoading(false);
     }

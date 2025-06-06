@@ -1,7 +1,7 @@
 // SettingsPayout.tsx
 
 import React, { useEffect, useState } from 'react';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -26,14 +26,19 @@ const initialFormData: PayoutFormData = {
 };
 
 const SettingsPayout: React.FC = () => {
-  const { session } = useSession();
-  const { getVendorProfile, updateVendorProfile } = useVendorData();
+  const { user, vendor, refreshVendor } = useVendor();
+  const { updateVendorProfile } = useVendorData();
   const { toast } = useToast();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [resolvedAccountName, setResolvedAccountName] = useState('');
   const [resolving, setResolving] = useState(false);
 
-  const form = useForm<PayoutFormData>({ defaultValues: initialFormData });
+  const form = useForm<PayoutFormData>({
+    defaultValues: {
+      ...initialFormData,
+      ...(vendor?.payout_info || {})
+    }
+  });
 
   useEffect(() => {
     fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
@@ -54,23 +59,19 @@ const SettingsPayout: React.FC = () => {
         }
       });
   }, []);
-
   useEffect(() => {
-    if (!session?.user?.id) return;
-    getVendorProfile(session.user.id).then(data => {
-      if (data?.payout_info) {
-        const pm = data.payout_info.payout_mode === 'manual' ? 'manual' : 'automatic';
-        form.reset({
-          bank_name: data.payout_info.bank_name || '',
-          bank_code: data.payout_info.bank_code || '',
-          account_number: data.payout_info.account_number || '',
-          account_name: data.payout_info.account_name || '',
-          payout_mode: pm
-        });
-        setResolvedAccountName(data.payout_info.account_name || '');
-      }
-    });
-  }, [session?.user?.id, getVendorProfile]);
+    if (vendor?.payout_info) {
+      const pm = vendor.payout_info.payout_mode === 'manual' ? 'manual' : 'automatic';
+      form.reset({
+        bank_name: vendor.payout_info.bank_name || '',
+        bank_code: vendor.payout_info.bank_code || '',
+        account_number: vendor.payout_info.account_number || '',
+        account_name: vendor.payout_info.account_name || '',
+        payout_mode: pm
+      });
+      setResolvedAccountName(vendor.payout_info.account_name || '');
+    }
+  }, [vendor, form]);
 
   const resolveAccountName = async (bank_code: string, account_number: string) => {
     if (account_number.length !== 10) return;
@@ -102,9 +103,8 @@ const SettingsPayout: React.FC = () => {
       setResolving(false);
     }
   };
-
   const handleSubmit = form.handleSubmit(async values => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
     try {
       const res = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
         method: 'POST',
@@ -125,8 +125,7 @@ const SettingsPayout: React.FC = () => {
       const result = await res.json();
       if (!result.status || !result.data?.recipient_code) {
         throw new Error(result.message || 'Failed to create recipient');
-      }
-      await updateVendorProfile(session.user.id, {
+      }      await updateVendorProfile(user.id, {
         payout_info: {
           account_number: values.account_number,
           bank_code: values.bank_code,
@@ -136,6 +135,7 @@ const SettingsPayout: React.FC = () => {
           payout_mode: values.payout_mode
         }
       });
+      await refreshVendor();
       toast({ title: 'Payout info updated', description: 'Your payout information has been updated.' });
     } catch {
       toast({ title: 'Error', description: 'Failed to update payout info.', variant: 'destructive' });

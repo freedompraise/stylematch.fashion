@@ -16,4 +16,12 @@ export interface VendorProfile {
     account_name?: string;
     payout_mode?: string;
   };
+  // Auth and onboarding fields
+  onboarding_completed: boolean;
+  onboarding_step?: string;
+  last_session_refresh?: string;
+  auth_metadata?: {
+    provider?: string;
+    last_sign_in?: string;
+  };
 }

@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
 import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
@@ -42,10 +42,9 @@ interface AddProductDialogProps {
 }
 
 export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('manual');
+  const [open, setOpen] = useState(false);  const [activeTab, setActiveTab] = useState('manual');
   const { toast } = useToast();
-  const { session } = useSession();
+  const { user } = useVendor();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
   const { createProducts } = useVendorData();

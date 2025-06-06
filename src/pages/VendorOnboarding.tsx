@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
-import Logo from '@/components/Logo';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
-import { toast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { OnboardingFormValues } from '@/types';
+import Logo from '@/components/Logo';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const onboardingSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
@@ -32,10 +40,9 @@ const VendorOnboarding: React.FC = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
-  const [resolvedAccountName, setResolvedAccountName] = useState('');
-  const [resolving, setResolving] = useState(false);
+  const [resolvedAccountName, setResolvedAccountName] = useState('');  const [resolving, setResolving] = useState(false);
   const navigate = useNavigate();
-  const { supabase, session } = useSession();
+  const { user, refreshVendor } = useVendor();
   const { getVendorProfile, updateVendorProfile } = useVendorData();
 
   const form = useForm<OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }>({
@@ -57,7 +64,9 @@ const VendorOnboarding: React.FC = () => {
   useEffect(() => {
     fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+      },
       body: JSON.stringify({ action: 'list_banks' })
     })
       .then(res => res.json())
@@ -65,13 +74,12 @@ const VendorOnboarding: React.FC = () => {
         if (data.status && data.data) setBanks(data.data);
       });
   }, []);
-
   // Load existing vendor data if available
   useEffect(() => {
     const loadVendorData = async () => {
-      if (!session?.user) return;
+      if (!user) return;
       try {
-        const data = await getVendorProfile(session.user.id);
+        const data = await getVendorProfile(user.id);
         if (data) {
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
@@ -92,9 +100,8 @@ const VendorOnboarding: React.FC = () => {
       } catch (error) {
         console.error('Error loading vendor data:', error);
       }
-    };
-    loadVendorData();
-  }, [session, getVendorProfile, form]);
+    };    loadVendorData();
+  }, [user, getVendorProfile, form]);
 
   // Resolve account name when bank_code and account_number are filled
   const resolveAccountName = async (bank_code: string, account_number: string) => {
@@ -126,10 +133,9 @@ const VendorOnboarding: React.FC = () => {
       setResolving(false);
     }
   };
-
   const onSubmit = async (data: OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }) => {
-    if (!session?.user) {
-      toast({ title: 'Error', description: 'User session not found', variant: 'destructive' });
+    if (!user) {
+      toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
       return;
     }
 
@@ -151,12 +157,11 @@ const VendorOnboarding: React.FC = () => {
           }
         })
       });
-      const result = await response.json();
-      if (!result.status || result.status !== true) {
+      const result = await response.json();      if (!result.status || result.status !== true) {
         throw new Error(result.message || 'Failed to create recipient');
       }
       await updateVendorProfile(
-        session.user.id,
+        user.id,
         {
           bio: data.bio,
           instagram_url: data.instagram_link,

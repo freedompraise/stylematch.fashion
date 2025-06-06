@@ -1,7 +1,7 @@
 // VendorLayout.tsx
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -10,8 +10,10 @@ import {
   CreditCard,
   Settings,
   Search,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
+import { useVendor } from '@/contexts/VendorContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,7 +31,6 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command';
-import { useSession } from '@/contexts/SessionContext';
 import { useVendorSearch } from '@/hooks/use-vendor-search';
 
 const navigationItems = [
@@ -62,8 +63,9 @@ interface VendorLayoutProps {
 
 export default function VendorLayout({ children }: VendorLayoutProps) {
   const navigate = useNavigate();
-  const { session } = useSession();
+  const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
+  const { vendor, signOut } = useVendor();
 
   const {
     searchQuery,
@@ -134,21 +136,37 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
         </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 items-center justify-between border-b px-4 bg-white">
-            <div className="flex items-center gap-2">
+          <header className="flex h-16 items-center justify-between border-b px-4 bg-white">            <div className="flex items-center gap-2">
               <SidebarTrigger>
                 <Menu className="h-5 w-5" />
               </SidebarTrigger>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              <span>Search...</span>
-            </Button>
+            <div className="flex items-center gap-4 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                <span>Search...</span>
+              </Button>
+              {vendor && (
+                <div className="flex items-center gap-4">
+                  <div className="text-sm">
+                    <div className="font-medium">{vendor.store_name}</div>
+                    <div className="text-muted-foreground text-xs">{vendor.name}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={signOut}
+                    className="hover:bg-destructive/10"
+                  >
+                    <LogOut className="h-5 w-5 text-destructive" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </header>
 
           <main className="flex-1 overflow-y-auto px-6 py-4 w-full max-w-screen-2xl mx-auto">

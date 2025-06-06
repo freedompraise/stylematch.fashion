@@ -1,94 +1,247 @@
-// authService.ts
 import supabase from '@/lib/supabaseClient';
 import { VendorProfile } from '@/types/VendorSchema';
+import { AuthFormData } from '@/types';
+import { toast } from '@/hooks/use-toast';
+import { AuthError, Session, User } from '@supabase/supabase-js';
 
-export type AuthFormData = {
-  email: string;
-  password: string;
-  confirmPassword?: string;
-  store_name?: string;
-  name?: string;
-};
+interface AuthResult {
+  session: Session | null;
+  vendor: VendorProfile | null;
+  shouldRedirectToOnboarding: boolean;
+}
 
-export class AuthService {
+export class AuthService {  private handleAuthError(error: AuthError | Error | unknown) {
+    let title = "Authentication Error";
+    let message = error instanceof Error ? error.message : 'An unknown error occurred';
+
+    // Handle specific Supabase auth errors
+    if (error instanceof Error) {
+      if (message.includes('Invalid login credentials')) {
+        title = "Invalid Credentials";
+        message = "The email or password you entered is incorrect.";
+      } else if (message.includes('Email not confirmed')) {
+        title = "Email Not Verified";
+        message = "Please check your email and verify your account.";
+      } else if (message.includes('Rate limit')) {
+        title = "Too Many Attempts";
+        message = "Please wait a moment before trying again.";
+      }
+    }
+
+    toast({
+      title: title,
+      description: message,
+      variant: "destructive",
+    });
+    throw error;
+  }
+
+  private handleAuthSuccess(message: string) {
+    toast({
+      title: "Success",
+      description: message,
+    });
+  }
 
   async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      this.handleAuthSuccess("Successfully signed in!");
+      return data;
+    } catch (error) {
+      this.handleAuthError(error);
+    }
   }
 
   async signUp(formData: AuthFormData) {
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          full_name: formData.name,
-          store_name: formData.store_name,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name,
+            store_name: formData.store_name,
+          },
         },
-      },
-    });
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+
+      this.handleAuthSuccess("Account created successfully! Please check your email to verify your account.");
+      return data;
+    } catch (error) {
+      this.handleAuthError(error);
+    }
   }
 
   async signInWithGoogle(redirectUrl: string) {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
 
-    if (error) throw error;
+      if (error) throw error;
+
+      this.handleAuthSuccess("Redirecting to Google signin...");
+      return data;
+    } catch (error) {
+      this.handleAuthError(error);
+    }
   }
 
   async getVendorProfile(userId: string): Promise<VendorProfile | null> {
-    const { data, error } = await supabase
-      .from('vendors')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-    if (error && error.code !== 'PGRST116') {
-      throw error;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      this.handleAuthError(error);
+      return null;
     }
-
-    return data as VendorProfile | null;
   }
 
   async createVendorProfile(userId: string, data: { store_name: string; name: string }) {
-    const { error } = await supabase
-      .from('vendors')
-      .insert([
-        {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .insert([{
           user_id: userId,
           store_name: data.store_name,
           name: data.name,
-        },
-      ]);
+        }]);
 
-    if (error) throw error;
+      if (error) throw error;
+      
+      this.handleAuthSuccess("Vendor profile created successfully!");
+    } catch (error) {
+      this.handleAuthError(error);
+    }
   }
 
-  async handleAuthCallback() {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) throw error;
-    if (!session?.user) return null;
+  async handleOAuthCallback(hash: string): Promise<AuthResult | null> {
+    try {
+      // Parse hash parameters
+      const hashParams = new URLSearchParams(hash.replace('#', '?'));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      
+      if (!accessToken) throw new Error('No access token found');
 
-    const vendor = await this.getVendorProfile(session.user.id);
-    
-    return {
-      session,
-      vendor,
-      shouldRedirectToOnboarding: !vendor,
-    };
+      // Set the session
+      const { data: { session }, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken || '',
+      });
+
+      if (error) throw error;
+      if (!session?.user) return null;
+
+      // Get vendor profile
+      const vendor = await this.getVendorProfile(session.user.id);
+      
+      this.handleAuthSuccess("Successfully signed in with Google!");
+      
+      return {
+        session,
+        vendor,
+        shouldRedirectToOnboarding: !vendor,
+      };
+    } catch (error) {
+      this.handleAuthError(error);
+      return null;
+    }
+  }
+
+  async handleAuthCallback(): Promise<AuthResult | null> {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+      if (!session?.user) return null;
+
+      const vendor = await this.getVendorProfile(session.user.id);
+      
+      return {
+        session,
+        vendor,
+        shouldRedirectToOnboarding: !vendor,
+      };
+    } catch (error) {
+      this.handleAuthError(error);
+      return null;
+    }
+  }
+
+  async signOut() {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      this.handleAuthSuccess("Successfully signed out!");
+    } catch (error) {
+      this.handleAuthError(error);
+    }
+  }
+
+  async resetPassword(email: string) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/auth/reset-password',
+      });
+      
+      if (error) throw error;
+      
+      this.handleAuthSuccess("Password reset instructions have been sent to your email!");
+    } catch (error) {
+      this.handleAuthError(error);
+    }
+  }
+
+  async updatePassword(newPassword: string) {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      this.handleAuthSuccess("Password updated successfully!");
+    } catch (error) {
+      this.handleAuthError(error);
+    }
+  }
+
+  handleSessionExpiry() {
+    toast({
+      title: "Session Expired",
+      description: "Your session has expired. Please sign in again.",
+      variant: "destructive",
+    });
+  }
+
+  handleNetworkError() {
+    toast({
+      title: "Network Error",
+      description: "Please check your internet connection and try again.",
+      variant: "destructive",
+    });
   }
 }

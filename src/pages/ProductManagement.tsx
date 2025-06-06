@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { Product } from '@/types/ProductSchema';
 import { useVendorData } from '@/services/vendorDataService';
 import { FilterBar } from '@/components/vendor/FilterBar';
@@ -12,9 +12,8 @@ import { QuickActions, productsQuickActions } from '@/components/vendor/QuickAct
 import { AddProductDialog } from '@/components/vendor/products/AddProductDialog';
 import { ProductList } from '@/components/vendor/products/ProductList';
 
-const ProductManagement: React.FC = () => {
-  const { toast } = useToast();
-  const { session } = useSession();
+const ProductManagement: React.FC = () => {  const { toast } = useToast();
+  const { user } = useVendor();
   const {
     products,
     fetchProducts,
@@ -24,11 +23,10 @@ const ProductManagement: React.FC = () => {
   } = useVendorData();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
     setLoading(true);
-    fetchProducts(session.user.id)
+    fetchProducts(user.id)
       .catch(() => {
         toast({
           title: 'Error loading products',
