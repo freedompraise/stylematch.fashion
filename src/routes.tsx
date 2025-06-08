@@ -58,13 +58,13 @@ export default function AppRoutes() {
       <Route path="/store/:name" element={<Storefront />} />      <Route
         path="/onboarding"
         element={
-          <RequireVendor requireOnboarding={false}>
+          <RequireVendor>
             <VendorOnboarding />
           </RequireVendor>
         }
       />      <Route
         element={
-          <RequireVendor requireOnboarding={false}>
+          <RequireVendor>
             <VendorRoutes />
           </RequireVendor>
         }

@@ -6,7 +6,6 @@ import { useLocation } from 'react-router-dom';
 
 interface RequireVendorProps {
   children: React.ReactNode;
-  requireOnboarding?: boolean;
   redirectTo?: string;
 }
 
@@ -21,7 +20,6 @@ const FullscreenLoader = () => (
 
 export function RequireVendor({ 
   children, 
-  requireOnboarding = true,
   redirectTo = '/auth'
 }: RequireVendorProps) {
   const { isAuthenticated, isOnboarded, loading, vendor, user } = useVendor();
@@ -36,7 +34,6 @@ export function RequireVendor({
     hasUser: !!user,
     hasVendor: !!vendor,
     vendorData: vendor,
-    requireOnboarding,
     timestamp: new Date().toISOString()
   });
 
@@ -64,14 +61,8 @@ export function RequireVendor({
   }
 
   // For all other protected routes
-  if (requireOnboarding && !isOnboarded) {
-    // Check for vendor profile existence
-    if (!vendor) {
-      console.debug('RequireVendor: No vendor profile, redirecting to onboarding');
-      return <Navigate to="/onboarding" replace />;
-    }
-    // Redirect to onboarding if profile exists but not fully onboarded
-    console.debug('RequireVendor: Vendor not onboarded, redirecting to onboarding');
+  if (!isOnboarded && location.pathname !== '/onboarding') {
+    console.debug('RequireVendor: Not onboarded, redirecting to onboarding');
     return <Navigate to="/onboarding" state={{ from: location.pathname }} replace />;
   }
 
