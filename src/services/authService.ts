@@ -1,16 +1,24 @@
 import supabase from '@/lib/supabaseClient';
-import { VendorProfile } from '@/types/VendorSchema';
 import { AuthFormData } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { AuthError, Session, User } from '@supabase/supabase-js';
+import { VendorProfile } from '@/types/VendorSchema';
 
 interface AuthResult {
   session: Session | null;
-  vendor: VendorProfile | null;
   shouldRedirectToOnboarding: boolean;
 }
 
-export class AuthService {  private handleAuthError(error: AuthError | Error | unknown) {
+interface SessionInfo {
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: number | null;
+  user: User | null;
+}
+
+export class AuthService {
+  // Private helper methods
+  private handleAuthError(error: AuthError | Error | unknown) {
     let title = "Authentication Error";
     let message = error instanceof Error ? error.message : 'An unknown error occurred';
 
@@ -43,7 +51,8 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
     });
   }
 
-  async signIn(email: string, password: string) {
+  // Public methods
+  async signIn(email: string, password: string): Promise<AuthResult> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -53,13 +62,17 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       if (error) throw error;
       
       this.handleAuthSuccess("Successfully signed in!");
-      return data;
+      return {
+        session: data.session,
+        shouldRedirectToOnboarding: false
+      };
     } catch (error) {
       this.handleAuthError(error);
+      throw error;
     }
   }
 
-  async signUp(formData: AuthFormData) {
+  async signUp(formData: AuthFormData): Promise<AuthResult> {
     try {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
@@ -75,15 +88,19 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       if (error) throw error;
 
       this.handleAuthSuccess("Account created successfully! Please check your email to verify your account.");
-      return data;
+      return {
+        session: data.session,
+        shouldRedirectToOnboarding: true
+      };
     } catch (error) {
       this.handleAuthError(error);
+      throw error;
     }
   }
 
-  async signInWithGoogle(redirectUrl: string) {
+  async signInWithGoogle(redirectUrl: string): Promise<void> {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
@@ -93,46 +110,9 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       if (error) throw error;
 
       this.handleAuthSuccess("Redirecting to Google signin...");
-      return data;
     } catch (error) {
       this.handleAuthError(error);
-    }
-  }
-
-  async getVendorProfile(userId: string): Promise<VendorProfile | null> {
-    try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      this.handleAuthError(error);
-      return null;
-    }
-  }
-
-  async createVendorProfile(userId: string, data: { store_name: string; name: string }) {
-    try {
-      const { error } = await supabase
-        .from('vendors')
-        .insert([{
-          user_id: userId,
-          store_name: data.store_name,
-          name: data.name,
-        }]);
-
-      if (error) throw error;
-      
-      this.handleAuthSuccess("Vendor profile created successfully!");
-    } catch (error) {
-      this.handleAuthError(error);
+      throw error;
     }
   }
 
@@ -153,16 +133,12 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
 
       if (error) throw error;
       if (!session?.user) return null;
-
-      // Get vendor profile
-      const vendor = await this.getVendorProfile(session.user.id);
       
       this.handleAuthSuccess("Successfully signed in with Google!");
       
       return {
         session,
-        vendor,
-        shouldRedirectToOnboarding: !vendor,
+        shouldRedirectToOnboarding: false
       };
     } catch (error) {
       this.handleAuthError(error);
@@ -176,13 +152,10 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       
       if (error) throw error;
       if (!session?.user) return null;
-
-      const vendor = await this.getVendorProfile(session.user.id);
       
       return {
         session,
-        vendor,
-        shouldRedirectToOnboarding: !vendor,
+        shouldRedirectToOnboarding: false
       };
     } catch (error) {
       this.handleAuthError(error);
@@ -190,7 +163,7 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
     }
   }
 
-  async signOut() {
+  async signOut(): Promise<void> {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -198,10 +171,46 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       this.handleAuthSuccess("Successfully signed out!");
     } catch (error) {
       this.handleAuthError(error);
+      throw error;
     }
   }
 
-  async resetPassword(email: string) {
+  async getCurrentSession(): Promise<SessionInfo> {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) throw error;
+      
+      return {
+        accessToken: session?.access_token ?? null,
+        refreshToken: session?.refresh_token ?? null,
+        expiresAt: session?.expires_at ? session.expires_at * 1000 : null,
+        user: session?.user ?? null
+      };
+    } catch (error) {
+      this.handleAuthError(error);
+      throw error;
+    }
+  }
+
+  async refreshSession(): Promise<AuthResult> {
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      
+      if (error) throw error;
+      if (!session) throw new Error('Failed to refresh session');
+      
+      return {
+        session,
+        shouldRedirectToOnboarding: false
+      };
+    } catch (error) {
+      this.handleAuthError(error);
+      throw error;
+    }
+  }
+
+  async resetPassword(email: string): Promise<void> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/auth/reset-password',
@@ -212,10 +221,11 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       this.handleAuthSuccess("Password reset instructions have been sent to your email!");
     } catch (error) {
       this.handleAuthError(error);
+      throw error;
     }
   }
 
-  async updatePassword(newPassword: string) {
+  async updatePassword(newPassword: string): Promise<void> {
     try {
       const { error } = await supabase.auth.updateUser({
         password: newPassword
@@ -226,6 +236,7 @@ export class AuthService {  private handleAuthError(error: AuthError | Error | u
       this.handleAuthSuccess("Password updated successfully!");
     } catch (error) {
       this.handleAuthError(error);
+      throw error;
     }
   }
 

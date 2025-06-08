@@ -1,70 +1,63 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthService } from '@/services/authService';
-import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { AuthService } from '@/services/authService';
+
+const authService = new AuthService();
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const authService = new AuthService();
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the hash fragment and URL params
+        // Check if we have a hash in the URL (OAuth callback)
         const hash = window.location.hash;
-        const params = new URLSearchParams(window.location.search);
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
-        
-        // Check for OAuth errors first
-        if (error || errorDescription) {
-          throw new Error(errorDescription || error || 'Authentication failed');
+        let result;
+
+        if (hash) {
+          result = await authService.handleOAuthCallback(hash);
+        } else {
+          result = await authService.handleAuthCallback();
         }
 
-        // Handle the OAuth callback with hash params
-        if (hash) {
-          const result = await authService.handleOAuthCallback(hash);
-          if (!result?.session?.user) {
-            throw new Error('No user session found after OAuth callback');
-          }
-
-          toast({
-            title: "Success",
-            description: "Successfully signed in!"
-          });
-
-          // Navigate based on vendor profile
-          if (result.shouldRedirectToOnboarding) {
-            navigate('/onboarding');
-          } else {
-            navigate('/dashboard');
-          }
+        if (!result?.session) {
+          setError('Authentication failed');
           return;
         }
 
-        throw new Error('No authentication data found');
-
-      } catch (error) {
-        console.error('Auth callback error:', error);
-        toast({
-          title: "Authentication Error",
-          description: error instanceof Error ? error.message : "Failed to authenticate",
-          variant: "destructive"
-        });
-        navigate('/auth');
+        // Successful login - let RequireVendor handle the routing
+        navigate('/dashboard', { replace: true });
+      } catch (err) {
+        console.error('Auth callback error:', err);
+        setError(err instanceof Error ? err.message : 'Authentication failed');
       }
     };
 
-    // Execute the callback handler
     handleCallback();
-  }, [navigate, authService, toast]);
+  }, [navigate]);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <div className="text-destructive">{error}</div>
+        <button
+          onClick={() => navigate('/auth')}
+          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+        >
+          Return to Login
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-muted-foreground">Completing sign in...</p>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-baseContent-secondary">Completing authentication...</p>
+      </div>
     </div>
   );
 }

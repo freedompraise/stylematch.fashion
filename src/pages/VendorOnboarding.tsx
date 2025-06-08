@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
 import { useVendor } from '@/contexts/VendorContext';
-import { useVendorData } from '@/services/vendorDataService';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -17,10 +16,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import { OnboardingFormValues } from '@/types';
 import Logo from '@/components/Logo';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
+import { paystackClient } from '@/lib/paystackClient';
 
 const onboardingSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
@@ -36,14 +36,15 @@ const onboardingSchema = z.object({
 });
 
 const VendorOnboarding: React.FC = () => {
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
-  const [resolvedAccountName, setResolvedAccountName] = useState('');  const [resolving, setResolving] = useState(false);
+  const [resolvedAccountName, setResolvedAccountName] = useState('');
+  const [resolving, setResolving] = useState(false);
   const navigate = useNavigate();
-  const { user, refreshVendor } = useVendor();
-  const { getVendorProfile, updateVendorProfile } = useVendorData();
+  const { user, refreshVendor, getVendorProfile, updateVendorProfile } = useVendor();
 
   const form = useForm<OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }>({
     resolver: zodResolver(onboardingSchema),
@@ -157,16 +158,18 @@ const VendorOnboarding: React.FC = () => {
           }
         })
       });
-      const result = await response.json();      if (!result.status || result.status !== true) {
+      const result = await response.json();
+      if (!result.status || result.status !== true) {
         throw new Error(result.message || 'Failed to create recipient');
       }
+
       await updateVendorProfile(
-        user.id,
         {
           bio: data.bio,
           instagram_url: data.instagram_link,
           facebook_url: data.facebook_link,
           wabusiness_url: data.wabusiness_link,
+          isOnboarded: true,  // Mark onboarding as completed
           payout_info: {
             bank_name: banks.find(b => b.code === data.bank_code)?.name || data.bank_name,
             bank_code: data.bank_code,
@@ -178,6 +181,9 @@ const VendorOnboarding: React.FC = () => {
         },
         data.store_image?.[0]
       );
+
+      // Refresh vendor context after onboarding
+      await refreshVendor();
 
       toast({
         title: 'Onboarding Complete',
@@ -438,106 +444,63 @@ const VendorOnboarding: React.FC = () => {
                     <p className="text-baseContent-secondary text-sm">
                       Set up how you'd like to receive payments from your sales
                     </p>
-                    <FormField
-                      control={form.control}
-                      name="payout_mode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Payout Mode</FormLabel>
-                          <FormControl>
-                            <select {...field} className="input">
-                              <option value="automatic">Automatic</option>
-                              <option value="manual">Manual</option>
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="bank_code"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank</FormLabel>
-                          <FormControl>
-                            <select
-                              {...field}
-                              className="input"
-                              onChange={async (e) => {
-                                field.onChange(e);
-                                const bank = banks.find(b => b.code === e.target.value);
-                                form.setValue('bank_name', bank?.name || '');
-                                if (form.getValues('account_number').length === 10) {
-                                  await resolveAccountName(e.target.value, form.getValues('account_number'));
-                                }
-                              }}
-                              value={form.watch('bank_code')}
-                            >
-                              <option value="">Select Bank</option>
-                              {banks.map((bank) => (
-                                <option key={bank.code} value={bank.code}>{bank.name}</option>
-                              ))}
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="account_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              maxLength={10}
-                              onBlur={async (e) => {
-                                if (form.getValues('bank_code') && e.target.value.length === 10) {
-                                  await resolveAccountName(form.getValues('bank_code'), e.target.value);
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="account_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly value={resolvedAccountName} />
-                          </FormControl>
-                          {resolving && <div className="text-xs text-gray-500">Resolving account name...</div>}
-                          {!resolving && resolvedAccountName && (
-                            <div className="mt-1 text-green-700 text-sm">Account Name: <strong>{resolvedAccountName}</strong></div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     
-                    <div className="pt-4 flex justify-between">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={handlePreviousStep}
-                      >
-                        Back
-                      </Button>
-                      <Button 
-                        type="submit"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Saving...' : 'Complete Setup'}
-                      </Button>
-                    </div>
+                    <PayoutForm
+                      onSubmit={async (payoutData) => {
+                        if (!user) {
+                          toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
+                          return;
+                        }
+
+                        try {
+                          setIsLoading(true);
+                          const result = await paystackClient.createRecipient({
+                            account_number: payoutData.account_number,
+                            bank_code: payoutData.bank_code,
+                            account_name: payoutData.account_name,
+                            payout_mode: payoutData.payout_mode
+                          });
+
+                          await updateVendorProfile(
+                            {
+                              bio: form.getValues('bio'),
+                              instagram_url: form.getValues('instagram_link'),
+                              facebook_url: form.getValues('facebook_link'),
+                              wabusiness_url: form.getValues('wabusiness_link'),
+                              isOnboarded: true,
+                              payout_info: {
+                                bank_name: payoutData.bank_name,
+                                bank_code: payoutData.bank_code,
+                                account_number: payoutData.account_number,
+                                account_name: payoutData.account_name,
+                                recipient_code: result.recipient_code,
+                                payout_mode: payoutData.payout_mode,
+                              },
+                            },
+                            form.getValues('store_image')?.[0]
+                          );
+
+                          await refreshVendor();
+
+                          toast({
+                            title: 'Onboarding Complete',
+                            description: 'Your store profile has been successfully set up.',
+                          });
+                          navigate('/dashboard');
+                        } catch (error) {
+                          console.error('Error during onboarding:', error);
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to complete onboarding. Please try again.',
+                            variant: 'destructive',
+                          });
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      submitText="Complete Setup"
+                      submittingText="Saving..."
+                    />
                   </div>
                 )}
               </form>

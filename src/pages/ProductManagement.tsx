@@ -26,7 +26,7 @@ const ProductManagement: React.FC = () => {  const { toast } = useToast();
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
-    fetchProducts(user.id)
+    fetchProducts(true)
       .catch(() => {
         toast({
           title: 'Error loading products',
@@ -35,7 +35,7 @@ const ProductManagement: React.FC = () => {  const { toast } = useToast();
         });
       })
       .finally(() => setLoading(false));
-  }, [session?.user?.id, toast, fetchProducts]);
+  }, [user?.id, toast, fetchProducts]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -75,7 +75,7 @@ const ProductManagement: React.FC = () => {  const { toast } = useToast();
   };
 
   const handleProductAdded = (product: Product) => {
-    fetchProducts(session?.user?.id || '');
+    fetchProducts(true)
   };
 
   return (

@@ -12,17 +12,6 @@ import TopProducts from '@/components/dashboard/TopProducts'
 import DashboardEmptyState from '@/components/dashboard/DashboardEmptyState'
 import DashboardLoadingState from '@/components/dashboard/DashboardLoadingState'
 import { toast } from '@/components/ui/use-toast'
-import { 
-  TrendingUp, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  DollarSign, 
-  ArrowUpRight, 
-  ArrowDownRight 
-} from 'lucide-react'
-import { QuickActions, dashboardQuickActions } from '@/components/vendor/QuickActions'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface DashboardStats {
   totalSales: number
@@ -55,7 +44,7 @@ const VendorDashboard: React.FC = () => {
       if (!user?.id) return
       setIsLoading(true)
       try {
-        const vendorStats = await getVendorStats(user.id)
+        const vendorStats = await getVendorStats()
         setStats({
           totalSales: vendorStats.totalRevenue,
           totalOrders: vendorStats.totalOrders,

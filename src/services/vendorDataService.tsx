@@ -1,17 +1,17 @@
 // VendorDataProvider.tsx
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, createProductInputSchema } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
-import { VendorProfile } from '@/types/VendorSchema';
+import { useVendor } from '@/contexts/VendorContext';
 
 export type VendorDataContextType = {
   products: Product[];
   orders: Order[];
-  fetchProducts: (vendorId: string, force?: boolean) => Promise<Product[]>;
-  fetchOrders: (vendorId: string, force?: boolean) => Promise<Order[]>;
+  fetchProducts: (force?: boolean) => Promise<Product[]>;
+  fetchOrders: (force?: boolean) => Promise<Order[]>;
   createProduct: (product: Partial<Product>) => Promise<Product>;
   createProducts: (products: (CreateProductInput & { image: File })[]) => Promise<Product[]>;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<Product>;
@@ -21,7 +21,7 @@ export type VendorDataContextType = {
   deleteOrder: (id: string) => Promise<void>;
   filterProducts: (criteria: (p: Product) => boolean) => Product[];
   filterOrders: (criteria: (o: Order) => boolean) => Order[];
-  getVendorStats: (userId: string) => Promise<{
+  getVendorStats: () => Promise<{
     totalProducts: number;
     totalOrders: number;
     totalRevenue: number;
@@ -31,66 +31,49 @@ export type VendorDataContextType = {
   getProductsByCategory: (category: string) => Product[];
   searchProducts: (searchTerm: string) => Product[];
   getHottestOffers: (limit?: number) => Product[];
-  getVendorProfile: (userId: string, force?: boolean) => Promise<VendorProfile | null>;
-  createVendorProfile: (profile: VendorProfile, imageFile?: File) => Promise<void>;
-  updateVendorProfile: (userId: string, updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
   resetVendorData: () => void;
 };
 
 const VendorDataContext = createContext<VendorDataContextType | undefined>(undefined);
 
 export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { vendor } = useVendor();
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [productsLoaded, setProductsLoaded] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
-  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
-  const [vendorProfileLoaded, setVendorProfileLoaded] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('vendor_profile');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setVendorProfile(parsed);
-      setVendorProfileLoaded(true);
-    }
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user?.id && !vendorProfileLoaded) {
-        await getVendorProfile(session.user.id);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [vendorProfileLoaded]);
-
-  const fetchProducts = useCallback(async (vendorId: string, force = false) => {
+  const fetchProducts = useCallback(async (force = false) => {
+    if (!vendor?.user_id) return [];
     if (productsLoaded && !force) return products;
+    
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('vendor_id', vendorId)
+      .eq('vendor_id', vendor.user_id)
       .order('created_at', { ascending: false });
+      
     if (error) throw error;
     setProducts(data as Product[]);
     setProductsLoaded(true);
     return data as Product[];
-  }, [products, productsLoaded]);
+  }, [products, productsLoaded, vendor?.user_id]);
 
-  const fetchOrders = useCallback(async (vendorId: string, force = false) => {
+  const fetchOrders = useCallback(async (force = false) => {
+    if (!vendor?.user_id) return [];
     if (ordersLoaded && !force) return orders;
+    
     const { data, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('vendor_id', vendorId)
+      .eq('vendor_id', vendor.user_id)
       .order('created_at', { ascending: false });
+      
     if (error) throw error;
     setOrders(data as Order[]);
     setOrdersLoaded(true);
     return data as Order[];
-  }, [orders, ordersLoaded]);
+  }, [orders, ordersLoaded, vendor?.user_id]);
 
   const getProduct = useCallback(async (productId: string) => {
     const cached = products.find(p => p.id === productId);
@@ -119,95 +102,12 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return products.filter(p => p.is_hottest_offer).slice(0, limit);
   }, [products]);
 
-  const getVendorProfile = useCallback(async (userId: string, force = false) => {
-    if (!force && vendorProfile && vendorProfile.user_id === userId) {
-      return vendorProfile;
-    }
-    const { data, error } = await supabase
-      .from('vendors')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    if (error) return null;
-    if (data && typeof data === 'object') {
-      setVendorProfile(data as VendorProfile);
-      setVendorProfileLoaded(true);
-      localStorage.setItem('vendor_profile', JSON.stringify(data));
-      return data as VendorProfile;
-    }
-    return null;
-  }, [vendorProfile]);
-
-  const createVendorProfile = useCallback(async (profile: VendorProfile, imageFile?: File) => {
-    let imageUrl: string | undefined;
-    let uploadedImagePublicId: string | undefined;
-    try {
-      if (imageFile) {
-        imageUrl = await uploadToCloudinary(imageFile);
-        uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
-      }
-      const { error: profileError } = await supabase
-        .from('vendors')
-        .insert([{ ...profile, banner_image_url: imageUrl }]);
-      if (profileError) throw profileError;
-    } catch (error) {
-      if (uploadedImagePublicId) {
-        await deleteFromCloudinary(uploadedImagePublicId);
-      }
-      throw error;
-    }
-  }, []);
-
-  const updateVendorProfile = useCallback(async (userId: string, updates: Partial<VendorProfile>, imageFile?: File) => {
-    // Always send the full payout_info structure if present
-    let fullUpdates = { ...updates };
-    if (updates.payout_info) {
-      // Ensure all required fields are present
-      const { account_number, bank_code, bank_name, recipient_code, account_name } = updates.payout_info as any;
-      fullUpdates.payout_info = {
-        account_number: account_number || '',
-        bank_code: bank_code || '',
-        bank_name: bank_name || '',
-        recipient_code: recipient_code || '',
-        account_name: account_name || '',
-      };
-    }
-    let imageUrl: string | undefined;
-    let uploadedImagePublicId: string | undefined;
-    let oldImagePublicId: string | undefined;
-    try {
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('vendors')
-        .select('banner_image_url')
-        .eq('user_id', userId)
-        .single();
-      if (fetchError) throw fetchError;
-      if (imageFile) {
-        imageUrl = await uploadToCloudinary(imageFile);
-        uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
-        if (currentProfile?.banner_image_url) {
-          oldImagePublicId = getPublicIdFromUrl(currentProfile.banner_image_url);
-        }
-      }
-      const { error: updateError } = await supabase
-        .from('vendors')
-        .update(fullUpdates)
-        .eq('user_id', userId);
-      if (updateError) throw updateError;
-      if (oldImagePublicId) {
-        await deleteFromCloudinary(oldImagePublicId);
-      }
-    } catch (error) {
-      if (uploadedImagePublicId) {
-        await deleteFromCloudinary(uploadedImagePublicId);
-      }
-      throw error;
-    }
-  }, []);
-
   const createProducts = async (productsToCreate: (CreateProductInput & { image: File })[]) => {
+    if (!vendor?.user_id) throw new Error('No vendor ID available');
+    
     const created: Product[] = [];
     const uploadedIds: string[] = [];
+    
     for (const p of productsToCreate) {
       const parsed = createProductInputSchema.parse({ ...p, images: [] });
       let imageUrl: string;
@@ -220,7 +120,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       uploadedIds.push(publicId);
       const { data: row, error } = await supabase
         .from('products')
-        .insert([{ ...parsed, images: [imageUrl] }])
+        .insert([{ ...parsed, images: [imageUrl], vendor_id: vendor.user_id }])
         .select()
         .single();
       if (error) {
@@ -234,14 +134,27 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const createProduct = async (product: Partial<Product>) => {
-    const { data, error } = await supabase.from('products').insert([product]).select().single();
+    if (!vendor?.user_id) throw new Error('No vendor ID available');
+    
+    const { data, error } = await supabase
+      .from('products')
+      .insert([{ ...product, vendor_id: vendor.user_id }])
+      .select()
+      .single();
+      
     if (error) throw error;
     setProducts(prev => [data as Product, ...prev]);
     return data as Product;
   };
 
   const updateProduct = async (id: string, updates: Partial<Product>) => {
-    const { data, error } = await supabase.from('products').update(updates).eq('id', id).select().single();
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
     if (error) throw error;
     setProducts(prev => prev.map(p => (p.id === id ? (data as Product) : p)));
     return data as Product;
@@ -254,14 +167,27 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const createOrder = async (order: Partial<Order>) => {
-    const { data, error } = await supabase.from('orders').insert([order]).select().single();
+    if (!vendor?.user_id) throw new Error('No vendor ID available');
+    
+    const { data, error } = await supabase
+      .from('orders')
+      .insert([{ ...order, vendor_id: vendor.user_id }])
+      .select()
+      .single();
+      
     if (error) throw error;
     setOrders(prev => [data as Order, ...prev]);
     return data as Order;
   };
 
   const updateOrder = async (id: string, updates: Partial<Order>) => {
-    const { data, error } = await supabase.from('orders').update(updates).eq('id', id).select().single();
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+      
     if (error) throw error;
     setOrders(prev => prev.map(o => (o.id === id ? (data as Order) : o)));
     return data as Order;
@@ -276,28 +202,29 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const filterProducts = (criteria: (p: Product) => boolean) => products.filter(criteria);
   const filterOrders = (criteria: (o: Order) => boolean) => orders.filter(criteria);
 
-  const getVendorStats = useCallback(async (userId: string) => {
+  const getVendorStats = useCallback(async () => {
+    if (!vendor?.user_id) throw new Error('No vendor ID available');
+    
     if (!productsLoaded || !ordersLoaded) {
       await Promise.all([
-        fetchProducts(userId),
-        fetchOrders(userId)
+        fetchProducts(),
+        fetchOrders()
       ]);
     }
+    
     const totalProducts = products.length;
     const totalOrders = orders.length;
     const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
     const recentOrders = orders.slice(0, 5);
+    
     return { totalProducts, totalOrders, totalRevenue, recentOrders };
-  }, [products, orders, productsLoaded, ordersLoaded, fetchProducts, fetchOrders]);
+  }, [products, orders, productsLoaded, ordersLoaded, fetchProducts, fetchOrders, vendor?.user_id]);
 
   const resetVendorData = useCallback(() => {
     setProducts([]);
     setOrders([]);
     setProductsLoaded(false);
     setOrdersLoaded(false);
-    setVendorProfile(null);
-    setVendorProfileLoaded(false);
-    localStorage.removeItem('vendor_profile');
   }, []);
 
   return (
@@ -321,9 +248,6 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         getProductsByCategory,
         searchProducts,
         getHottestOffers,
-        getVendorProfile,
-        createVendorProfile,
-        updateVendorProfile,
         resetVendorData,
       }}
     >
