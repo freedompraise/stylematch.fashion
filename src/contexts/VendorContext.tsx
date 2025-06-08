@@ -286,22 +286,25 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   }, [user?.id, saveToCache]);
-
   // Initialize auth state
   useEffect(() => {
-    if (authChecked) return;
-
-    console.log('Initializing auth...');
+    if (isInitialized) return;
+    
     const initializeAuth = async () => {
       try {
+        // First check cache
+        const cached = loadFromCache();
+        if (cached?.profile && cached?.session) {
+          console.debug('Using cached vendor data');
+          setVendor(cached.profile);
+          setHasVendor(true);
+          setIsOnboarded(cached.profile.isOnboarded || false);
+          setLoading(false);
+          return;
+        }
+
         const session = await authService.getCurrentSession();
         
-        const sessionStatus = {
-          hasSession: !!session.user,
-          userId: session.user?.id
-        };
-        console.log('Session status:', sessionStatus);
-
         if (session.user?.id) {
           setUser(session.user);
           setIsAuthenticated(true);
@@ -323,23 +326,25 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       } finally {
         setIsInitialized(true);
-        setAuthChecked(true);
       }
     };
 
     initializeAuth();
-  }, [authChecked, loadVendor]);
-
+  }, [isInitialized, loadVendor, loadFromCache]);
   // Listen for auth state changes
   useEffect(() => {
+    if (!isInitialized) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', { event, userId: session?.user?.id });
+      console.debug('Auth state changed:', { event, userId: session?.user?.id });
       
       if (event === 'SIGNED_IN' && session?.user?.id) {
-        setIsAuthenticated(true);
-        setUser(session.user);
-        setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null);
-        await loadVendor(session.user.id);
+        if (!user || user.id !== session.user.id) {
+          setIsAuthenticated(true);
+          setUser(session.user);
+          setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null);
+          await loadVendor(session.user.id);
+        }
       } else if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false);
         setUser(null);
@@ -347,6 +352,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
         setHasVendor(false);
         setIsOnboarded(false);
         setSessionExpiresAt(null);
+        clearCache();
         setLoading(false);
       }
     });
@@ -354,7 +360,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [loadVendor]);
+  }, [isInitialized, loadVendor, user, clearCache]);
 
   // Auto-refresh session
   useEffect(() => {

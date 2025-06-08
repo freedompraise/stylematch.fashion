@@ -2,7 +2,6 @@ import supabase from '@/lib/supabaseClient';
 import { AuthFormData } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { AuthError, Session, User } from '@supabase/supabase-js';
-import { VendorProfile } from '@/types/VendorSchema';
 
 interface AuthResult {
   session: Session | null;

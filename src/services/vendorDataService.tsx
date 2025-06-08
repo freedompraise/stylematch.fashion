@@ -37,7 +37,12 @@ export type VendorDataContextType = {
 const VendorDataContext = createContext<VendorDataContextType | undefined>(undefined);
 
 export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { vendor } = useVendor();
+  const vendorContext = useVendor();
+  if (!vendorContext) {
+    throw new Error('VendorDataProvider must be used within a VendorProvider');
+  }
+  const { vendor } = vendorContext;
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [productsLoaded, setProductsLoaded] = useState(false);
