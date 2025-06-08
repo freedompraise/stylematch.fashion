@@ -9,8 +9,18 @@ export interface VendorProfile {
   phone?: string;
   banner_image_url?: string;
   payout_info?: {
-    bank_name?: string;
     account_number?: string;
+    bank_code?: string;
+    bank_name?: string;
+    recipient_code?: string;
     account_name?: string;
+    payout_mode?: string;
+  };  // Auth and onboarding fields
+  isOnboarded: boolean;
+  onboarding_step?: string;
+  last_session_refresh?: string;
+  auth_metadata?: {
+    provider?: string;
+    last_sign_in?: string;
   };
 }

@@ -1,10 +1,21 @@
 import { User } from '@supabase/supabase-js';
 
 // Auth Types
-export interface Session {
+export interface AuthSession {
   user: User | null;
   loading: boolean;
+  expiresAt?: number | null;
+  refreshToken?: string | null;
+  accessToken?: string | null;
 }
+
+export type AuthFormData = {
+  email: string;
+  password: string;
+  confirmPassword?: string;
+  store_name?: string;
+  name?: string;
+};
 
 export interface UserMetadata {
   full_name: string;

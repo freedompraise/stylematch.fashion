@@ -1,0 +1,75 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+## Styling
+- Use predifined styling classes from @tailwind.config.ts
+- Use Tailwind CSS for styling in .tsx files.
+- Use Radix UI for accessible components and layout structure Component Development
+- Follow the classes in the @index.css for styling where necessary
+
+# Componenting
+- External API calls and business logic must be encapsulated within dedicated service modules or custom hooks. UI components should interact with these modules/hooks and avoid making direct API calls.
+- Code should be clean and maintainable. Use descriptive names. Avoid redundant comments.
+- No single page component should be longer than 220 lines. Break into smaller components in the components folder if need be
+- Use the @toast.tsx for toasting error messages in components that deal with writing data 
+- All authentication-related logic must utilize the VendorContext. Components should access authentication state exclusively through the useVendor() hook provided by this context.
+- Image displays should use from the @CloudinaryImage.tsx
+- Use necessary types from @index.ts, and add types there if not found. You can update them too if necessary. Check the [@/types folder] for schemas too
+- for supabase client usage, import supabase from @supabaseClient.ts
+- add the path and name of each file at their top
+- new components should get context from @ARCHITECTURE.md, and the md should be updated where necessary
+
+## Database Design
+- The database design is as described in @db-design.md.
+
+## API Interactions
+- All API interactions should handle errors and edge cases gracefully.
+- Always initialize SDK or external service clients (e.g., Supabase, Firebase, Stripe) in a separate module like lib/client.ts. Do not create them inside components, contexts or hooks.
+
+- Free-tier APIs are in use — minimize overhead. For example, product deletions must also delete related images from Cloudinary.
+
+## Environment Variables
+Define the following in `.env.local`:
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_ANON_KEY
+  - VITE_CLOUDINARY_CLOUD_NAME
+  - VITE_CLOUDINARY_API_KEY
+  - VITE_CLOUDINARY_API_SECRET
+  - VITE_PAYSTACK_PUBLIC_KEY
+  - VITE_PAYSTACK_SECRET_KEY
+  - VITE_SUPABASE_ACCESS_TOKEN
+  - VITE_GOOGLE_CLIENT_ID
+  - VITE_GOOGLE_CLIENT_SECRET
+Import with "import.meta.env"
+
+## Image Handling
+- Use a lazy-loading `<img>` wrapper or `react-lazy-load-image-component`.
+- Always specify width and height or aspect-ratio to prevent layout shifts.
+- Prioritize key images by preloading them manually or placing them higher in the DOM.
+
+## Bundle Optimization
+- Use Vite’s build analysis tools (`vite-plugin-visualizer`) to keep bundles light.
+- Remove unused imports and libraries.
+- Keep third-party libraries minimal and lazy-load where possible.
+
+## Static Content Strategy
+- Use static JSON or Supabase cache for frequently accessed data (like catalogs or banners).
+- Use React Query’s stale-while-revalidate strategy with Supabase queries.
+
+## Dynamic Loading
+- Dynamically import large non-critical components with `React.lazy` or `loadable-components`.
+- Use Suspense for fallback loading states.
+
+## Third-Party Scripts
+- Use `<script>` manually with async/defer in `index.html`, or insert programmatically in React with `useEffect`.
+
+## API & Service Layer Security
+- Authorization checks must be implemented in Supabase policies and client-side route guards.
+- Sanitize and validate user input before calling any endpoint.
+- Optimize Supabase queries to be index-friendly and scalable.
+
+## Debugging
+- Use the edgeConsole in the @mcp.json server only when debugging issues that require direct console output from a live Edge browser session, especially for rendering bugs or network requests not reproducible in Node or Supabase environments

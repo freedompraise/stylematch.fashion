@@ -308,11 +308,7 @@ const Storefront: React.FC = () => {
                         </p>
                         <Button className="w-full">Proceed to Checkout</Button>
                         <div className="mt-3 flex justify-center text-center text-sm text-baseContent-secondary">
-                          <SheetClose asChild>
-                            <button type="button" className="font-medium text-primary hover:text-primary/80">
-                              Continue Shopping
-                            </button>
-                          </SheetClose>
+                        
                         </div>
                       </div>
                     </>

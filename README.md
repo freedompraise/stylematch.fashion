@@ -1,73 +1,133 @@
-# Welcome to your Lovable project
 
-## Project info
+# StyleMatch
 
-**URL**: https://lovable.dev/projects/148376af-81e1-4f3a-96ea-be2a862fdde8
+A fashion-forward commerce platform built to empower vendors in Nigeria and beyond.
 
-## How can I edit this code?
+StyleMatch helps social vendors showcase their inventory, streamline orders, and get paid — without hassles. Whether you're selling on Instagram, WhatsApp, or in-store, StyleMatch connects your business to the tools you need to grow.
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## ✨ Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/148376af-81e1-4f3a-96ea-be2a862fdde8) and start prompting.
+- Personalized online storefront for each vendor  
+- Mobile-first customer shopping experience  
+- Real-time inventory and sales tracking  
+- Seamless product uploads from WhatsApp, Instagram, and file imports  
+- Paystack-powered payment and payout system  
+- Chat-enabled customer support  
+- Social media integration  
+- Responsive dashboard with actionable insights  
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 🧠 Tech Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React (Vite) + Radix UI  
+- **Backend**: Supabase (PostgreSQL + Auth)  
+- **Payments**: Paystack  
+- **Deployment**: Vercel (Frontend)  
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## 🚀 Getting Started
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Clone the repository:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+```bash
+git clone https://github.com/freedompraise/stylematch.fashion..git
+cd stylematch
+````
 
-# Step 3: Install the necessary dependencies.
-npm i
+Install dependencies:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
+```
+
+Run the development server:
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Make sure to configure the following environment variables:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_PAYSTACK_PUBLIC_KEY=
+VITE_STYLEMATCH_SUPPORT_PHONE=234XXXXXXXXXX
+```
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🛠 Folder Structure
 
-## What technologies are used for this project?
+```bash
+├── frontend/              # Vite + React app
+│   ├── components/        # Reusable UI components
+│   ├── pages/             # Route-based components
+│   ├── lib/               # Helpers and API utils
+│   ├── hooks/             # Custom React hooks
+│   └── styles/            # Global and module CSS
+└── supabase/              # Database schema and seed data
+```
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🧩 Supabase Setup
 
-## How can I deploy this project?
+Use the `supabase` folder to:
 
-Simply open [Lovable](https://lovable.dev/projects/148376af-81e1-4f3a-96ea-be2a862fdde8) and click on Share -> Publish.
+* Initialize your schema
+* Define triggers and policies
+* Manage row-level security
 
-## Can I connect a custom domain to my Lovable project?
+Create tables:
 
-Yes it is!
+```bash
+supabase db push
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🏦 Paystack Integration
+
+Ensure each vendor has:
+
+* A valid bank name and account number
+* Payout preference: manual or automatic
+* A configured `payout_info` field in the database
+
+Subaccounts are automatically created using vendor data on onboarding.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions that align with the mission of empowering social vendors.
+
+1. Fork the repo
+2. Create your feature branch
+3. Commit your changes
+4. Open a PR
+
+Please keep PRs focused and documented.
+
+---
+
+## 📫 Support
+
+For questions, feedback or feature requests:
+
+**📧** [marketmatchofficial@gmail.com](mailto:marketmatchofficial@gmail.com)
+**📞** +234 907 457 7147
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+```
+

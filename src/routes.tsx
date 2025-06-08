@@ -1,13 +1,12 @@
 // routes.tsx
 
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useSession } from '@/contexts/SessionContext';
-import { useEffect, useState } from 'react';
-import { useVendorData } from './services/vendorDataService';
+import { Loader2 } from 'lucide-react';
+import RequireVendor from '@/components/vendor/RequireVendor';
+import { useVendor } from '@/contexts/VendorContext';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/auth/callback';
-import { Loader2 } from 'lucide-react';
 import VendorOnboarding from '@/pages/VendorOnboarding';
 import VendorDashboard from '@/pages/VendorDashboard';
 import ProductManagement from '@/pages/ProductManagement';
@@ -20,58 +19,17 @@ import SettingsStore from '@/pages/SettingsStore';
 import SettingsPayout from '@/pages/SettingsPayout';
 import SettingsDangerZone from '@/pages/SettingsDangerZone';
 
-const FullscreenLoader = () => (
-  <div className="flex items-center justify-center min-h-screen text-lg">
-    <Loader2 className="animate-spin" size={24} />
-    <span className="ml-2">Loading...</span>
-  </div>
-);
-
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session } = useSession();
+  const { isAuthenticated, loading, user, vendor } = useVendor();
 
-  if (session.loading) return <FullscreenLoader />;
-  if (session.user) return <Navigate to="/dashboard" replace />;
-
-  return <>{children}</>;
-};
-
-type SessionGuardProps = {
-  children: React.ReactNode;
-  requireVendor?: boolean;
-  redirectIfVendorExists?: boolean;
-};
-
-const SessionGuard = ({ children, requireVendor, redirectIfVendorExists }: SessionGuardProps) => {
-  const { session } = useSession();
-  const { getVendorProfile } = useVendorData();
-  const [checking, setChecking] = useState(true);
-  const [redirectTo, setRedirectTo] = useState<string | null>(null);
-
-  useEffect(() => {
-    const validate = async () => {
-      if (!session.user) {
-        setRedirectTo('/auth');
-        setChecking(false);
-        return;
-      }
-
-      const vendor = await getVendorProfile(session.user.id);
-
-      if (requireVendor && !vendor) {
-        setRedirectTo('/onboarding');
-      } else if (redirectIfVendorExists && vendor) {
-        setRedirectTo('/dashboard');
-      }
-
-      setChecking(false);
-    };
-
-    validate();
-  }, [session.user, getVendorProfile, requireVendor, redirectIfVendorExists]);
-
-  if (session.loading || checking) return <FullscreenLoader />;
-  if (redirectTo) return <Navigate to={redirectTo} replace />;
+  if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">
+    <Loader2 className="animate-spin" size={24} />
+    <span className="ml-2">Loading Auth...</span>
+  </div>;
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return <>{children}</>;
 };
@@ -88,22 +46,18 @@ export default function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/store/:name" element={<Storefront />} />
-
-      <Route
+      <Route path="/store/:name" element={<Storefront />} />      <Route
         path="/onboarding"
         element={
-          <SessionGuard redirectIfVendorExists>
+          <RequireVendor>
             <VendorOnboarding />
-          </SessionGuard>
+          </RequireVendor>
         }
-      />
-
-      <Route
+      />      <Route
         element={
-          <SessionGuard requireVendor>
+          <RequireVendor>
             <VendorRoutes />
-          </SessionGuard>
+          </RequireVendor>
         }
       >
         <Route path="dashboard" element={<VendorDashboard />} />
