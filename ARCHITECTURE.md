@@ -55,8 +55,7 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 
 ### Context Providers
 - **VendorContext**: Single source of truth for vendor authentication, profile data and session management
-- **ProductContext**: Manages product CRUD operations and inventory
-- **OrderContext**: Handles order processing and management
+
 
 ### Components
 1. **UI Components** (`components/ui/`)
