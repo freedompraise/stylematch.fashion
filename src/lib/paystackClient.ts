@@ -1,4 +1,4 @@
-const PAYSTACK_EDGE_URL = 'https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout';
+const PAYSTACK_EDGE_URL = import.meta.env.VITE_PAYSTACK_EDGE_URL
 const AUTH_HEADER = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
 
 interface Bank {
