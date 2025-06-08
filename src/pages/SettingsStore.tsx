@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
 import type { VendorProfile } from '@/types/VendorSchema';
 import { Input } from '@/components/ui/input';
@@ -16,39 +16,34 @@ type StoreFormData = {
 }
 
 const SettingsStore: React.FC = () => {
-  const { session } = useSession();
-  const { getVendorProfile, updateVendorProfile } = useVendorData();
+  const { user, vendor, refreshVendor } = useVendor();
+  const { updateVendorProfile } = useVendorData();
   const { toast } = useToast();
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   const form = useForm<StoreFormData>({
     defaultValues: {
-      store_name: '',
-      banner_image_url: null,
+      store_name: vendor?.store_name || '',
+      banner_image_url: vendor?.banner_image_url || null,
     }
   });
 
   useEffect(() => {
-    if (!session?.user?.id) return;
-    getVendorProfile(session.user.id)
-      .then((data) => {
-        if (data) {
-          form.reset({
-            store_name: data.store_name || '',
-            banner_image_url: data.banner_image_url,
-          });
-        }
+    if (vendor) {
+      form.reset({
+        store_name: vendor.store_name || '',
+        banner_image_url: vendor.banner_image_url || null,
       });
-  }, [session?.user?.id, getVendorProfile, form]);
+    }
+  }, [vendor, form]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0]);
     }
   };
-
   const onSubmit = async (formData: StoreFormData) => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
     try {
       await updateVendorProfile(session.user.id, { store_name: formData.store_name }, imageFile);
       toast({ title: 'Store updated', description: 'Your store settings have been updated.' });
@@ -76,7 +71,7 @@ const SettingsStore: React.FC = () => {
                 onClick={() => {
                   const storeName = form.getValues('store_name');
                   if (!storeName) return;
-                  const link = `https://stylematch.fashion/${storeName}`;
+                  const link = `https://stylematch.fashion/store/${storeName}`;
                   navigator.clipboard.writeText(link);
                   toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
                 }}

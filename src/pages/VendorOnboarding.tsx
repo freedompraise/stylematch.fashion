@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
-import Logo from '@/components/Logo';
-import { useSession } from '@/contexts/SessionContext';
-import { useVendorData } from '@/services/vendorDataService';
-import { toast } from '@/components/ui/use-toast';
+import { useVendor } from '@/contexts/VendorContext';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { OnboardingFormValues } from '@/types';
+import Logo from '@/components/Logo';
+import { useToast } from '@/hooks/use-toast';
+import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
+import { paystackClient } from '@/lib/paystackClient';
 
 const onboardingSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
@@ -20,20 +28,25 @@ const onboardingSchema = z.object({
   facebook_link: z.string().optional(),
   wabusiness_link: z.string().optional(),
   bank_name: z.string().min(2, { message: 'Bank name is required' }),
+  bank_code: z.string().min(2, { message: 'Bank code is required' }),
   account_number: z.string().min(10, { message: 'Valid account number required' }),
   account_name: z.string().min(2, { message: 'Account name is required' }),
+  payout_mode: z.enum(['automatic', 'manual']).default('automatic'),
   store_image: z.any().optional(),
 });
 
 const VendorOnboarding: React.FC = () => {
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
+  const [resolvedAccountName, setResolvedAccountName] = useState('');
+  const [resolving, setResolving] = useState(false);
   const navigate = useNavigate();
-  const { supabase, session } = useSession();
-  const { getVendorProfile, updateVendorProfile } = useVendorData();
+  const { user, refreshVendor, getVendorProfile, updateVendorProfile } = useVendor();
 
-  const form = useForm<OnboardingFormValues>({
+  const form = useForm<OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       bio: '',
@@ -41,17 +54,33 @@ const VendorOnboarding: React.FC = () => {
       facebook_link: '',
       wabusiness_link: '',
       bank_name: '',
+      bank_code: '',
       account_number: '',
       account_name: '',
+      payout_mode: 'automatic',
     },
   });
 
+  // Fetch banks from Paystack edge function
+  useEffect(() => {
+    fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ action: 'list_banks' })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status && data.data) setBanks(data.data);
+      });
+  }, []);
   // Load existing vendor data if available
   useEffect(() => {
     const loadVendorData = async () => {
-      if (!session?.user) return;
+      if (!user) return;
       try {
-        const data = await getVendorProfile(session.user.id);
+        const data = await getVendorProfile(user.id);
         if (data) {
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
@@ -59,8 +88,11 @@ const VendorOnboarding: React.FC = () => {
           form.setValue('wabusiness_link', data.wabusiness_url || '');
           if (data.payout_info) {
             form.setValue('bank_name', data.payout_info.bank_name || '');
+            form.setValue('bank_code', data.payout_info.bank_code || '');
             form.setValue('account_number', data.payout_info.account_number || '');
             form.setValue('account_name', data.payout_info.account_name || '');
+            form.setValue('payout_mode', data.payout_info.payout_mode === 'manual' ? 'manual' : 'automatic');
+            setResolvedAccountName(data.payout_info.account_name || '');
           }
           if (data.banner_image_url) {
             setUploadedImage(data.banner_image_url);
@@ -69,33 +101,89 @@ const VendorOnboarding: React.FC = () => {
       } catch (error) {
         console.error('Error loading vendor data:', error);
       }
-    };
-    loadVendorData();
-  }, [session, getVendorProfile, form]);
+    };    loadVendorData();
+  }, [user, getVendorProfile, form]);
 
-  const onSubmit = async (data: OnboardingFormValues) => {
-    if (!session?.user) {
-      toast({ title: 'Error', description: 'User session not found', variant: 'destructive' });
+  // Resolve account name when bank_code and account_number are filled
+  const resolveAccountName = async (bank_code: string, account_number: string) => {
+    if (!bank_code || !account_number || account_number.length !== 10) return;
+    setResolving(true);
+    try {
+      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          action: 'resolve_account',
+          data: { bank_code, account_number }
+        })
+      });
+      const result = await response.json();
+      if (result.status && result.data && result.data.account_name) {
+        setResolvedAccountName(result.data.account_name);
+        form.setValue('account_name', result.data.account_name);
+      } else {
+        setResolvedAccountName('');
+        form.setValue('account_name', '');
+      }
+    } catch {
+      setResolvedAccountName('');
+      form.setValue('account_name', '');
+    } finally {
+      setResolving(false);
+    }
+  };
+  const onSubmit = async (data: OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }) => {
+    if (!user) {
+      toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
       return;
     }
 
     try {
       setIsLoading(true);
+      // Create recipient via edge function
+      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          action: 'create_recipient',
+          data: {
+            account_number: data.account_number,
+            bank_code: data.bank_code,
+            account_name: data.account_name,
+            payout_mode: data.payout_mode,
+          }
+        })
+      });
+      const result = await response.json();
+      if (!result.status || result.status !== true) {
+        throw new Error(result.message || 'Failed to create recipient');
+      }
+
       await updateVendorProfile(
-        session.user.id,
         {
           bio: data.bio,
           instagram_url: data.instagram_link,
           facebook_url: data.facebook_link,
           wabusiness_url: data.wabusiness_link,
+          isOnboarded: true,  // Mark onboarding as completed
           payout_info: {
-            bank_name: data.bank_name,
+            bank_name: banks.find(b => b.code === data.bank_code)?.name || data.bank_name,
+            bank_code: data.bank_code,
             account_number: data.account_number,
             account_name: data.account_name,
+            recipient_code: result.data.recipient_code,
+            payout_mode: data.payout_mode,
           },
         },
         data.store_image?.[0]
       );
+
+      // Refresh vendor context after onboarding
+      await refreshVendor();
 
       toast({
         title: 'Onboarding Complete',
@@ -135,7 +223,7 @@ const VendorOnboarding: React.FC = () => {
     } else if (step === 2) {
       return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     } else if (step === 3) {
-      return await form.trigger(['bank_name', 'account_number', 'account_name']);
+      return await form.trigger(['bank_name', 'bank_code', 'account_number', 'account_name', 'payout_mode']);
     }
     return true;
   };
@@ -357,76 +445,62 @@ const VendorOnboarding: React.FC = () => {
                       Set up how you'd like to receive payments from your sales
                     </p>
                     
-                    <FormField
-                      control={form.control}
-                      name="bank_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank Name</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                              <Input 
-                                placeholder="Your bank name" 
-                                className="pl-10" 
-                                {...field} 
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <PayoutForm
+                      onSubmit={async (payoutData) => {
+                        if (!user) {
+                          toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
+                          return;
+                        }
+
+                        try {
+                          setIsLoading(true);
+                          const result = await paystackClient.createRecipient({
+                            account_number: payoutData.account_number,
+                            bank_code: payoutData.bank_code,
+                            account_name: payoutData.account_name,
+                            payout_mode: payoutData.payout_mode
+                          });
+
+                          await updateVendorProfile(
+                            {
+                              bio: form.getValues('bio'),
+                              instagram_url: form.getValues('instagram_link'),
+                              facebook_url: form.getValues('facebook_link'),
+                              wabusiness_url: form.getValues('wabusiness_link'),
+                              isOnboarded: true,
+                              payout_info: {
+                                bank_name: payoutData.bank_name,
+                                bank_code: payoutData.bank_code,
+                                account_number: payoutData.account_number,
+                                account_name: payoutData.account_name,
+                                recipient_code: result.recipient_code,
+                                payout_mode: payoutData.payout_mode,
+                              },
+                            },
+                            form.getValues('store_image')?.[0]
+                          );
+
+                          await refreshVendor();
+
+                          toast({
+                            title: 'Onboarding Complete',
+                            description: 'Your store profile has been successfully set up.',
+                          });
+                          navigate('/dashboard');
+                        } catch (error) {
+                          console.error('Error during onboarding:', error);
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to complete onboarding. Please try again.',
+                            variant: 'destructive',
+                          });
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                      submitText="Complete Setup"
+                      submittingText="Saving..."
                     />
-                    
-                    <FormField
-                      control={form.control}
-                      name="account_number"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Your account number"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="account_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Account Name</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Name on account"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="pt-4 flex justify-between">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        onClick={handlePreviousStep}
-                      >
-                        Back
-                      </Button>
-                      <Button 
-                        type="submit"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Saving...' : 'Complete Setup'}
-                      </Button>
-                    </div>
                   </div>
                 )}
               </form>

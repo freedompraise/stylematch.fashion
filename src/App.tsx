@@ -1,20 +1,18 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import { SessionProvider } from '@/contexts/SessionContext';
+import { VendorProvider } from '@/contexts/VendorContext';
 import { VendorDataProvider } from './services/vendorDataService';
 import AppRoutes from '@/routes';
-import { ToastProvider, ToastViewport } from "@/components/ui/toast"
+import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   return (
     <Router>
-      <SessionProvider>
-      <VendorDataProvider>
-        <ToastProvider>
-        <AppRoutes />
-         <ToastViewport />
-        </ToastProvider>
+      <VendorProvider>
+        <VendorDataProvider>
+          <AppRoutes />
+          <Toaster />
         </VendorDataProvider>
-      </SessionProvider>
+      </VendorProvider>
     </Router>
   );
 }

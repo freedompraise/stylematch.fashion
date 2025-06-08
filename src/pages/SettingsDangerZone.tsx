@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const SettingsDangerZone: React.FC = () => {
-  const { session } = useSession();
+  const { user, signOut } = useVendor();
   const { deleteProduct, fetchProducts } = useVendorData();
   const { toast } = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Placeholder for account deletion logic
+  // Handle account deletion
   const handleDeleteAccount = async () => {
     setLoading(true);
     try {
+      if (!user?.id) throw new Error('No user');
       // TODO: Implement account deletion (Supabase + Cloudinary cleanup)
       toast({ title: 'Account deleted', description: 'Your account has been deleted.' });
+      await signOut();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to delete account.', variant: 'destructive' });
     } finally {
@@ -26,14 +27,13 @@ const SettingsDangerZone: React.FC = () => {
       setDeleteOpen(false);
     }
   };
-
   // Placeholder for storefront reset logic
   const handleResetStorefront = async () => {
     setLoading(true);
     try {
-      if (!session?.user?.id) throw new Error('No user');
+      if (!user?.id) throw new Error('No user');
       // Delete all products for this vendor
-      const products = await fetchProducts(session.user.id, true);
+      const products = await fetchProducts(user.id, true);
       await Promise.all(products.map(p => deleteProduct(p.id)));
       toast({ title: 'Storefront reset', description: 'All products have been deleted.' });
     } catch (err) {

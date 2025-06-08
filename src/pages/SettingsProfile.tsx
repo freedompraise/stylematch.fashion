@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { useForm, FormProvider } from 'react-hook-form';
 import { FormActions } from '@/components/ui/form-actions';
 
@@ -16,38 +16,32 @@ interface ProfileFormData {
 }
 
 const SettingsProfile: React.FC = () => {
-  const { session } = useSession();
-  const { getVendorProfile, updateVendorProfile } = useVendorData();
-  const { toast } = useToast();
+  const { user, vendor, refreshVendor } = useVendor();
+  const { updateVendorProfile } = useVendorData();
 
   const form = useForm<ProfileFormData>({
     defaultValues: {
-      name: '',
-      bio: '',
-      instagram_url: '',
-      facebook_url: '',
-      wabusiness_url: '',
+      name: vendor?.name || '',
+      bio: vendor?.bio || '',
+      instagram_url: vendor?.instagram_url || '',
+      facebook_url: vendor?.facebook_url || '',
+      wabusiness_url: vendor?.wabusiness_url || '',
     }
   });
 
   useEffect(() => {
-    if (!session?.user?.id) return;
-    getVendorProfile(session.user.id)
-      .then((data) => {
-        if (data) {
-          form.reset({
-            name: data.name || '',
-            bio: data.bio || '',
-            instagram_url: data.instagram_url || '',
-            facebook_url: data.facebook_url || '',
-            wabusiness_url: data.wabusiness_url || '',
-          });
-        }
+    if (vendor) {
+      form.reset({
+        name: vendor.name || '',
+        bio: vendor.bio || '',
+        instagram_url: vendor.instagram_url || '',
+        facebook_url: vendor.facebook_url || '',
+        wabusiness_url: vendor.wabusiness_url || '',
       });
-  }, [session?.user?.id, getVendorProfile, form]);
-
+    }
+  }, [vendor, form]);
   const onSubmit = async (formData: ProfileFormData) => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
     try {
       // Prepare safe update object, sending null for empty optional fields
       const updateData = {
@@ -57,7 +51,8 @@ const SettingsProfile: React.FC = () => {
         facebook_url: formData.facebook_url || null,
         wabusiness_url: formData.wabusiness_url || null,
       };
-      await updateVendorProfile(session.user.id, updateData);
+      await updateVendorProfile(user.id, updateData);
+      await refreshVendor(); // Refresh vendor data in context
       toast({ title: 'Profile updated', description: 'Your profile has been updated.' });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to update profile.', variant: 'destructive' });

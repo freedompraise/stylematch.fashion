@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { Product } from '@/types/ProductSchema';
 import { useVendorData } from '@/services/vendorDataService';
 import { FilterBar } from '@/components/vendor/FilterBar';
@@ -14,7 +14,7 @@ import { ProductList } from '@/components/vendor/products/ProductList';
 
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
-  const { session } = useSession();
+  const { user } = useVendor();
   const {
     products,
     fetchProducts,
@@ -25,19 +25,36 @@ const ProductManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Load products only once on mount or when user changes
   useEffect(() => {
-    if (!session?.user?.id) return;
-    setLoading(true);
-    fetchProducts(session.user.id)
-      .catch(() => {
-        toast({
-          title: 'Error loading products',
-          description: 'Could not load your products. Please try again later.',
-          variant: 'destructive',
-        });
-      })
-      .finally(() => setLoading(false));
-  }, [session?.user?.id, toast, fetchProducts]);
+    let mounted = true;
+
+    const loadProducts = async () => {
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        await fetchProducts(false); // Changed to false to use cache when available
+      } catch (error) {
+        if (mounted) {
+          toast({
+            title: 'Error loading products',
+            description: 'Could not load your products. Please try again later.',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]); // Removed toast and fetchProducts from deps
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -75,9 +92,9 @@ const ProductManagement: React.FC = () => {
       });
     }
   };
-
   const handleProductAdded = (product: Product) => {
-    fetchProducts(session?.user?.id || '');
+    // No need to refetch, the product is already added to state in vendorDataService
+    setLoading(false);
   };
 
   return (

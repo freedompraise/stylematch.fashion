@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { useSession } from '@/contexts/SessionContext';
+import { useVendor } from '@/contexts/VendorContext';
 import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
 import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
@@ -42,10 +42,9 @@ interface AddProductDialogProps {
 }
 
 export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('manual');
+  const [open, setOpen] = useState(false);  const [activeTab, setActiveTab] = useState('manual');
   const { toast } = useToast();
-  const { session } = useSession();
+  const { user } = useVendor();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
   const { createProducts } = useVendorData();
@@ -61,7 +60,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         category: '',
         color: [],
         size: [],
-        vendor_id: session?.user?.id || '',
+        vendor_id: user?.id || '',
       }]
     }
   });
@@ -80,7 +79,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       category: '',
       color: [],
       size: [],
-      vendor_id: session?.user?.id || '',
+      vendor_id: user?.id || '',
     });
     setProductImages([...productImages, null]);
     setPreviewUrls([...previewUrls, null]);
@@ -107,7 +106,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   };
 
   const onSubmit = async (data: { root: ProductFormValues }) => {
-    if (!session?.user?.id) {
+    if (!user?.id) {
       toast({
         title: "Authentication required",
         description: "Please log in to create products.",
@@ -121,7 +120,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       const createdProducts = await createProducts(
         data.root.map((product, index) => ({
           ...product,
-          vendor_id: session.user.id,
+          vendor_id: user.id,
           image: productImages[index]!,
         }))
       );
