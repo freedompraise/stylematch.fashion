@@ -22,21 +22,12 @@ import SettingsDangerZone from '@/pages/SettingsDangerZone';
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading, user, vendor } = useVendor();
 
-  console.log('AuthRoute state:', { 
-    loading, 
-    isAuthenticated, 
-    hasUser: !!user, 
-    hasVendor: !!vendor,
-    pathname: window.location.pathname 
-  });
-
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">
     <Loader2 className="animate-spin" size={24} />
     <span className="ml-2">Loading Auth...</span>
   </div>;
   
   if (isAuthenticated) {
-    console.log('User is authenticated, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
