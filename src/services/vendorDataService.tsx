@@ -47,7 +47,6 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [orders, setOrders] = useState<Order[]>([]);
   const [productsLoaded, setProductsLoaded] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
-
   const fetchProducts = useCallback(async (force = false) => {
     if (!vendor?.user_id) return [];
     if (productsLoaded && !force) return products;
@@ -62,7 +61,7 @@ export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setProducts(data as Product[]);
     setProductsLoaded(true);
     return data as Product[];
-  }, [products, productsLoaded, vendor?.user_id]);
+  }, [productsLoaded, vendor?.user_id]); // Removed products from deps since it's only used for early return
 
   const fetchOrders = useCallback(async (force = false) => {
     if (!vendor?.user_id) return [];

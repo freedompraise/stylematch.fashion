@@ -12,7 +12,8 @@ import { QuickActions, productsQuickActions } from '@/components/vendor/QuickAct
 import { AddProductDialog } from '@/components/vendor/products/AddProductDialog';
 import { ProductList } from '@/components/vendor/products/ProductList';
 
-const ProductManagement: React.FC = () => {  const { toast } = useToast();
+const ProductManagement: React.FC = () => {
+  const { toast } = useToast();
   const { user } = useVendor();
   const {
     products,
@@ -23,19 +24,37 @@ const ProductManagement: React.FC = () => {  const { toast } = useToast();
   } = useVendorData();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Load products only once on mount or when user changes
   useEffect(() => {
-    if (!user?.id) return;
-    setLoading(true);
-    fetchProducts(true)
-      .catch(() => {
-        toast({
-          title: 'Error loading products',
-          description: 'Could not load your products. Please try again later.',
-          variant: 'destructive',
-        });
-      })
-      .finally(() => setLoading(false));
-  }, [user?.id, toast, fetchProducts]);
+    let mounted = true;
+
+    const loadProducts = async () => {
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        await fetchProducts(false); // Changed to false to use cache when available
+      } catch (error) {
+        if (mounted) {
+          toast({
+            title: 'Error loading products',
+            description: 'Could not load your products. Please try again later.',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]); // Removed toast and fetchProducts from deps
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -73,9 +92,9 @@ const ProductManagement: React.FC = () => {  const { toast } = useToast();
       });
     }
   };
-
   const handleProductAdded = (product: Product) => {
-    fetchProducts(true)
+    // No need to refetch, the product is already added to state in vendorDataService
+    setLoading(false);
   };
 
   return (
