@@ -50,15 +50,6 @@ Run the development server:
 npm run dev
 ```
 
-Make sure to configure the following environment variables:
-
-```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_PAYSTACK_PUBLIC_KEY=
-VITE_STYLEMATCH_SUPPORT_PHONE=234XXXXXXXXXX
-```
-
 ---
 
 ## 🛠 Folder Structure
