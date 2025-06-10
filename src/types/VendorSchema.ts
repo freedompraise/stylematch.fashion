@@ -15,8 +15,9 @@ export interface VendorProfile {
     recipient_code?: string;
     account_name?: string;
     payout_mode?: string;
-  };  // Auth and onboarding fields
+  }; 
   isOnboarded: boolean;
+  verification_status?: 'pending' | 'verified' | 'rejected';
   onboarding_step?: string;
   last_session_refresh?: string;
   auth_metadata?: {

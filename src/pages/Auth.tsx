@@ -30,8 +30,6 @@ const registerSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
   confirmPassword: z.string(),
-  store_name: z.string().min(2, { message: 'Store name is required' }),
-  name: z.string().min(2, { message: 'Full name is required' }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -60,8 +58,6 @@ const Auth = (): JSX.Element => {
       email: '',
       password: '',
       confirmPassword: '',
-      store_name: '',
-      name: '',
     },
   });
   const { refreshVendor } = useVendor();
@@ -89,13 +85,11 @@ const Auth = (): JSX.Element => {
       await authService.signUp({
         email: data.email,
         password: data.password,
-        store_name: data.store_name,
-        name: data.name,
       });
       await refreshVendor();
       toast({
         title: 'Account created',
-        description: 'Your account has been created successfully. Please check your email for verification.',
+        description: `Thanks for signing up! Please check your email to verify your account. Once verified, you'll be guided through setting up your store profile.`,
       });
       navigate('/onboarding');
     } catch (error) {
@@ -223,48 +217,6 @@ const Auth = (): JSX.Element => {
           ) : (
             <Form {...registerForm}>
               <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                <FormField
-                  control={registerForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                          <Input 
-                            placeholder="Your Name" 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={registerForm.control}
-                  name="store_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Store Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                          <Input 
-                            placeholder="Your Fashion Store" 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={registerForm.control}
                   name="email"

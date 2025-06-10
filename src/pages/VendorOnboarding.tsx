@@ -23,11 +23,14 @@ import { paystackClient } from '@/lib/paystackClient';
 import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
 
 const onboardingSchema = z.object({
+  store_name: z.string().min(2, { message: 'Store name is required' }),
+  name: z.string().min(2, { message: 'Your name is required' }),
+  phone: z.string().optional(),
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
+  store_image: z.any().optional(),
   instagram_link: z.string().optional(),
   facebook_link: z.string().optional(),
   wabusiness_link: z.string().optional(),
-  store_image: z.any().optional(),
 });
 
 const VendorOnboarding: React.FC = () => {
@@ -36,11 +39,14 @@ const VendorOnboarding: React.FC = () => {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile, updateVendorProfile } = useVendor();
+  const { user, refreshVendor, getVendorProfile, updateVendorProfile, createVendorProfile } = useVendor();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
+      store_name: '',
+      name: '',
+      phone: '',
       bio: '',
       instagram_link: '',
       facebook_link: '',
@@ -91,8 +97,10 @@ const VendorOnboarding: React.FC = () => {
 
   const validateStep = async () => {
     if (step === 1) {
-      return await form.trigger(['bio', 'store_image']);
+      return await form.trigger(['store_name', 'name', 'phone']);
     } else if (step === 2) {
+      return await form.trigger(['bio', 'store_image']);
+    } else if (step === 3) {
       return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     }
     return true;
@@ -152,6 +160,12 @@ const VendorOnboarding: React.FC = () => {
                 }`}>
                   3
                 </div>
+                <div className={`w-16 h-1 ${step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  step >= 4 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  4
+                </div>
               </div>
             </div>
 
@@ -159,8 +173,58 @@ const VendorOnboarding: React.FC = () => {
               <form className="space-y-6">
                 {step === 1 && (
                   <div className="space-y-6 animate-fade-in">
+                    <h2 className="text-xl font-semibold text-baseContent">Store Basics</h2>
+                    <FormField
+                      control={form.control}
+                      name="store_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Store Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your Fashion Store" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Your Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Full Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone (optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Phone Number" {...field} value={typeof field.value === 'string' ? field.value : ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="pt-4 flex justify-end">
+                      <Button type="button" onClick={handleNextStep}>
+                        Continue
+                        <ArrowRight size={18} className="ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 2 && (
+                  <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Details</h2>
-                    
                     <div>
                       <label className="block text-sm font-medium text-baseContent mb-2">
                         Store Logo
@@ -207,7 +271,14 @@ const VendorOnboarding: React.FC = () => {
                       )}
                     />
                     
-                    <div className="pt-4 flex justify-end">
+                    <div className="pt-4 flex justify-between">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={handlePreviousStep}
+                      >
+                        Back
+                      </Button>
                       <Button 
                         type="button" 
                         onClick={handleNextStep}
@@ -219,7 +290,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 2 && (
+                {step === 3 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Social Media Links</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -306,7 +377,9 @@ const VendorOnboarding: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                )}                {step === 3 && (
+                )}
+
+                {step === 4 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Payout Information</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -329,17 +402,21 @@ const VendorOnboarding: React.FC = () => {
                             payout_mode: payoutData.payout_mode
                           });
 
-                          await updateVendorProfile({
+                          await createVendorProfile({
+                            store_name: form.getValues('store_name'),
+                            name: form.getValues('name'),
+                            phone: String(form.getValues('phone') ?? ''),
                             bio: form.getValues('bio'),
+                            banner_image_url: uploadedImage || undefined,
                             instagram_url: form.getValues('instagram_link'),
                             facebook_url: form.getValues('facebook_link'),
                             wabusiness_url: form.getValues('wabusiness_link'),
-                            isOnboarded: true,
                             payout_info: {
                               ...payoutData,
                               recipient_code: result.recipient_code,
                             },
-                          }, form.getValues('store_image')?.[0]);
+                            verification_status: 'verified'
+                          });
 
                           await refreshVendor();
                           toast({
