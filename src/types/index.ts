@@ -1,4 +1,5 @@
 import { User } from '@supabase/supabase-js';
+import { VendorProfile } from './VendorSchema';
 
 // Auth Types
 export interface AuthSession {
@@ -46,6 +47,9 @@ export interface RegisterFormValues {
 }
 
 export interface OnboardingFormValues {
+  store_name: string;
+  name: string;
+  phone?: string;
   bio: string;
   instagram_link?: string;
   facebook_link?: string;
@@ -80,5 +84,52 @@ export interface RouteConfig {
   path: string;
   element: React.ComponentType;
   isProtected: boolean;
-} 
+}
+
+// Vendor Profile Service Types (see docs/vendor-profile-service.spec.md)
+
+export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+
+export interface PayoutInfo {
+  bank_name?: string;
+  bank_code?: string;
+  account_number?: string;
+  recipient_code?: string;
+  account_name?: string;
+  payout_mode?: 'automatic' | 'manual';
+}
+
+export interface CreateVendorProfileInput {
+  store_name: string;
+  name: string;
+  bio?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  wabusiness_url?: string;
+  banner_image_url?: string;
+  phone?: string;
+  payout_info?: PayoutInfo;
+  verification_status: VerificationStatus;
+  rejection_reason?: string;
+}
+
+export interface VerificationInfo {
+  status: VerificationStatus;
+  verified_at?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  reviewed_by?: string;
+}
+
+export interface VendorProfileService {
+  createVendorProfile(userId: string, profile: CreateVendorProfileInput): Promise<VendorProfile>;
+  getVendorProfile(userId: string, options?: { force?: boolean }): Promise<VendorProfile | null>;
+  updateVendorProfile(userId: string, updates: Partial<VendorProfile>): Promise<VendorProfile>;
+  deleteVendorProfile(userId: string): Promise<void>;
+  verifyVendor(userId: string): Promise<VendorProfile>;
+  rejectVendor(userId: string, reason: string): Promise<VendorProfile>;
+  getPendingVendors(): Promise<VendorProfile[]>;
+}
+
+export type { VendorProfile } from "./VendorSchema"; 
 

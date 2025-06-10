@@ -19,20 +19,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { OnboardingFormValues } from '@/types';
 import Logo from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
 import { paystackClient } from '@/lib/paystackClient';
+import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
 
 const onboardingSchema = z.object({
+  store_name: z.string().min(2, { message: 'Store name is required' }),
+  name: z.string().min(2, { message: 'Your name is required' }),
+  phone: z.string().optional(),
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
+  store_image: z.any().optional(),
   instagram_link: z.string().optional(),
   facebook_link: z.string().optional(),
   wabusiness_link: z.string().optional(),
-  bank_name: z.string().min(2, { message: 'Bank name is required' }),
-  bank_code: z.string().min(2, { message: 'Bank code is required' }),
-  account_number: z.string().min(10, { message: 'Valid account number required' }),
-  account_name: z.string().min(2, { message: 'Account name is required' }),
-  payout_mode: z.enum(['automatic', 'manual']).default('automatic'),
-  store_image: z.any().optional(),
 });
 
 const VendorOnboarding: React.FC = () => {
@@ -40,167 +38,47 @@ const VendorOnboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
-  const [resolvedAccountName, setResolvedAccountName] = useState('');
-  const [resolving, setResolving] = useState(false);
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile, updateVendorProfile } = useVendor();
+  const { user, refreshVendor, getVendorProfile, updateVendorProfile, createVendorProfile } = useVendor();
 
-  const form = useForm<OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }>({
+  const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
+      store_name: '',
+      name: '',
+      phone: '',
       bio: '',
       instagram_link: '',
       facebook_link: '',
       wabusiness_link: '',
-      bank_name: '',
-      bank_code: '',
-      account_number: '',
-      account_name: '',
-      payout_mode: 'automatic',
     },
   });
 
-  // Fetch banks from Paystack edge function
-  useEffect(() => {
-    fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({ action: 'list_banks' })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status && data.data) setBanks(data.data);
-      });
-  }, []);
-  // Load existing vendor data if available
   useEffect(() => {
     const loadVendorData = async () => {
       if (!user) return;
       try {
-        const data = await getVendorProfile(user.id);
+        const data = await getVendorProfile();
         if (data) {
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
           form.setValue('facebook_link', data.facebook_url || '');
           form.setValue('wabusiness_link', data.wabusiness_url || '');
-          if (data.payout_info) {
-            form.setValue('bank_name', data.payout_info.bank_name || '');
-            form.setValue('bank_code', data.payout_info.bank_code || '');
-            form.setValue('account_number', data.payout_info.account_number || '');
-            form.setValue('account_name', data.payout_info.account_name || '');
-            form.setValue('payout_mode', data.payout_info.payout_mode === 'manual' ? 'manual' : 'automatic');
-            setResolvedAccountName(data.payout_info.account_name || '');
-          }
           if (data.banner_image_url) {
             setUploadedImage(data.banner_image_url);
           }
         }
       } catch (error) {
         console.error('Error loading vendor data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load your profile data',
+          variant: 'destructive'
+        });
       }
-    };    loadVendorData();
-  }, [user, getVendorProfile, form]);
-
-  // Resolve account name when bank_code and account_number are filled
-  const resolveAccountName = async (bank_code: string, account_number: string) => {
-    if (!bank_code || !account_number || account_number.length !== 10) return;
-    setResolving(true);
-    try {
-      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          action: 'resolve_account',
-          data: { bank_code, account_number }
-        })
-      });
-      const result = await response.json();
-      if (result.status && result.data && result.data.account_name) {
-        setResolvedAccountName(result.data.account_name);
-        form.setValue('account_name', result.data.account_name);
-      } else {
-        setResolvedAccountName('');
-        form.setValue('account_name', '');
-      }
-    } catch {
-      setResolvedAccountName('');
-      form.setValue('account_name', '');
-    } finally {
-      setResolving(false);
-    }
-  };
-  const onSubmit = async (data: OnboardingFormValues & { bank_code: string; payout_mode: 'automatic' | 'manual' }) => {
-    if (!user) {
-      toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      // Create recipient via edge function
-      const response = await fetch('https://wtzvuiltqqajgyzzdcal.supabase.co/functions/v1/paystack-payout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          action: 'create_recipient',
-          data: {
-            account_number: data.account_number,
-            bank_code: data.bank_code,
-            account_name: data.account_name,
-            payout_mode: data.payout_mode,
-          }
-        })
-      });
-      const result = await response.json();
-      if (!result.status || result.status !== true) {
-        throw new Error(result.message || 'Failed to create recipient');
-      }
-
-      await updateVendorProfile(
-        {
-          bio: data.bio,
-          instagram_url: data.instagram_link,
-          facebook_url: data.facebook_link,
-          wabusiness_url: data.wabusiness_link,
-          isOnboarded: true,  // Mark onboarding as completed
-          payout_info: {
-            bank_name: banks.find(b => b.code === data.bank_code)?.name || data.bank_name,
-            bank_code: data.bank_code,
-            account_number: data.account_number,
-            account_name: data.account_name,
-            recipient_code: result.data.recipient_code,
-            payout_mode: data.payout_mode,
-          },
-        },
-        data.store_image?.[0]
-      );
-
-      // Refresh vendor context after onboarding
-      await refreshVendor();
-
-      toast({
-        title: 'Onboarding Complete',
-        description: 'Your store profile has been successfully set up.',
-      });
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Error during onboarding:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to complete onboarding. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    loadVendorData();
+  }, [user, getVendorProfile, form, toast]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -219,11 +97,11 @@ const VendorOnboarding: React.FC = () => {
 
   const validateStep = async () => {
     if (step === 1) {
-      return await form.trigger(['bio', 'store_image']);
+      return await form.trigger(['store_name', 'name', 'phone']);
     } else if (step === 2) {
-      return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
+      return await form.trigger(['bio', 'store_image']);
     } else if (step === 3) {
-      return await form.trigger(['bank_name', 'bank_code', 'account_number', 'account_name', 'payout_mode']);
+      return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     }
     return true;
   };
@@ -237,7 +115,7 @@ const VendorOnboarding: React.FC = () => {
         title: 'Validation Error',
         description: 'Please fill in all required fields correctly.',
         variant: 'destructive',
-      })
+      });
     }
   };
 
@@ -282,15 +160,71 @@ const VendorOnboarding: React.FC = () => {
                 }`}>
                   3
                 </div>
+                <div className={`w-16 h-1 ${step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  step >= 4 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
+                  4
+                </div>
               </div>
             </div>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form className="space-y-6">
                 {step === 1 && (
                   <div className="space-y-6 animate-fade-in">
+                    <h2 className="text-xl font-semibold text-baseContent">Store Basics</h2>
+                    <FormField
+                      control={form.control}
+                      name="store_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Store Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your Fashion Store" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Your Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Full Name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone (optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Phone Number" {...field} value={typeof field.value === 'string' ? field.value : ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="pt-4 flex justify-end">
+                      <Button type="button" onClick={handleNextStep}>
+                        Continue
+                        <ArrowRight size={18} className="ml-2" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 2 && (
+                  <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Details</h2>
-                    
                     <div>
                       <label className="block text-sm font-medium text-baseContent mb-2">
                         Store Logo
@@ -337,7 +271,14 @@ const VendorOnboarding: React.FC = () => {
                       )}
                     />
                     
-                    <div className="pt-4 flex justify-end">
+                    <div className="pt-4 flex justify-between">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={handlePreviousStep}
+                      >
+                        Back
+                      </Button>
                       <Button 
                         type="button" 
                         onClick={handleNextStep}
@@ -349,7 +290,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 2 && (
+                {step === 3 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Social Media Links</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -438,7 +379,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 3 && (
+                {step === 4 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Payout Information</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -461,27 +402,23 @@ const VendorOnboarding: React.FC = () => {
                             payout_mode: payoutData.payout_mode
                           });
 
-                          await updateVendorProfile(
-                            {
-                              bio: form.getValues('bio'),
-                              instagram_url: form.getValues('instagram_link'),
-                              facebook_url: form.getValues('facebook_link'),
-                              wabusiness_url: form.getValues('wabusiness_link'),
-                              isOnboarded: true,
-                              payout_info: {
-                                bank_name: payoutData.bank_name,
-                                bank_code: payoutData.bank_code,
-                                account_number: payoutData.account_number,
-                                account_name: payoutData.account_name,
-                                recipient_code: result.recipient_code,
-                                payout_mode: payoutData.payout_mode,
-                              },
+                          await createVendorProfile({
+                            store_name: form.getValues('store_name'),
+                            name: form.getValues('name'),
+                            phone: String(form.getValues('phone') ?? ''),
+                            bio: form.getValues('bio'),
+                            banner_image_url: uploadedImage || undefined,
+                            instagram_url: form.getValues('instagram_link'),
+                            facebook_url: form.getValues('facebook_link'),
+                            wabusiness_url: form.getValues('wabusiness_link'),
+                            payout_info: {
+                              ...payoutData,
+                              recipient_code: result.recipient_code,
                             },
-                            form.getValues('store_image')?.[0]
-                          );
+                            verification_status: 'verified'
+                          });
 
                           await refreshVendor();
-
                           toast({
                             title: 'Onboarding Complete',
                             description: 'Your store profile has been successfully set up.',

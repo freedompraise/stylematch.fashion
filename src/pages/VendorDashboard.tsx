@@ -4,7 +4,6 @@ import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
 import { useVendor } from '@/contexts/VendorContext'
 import { useVendorData } from '@/services/vendorDataService'
-import DashboardHeader from '@/components/dashboard/DashboardHeader'
 import DashboardStats from '@/components/dashboard/DashboardStats'
 import SalesChart from '@/components/dashboard/SalesChart'
 import RecentOrders from '@/components/dashboard/RecentOrders'
@@ -22,7 +21,7 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { user, vendor } = useVendor()
+  const { user} = useVendor()
   const {
     products,
     getVendorStats,
@@ -77,12 +76,7 @@ const VendorDashboard: React.FC = () => {
     }
     fetchData()
   }, [user?.id, getVendorStats, products.length])
-  const { signOut } = useVendor();
-  
-  const handleSignOut = async () => {
-    await signOut();
-  }
-
+ 
   const navigateToProducts = () => {
     navigate('/products')
   }
@@ -111,9 +105,6 @@ const VendorDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DashboardHeader
-          onAddProduct={navigateToProducts}
-        />
         <DashboardStats
           totalSales={stats.totalSales}
           totalOrders={stats.totalOrders}

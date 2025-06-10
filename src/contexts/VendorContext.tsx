@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { AuthService } from '@/services/authService';
+import { vendorProfileService } from '@/services/vendorProfileService';
 
 interface VendorContextType {
   vendor: VendorProfile | null;
@@ -21,6 +22,7 @@ interface VendorContextType {
   getAccessToken: () => Promise<string | null>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
   getVendorProfile: (force?: boolean) => Promise<VendorProfile | null>;
+  createVendorProfile: (profile: import('@/types').CreateVendorProfileInput) => Promise<void>;
 }
 
 interface VendorCache {
@@ -144,22 +146,9 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     setIsLoadingVendor(true);
     
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      console.log('Supabase vendor query result:', { data, error });
-
-      if (error) {
-        console.error('Error loading vendor:', error);
-        setError(error);
-        setVendor(null);
-        setHasVendor(false);
-        setIsOnboarded(false);
-      } else if (data) {
-        console.log('Saved vendor data:', data);
+      // Use vendorProfileService to fetch vendor profile
+      const data = await vendorProfileService.getVendorProfile(userId);
+      if (data) {
         setVendor(data);
         setHasVendor(true);
         setIsOnboarded(data.isOnboarded || false);
@@ -168,7 +157,6 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
           ttl: CACHE_TTL
         });
       } else {
-        console.log('No vendor data found');
         setVendor(null);
         setHasVendor(false);
         setIsOnboarded(false);
@@ -180,7 +168,6 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
       setHasVendor(false);
       setIsOnboarded(false);
     } finally {
-      console.log('Finished loading vendor');
       setIsLoadingVendor(false);
       setLoading(false);
     }
@@ -188,20 +175,12 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
 
   const getVendorProfile = useCallback(async (force = false) => {
     if (!user?.id) return null;
-    
     if (!force && vendor) {
       return vendor;
     }
-
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) throw error;
-      
+      // Use vendorProfileService to fetch vendor profile
+      const data = await vendorProfileService.getVendorProfile(user.id);
       if (data) {
         setVendor(data);
         saveToCache({
@@ -224,68 +203,65 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
 
   const updateVendorProfile = useCallback(async (updates: Partial<VendorProfile>, imageFile?: File) => {
     if (!user?.id) throw new Error('No user ID available');
-
     let imageUrl: string | undefined;
     let uploadedImagePublicId: string | undefined;
     let oldImagePublicId: string | undefined;
-
     try {
-      // Handle image upload if provided
       if (imageFile) {
         imageUrl = await uploadToCloudinary(imageFile);
         uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
-        
-        // Get current profile to check for existing image
-        const { data: currentProfile } = await supabase
-          .from('vendors')
-          .select('banner_image_url')
-          .eq('user_id', user.id)
-          .single();
-
+        const currentProfile = await vendorProfileService.getVendorProfile(user.id);
         if (currentProfile?.banner_image_url) {
           oldImagePublicId = getPublicIdFromUrl(currentProfile.banner_image_url);
         }
       }
-
-      // Update vendor profile
-      const { data, error } = await supabase
-        .from('vendors')
-        .update({
-          ...updates,
-          ...(imageUrl && { banner_image_url: imageUrl })
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Clean up old image if new one was uploaded
+      const data = await vendorProfileService.updateVendorProfile(user.id, {
+        ...updates,
+        ...(imageUrl && { banner_image_url: imageUrl })
+      });
       if (oldImagePublicId) {
         await deleteFromCloudinary(oldImagePublicId);
       }
-
-      // Update local state and cache
       setVendor(data);
       saveToCache({
         profile: data,
         ttl: CACHE_TTL
       });
-
       toast({
-        title: "Success",
-        description: "Vendor profile updated successfully"
+        title: 'Success',
+        description: 'Vendor profile updated successfully'
       });
-
-      return data;
+      return;
     } catch (error) {
-      // Clean up uploaded image if update failed
       if (uploadedImagePublicId) {
         await deleteFromCloudinary(uploadedImagePublicId);
       }
       throw error;
     }
   }, [user?.id, saveToCache]);
+
+  // Add createVendorProfile method (fixed signature)
+  const createVendorProfile = useCallback(async (profile) => {
+    if (!user?.id) throw new Error('No user ID available');
+    try {
+      const data = await vendorProfileService.createVendorProfile(user.id, profile);
+      setVendor(data);
+      setHasVendor(true);
+      setIsOnboarded(data.isOnboarded || false);
+      saveToCache({
+        profile: data,
+        ttl: CACHE_TTL
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create vendor profile',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  }, [user?.id, saveToCache]);
+
   // Initialize auth state
   useEffect(() => {
     if (isInitialized) return;
@@ -331,6 +307,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
   }, [isInitialized, loadVendor, loadFromCache]);
+
   // Listen for auth state changes
   useEffect(() => {
     if (!isInitialized) return;
@@ -389,7 +366,8 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
     getAccessToken,
     updateVendorProfile,
-    getVendorProfile
+    getVendorProfile,
+    createVendorProfile,
   }), [
     vendor,
     loading,
@@ -401,7 +379,8 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
     getAccessToken,
     updateVendorProfile,
-    getVendorProfile
+    getVendorProfile,
+    createVendorProfile,
   ]);
 
   return (

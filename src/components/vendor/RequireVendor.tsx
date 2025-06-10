@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useLocation } from 'react-router-dom';
+import PendingVerification from './PendingVerification';
 
 interface RequireVendorProps {
   children: React.ReactNode;
