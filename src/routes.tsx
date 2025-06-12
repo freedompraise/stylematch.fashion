@@ -7,6 +7,7 @@ import { useVendor } from '@/contexts/VendorContext';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/auth/callback';
+import VerificationComplete from '@/pages/auth/verification-complete';
 import VendorOnboarding from '@/pages/VendorOnboarding';
 import VendorDashboard from '@/pages/VendorDashboard';
 import ProductManagement from '@/pages/ProductManagement';
@@ -42,10 +43,10 @@ const VendorRoutes = () => (
 
 export default function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
+    <Routes>      <Route path="/" element={<Index />} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth/verification-complete" element={<VerificationComplete />} />
       <Route path="/store/:name" element={<Storefront />} />      <Route
         path="/onboarding"
         element={

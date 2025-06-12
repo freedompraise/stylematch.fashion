@@ -43,6 +43,23 @@ export class AuthService {
     return new AuthError(type, message);
   }
 
+  private shouldRedirectToOnboarding(session: Session | null): boolean {
+    if (!session?.user) return false;
+    
+    // Check if this is a new signup
+    const signupType = session.user.app_metadata?.signup_type;
+    if (signupType === 'email' && !session.user.user_metadata?.isOnboarded) {
+      return true;
+    }
+    
+    // For OAuth logins, check if they've completed onboarding
+    if (signupType === 'oauth' && !session.user.user_metadata?.isOnboarded) {
+      return true;
+    }
+
+    return false;
+  }
+
   // Public methods
   async signIn(email: string, password: string): Promise<AuthResult> {
     try {
@@ -54,7 +71,7 @@ export class AuthService {
       
       return {
         session: data.session,
-        shouldRedirectToOnboarding: false
+        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(data.session),
       };
     } catch (error) {
       throw this.formatAuthError(error);
@@ -66,9 +83,12 @@ export class AuthService {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verification-complete`,
+        }
       });
 
-      if (error) throw error;
+      if (error) throw this.formatAuthError(error);
 
       return {
         session: data.session,
@@ -100,19 +120,19 @@ export class AuthService {
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       
-      if (!accessToken) throw new Error('No access token found');
+      if (!accessToken) throw this.formatAuthError(new Error('No access token found'));
 
       const { data: { session }, error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken || '',
       });
 
-      if (error) throw error;
+      if (error) throw this.formatAuthError(error);
       if (!session?.user) return null;
       
       return {
         session,
-        shouldRedirectToOnboarding: false
+        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(session)
       };
     } catch (error) {
       throw this.formatAuthError(error);
@@ -123,12 +143,12 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (error) throw error;
+      if (error) throw this.formatAuthError(error);
       if (!session?.user) return null;
       
       return {
         session,
-        shouldRedirectToOnboarding: false
+        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(session)
       };
     } catch (error) {
       throw this.formatAuthError(error);
@@ -168,7 +188,7 @@ export class AuthService {
       
       return {
         session,
-        shouldRedirectToOnboarding: false
+        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(session),
       };
     } catch (error) {
       throw this.formatAuthError(error);
