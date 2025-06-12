@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { User } from '@supabase/supabase-js';
 import supabase from '@/lib/supabaseClient';
 import { VendorProfile } from '@/types/VendorSchema';
-import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 import { AuthService } from '@/services/authService';
@@ -105,12 +104,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
         }
       });
     } catch (error) {
-      toast({
-        title: "Session Error",
-        description: "Failed to refresh session. Please sign in again.",
-        variant: "destructive"
-      });
-      await signOut();
+      throw error;
     }
   }, [saveToCache]);
 
@@ -122,16 +116,8 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
       setSessionExpiresAt(null);
       clearCache();
       navigate('/auth');
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out."
-      });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive"
-      });
+      throw error;
     }
   }, [clearCache, navigate]);
 
@@ -192,11 +178,6 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
       return null;
     } catch (error) {
       console.error('Error getting vendor profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to get vendor profile",
-        variant: "destructive"
-      });
       return null;
     }
   }, [user?.id, vendor, saveToCache]);
@@ -227,10 +208,6 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
         profile: data,
         ttl: CACHE_TTL
       });
-      toast({
-        title: 'Success',
-        description: 'Vendor profile updated successfully'
-      });
       return;
     } catch (error) {
       if (uploadedImagePublicId) {
@@ -253,11 +230,6 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
         ttl: CACHE_TTL
       });
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create vendor profile',
-        variant: 'destructive',
-      });
       throw error;
     }
   }, [user?.id, saveToCache]);
