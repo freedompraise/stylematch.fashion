@@ -216,12 +216,14 @@ const Auth = (): JSX.Element => {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
-
-                  <div className="text-right">
-                    <a href="#" className="text-sm text-primary hover:underline">
+                  />                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/auth/forgot-password')}
+                      className="text-sm text-primary hover:underline"
+                    >
                       Forgot password?
-                    </a>
+                    </button>
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
