@@ -15,7 +15,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Lock, ArrowRight, User, Store } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { toast } from '@/hooks/use-toast';
 import { AuthService } from '@/services/authService';
@@ -41,6 +41,9 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 const Auth = (): JSX.Element => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const authService = new AuthService();
 
@@ -193,7 +196,21 @@ const Auth = (): JSX.Element => {
                         <FormControl>
                           <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <Input type="password" placeholder="••••••••" className="pl-10" {...field} />
+                            <Input
+                              type={showLoginPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="pl-10 pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              onClick={() => setShowLoginPassword((v) => !v)}
+                              aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -242,7 +259,21 @@ const Auth = (): JSX.Element => {
                         <FormControl>
                           <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <Input type="password" placeholder="••••••••" className="pl-10" {...field} />
+                            <Input
+                              type={showRegisterPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="pl-10 pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              onClick={() => setShowRegisterPassword((v) => !v)}
+                              aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -259,7 +290,21 @@ const Auth = (): JSX.Element => {
                         <FormControl>
                           <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <Input type="password" placeholder="••••••••" className="pl-10" {...field} />
+                            <Input
+                              type={showRegisterConfirmPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="pl-10 pr-10"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              onClick={() => setShowRegisterConfirmPassword((v) => !v)}
+                              aria-label={showRegisterConfirmPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                           </div>
                         </FormControl>
                         <FormMessage />
