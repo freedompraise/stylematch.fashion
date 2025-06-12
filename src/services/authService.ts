@@ -1,7 +1,7 @@
 import supabase from '@/lib/supabaseClient';
 import { AuthFormData } from '@/types';
-import { toast } from '@/hooks/use-toast';
-import { AuthError, Session, User } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
+import { AuthError, AuthErrorType } from './errors/AuthError';
 
 interface AuthResult {
   session: Session | null;
@@ -17,37 +17,30 @@ interface SessionInfo {
 
 export class AuthService {
   // Private helper methods
-  private handleAuthError(error: AuthError | Error | unknown) {
-    let title = "Authentication Error";
+  private formatAuthError(error: Error | unknown): AuthError {
+    let type = AuthErrorType.UNKNOWN;
     let message = error instanceof Error ? error.message : 'An unknown error occurred';
 
-    // Handle specific Supabase auth errors
     if (error instanceof Error) {
       if (message.includes('Invalid login credentials')) {
-        title = "Invalid Credentials";
+        type = AuthErrorType.INVALID_CREDENTIALS;
         message = "The email or password you entered is incorrect.";
       } else if (message.includes('Email not confirmed')) {
-        title = "Email Not Verified";
+        type = AuthErrorType.EMAIL_NOT_VERIFIED;
         message = "Please check your email and verify your account.";
       } else if (message.includes('Rate limit')) {
-        title = "Too Many Attempts";
+        type = AuthErrorType.RATE_LIMIT;
         message = "Please wait a moment before trying again.";
+      } else if (message.includes('network')) {
+        type = AuthErrorType.NETWORK_ERROR;
+        message = "Please check your internet connection and try again.";
+      } else if (message.includes('expired')) {
+        type = AuthErrorType.SESSION_EXPIRED;
+        message = "Your session has expired. Please sign in again.";
       }
     }
 
-    toast({
-      title: title,
-      description: message,
-      variant: "destructive",
-    });
-    throw error;
-  }
-
-  private handleAuthSuccess(message: string) {
-    toast({
-      title: "Success",
-      description: message,
-    });
+    return new AuthError(type, message);
   }
 
   // Public methods
@@ -57,17 +50,14 @@ export class AuthService {
         email,
         password,
       });
+        if (error) throw this.formatAuthError(error);
       
-      if (error) throw error;
-      
-      this.handleAuthSuccess("Successfully signed in!");
       return {
         session: data.session,
         shouldRedirectToOnboarding: false
       };
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -76,24 +66,16 @@ export class AuthService {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            full_name: formData.name,
-            store_name: formData.store_name,
-          },
-        },
       });
 
       if (error) throw error;
 
-      this.handleAuthSuccess("Account created successfully! Please check your email to verify your account.");
       return {
         session: data.session,
         shouldRedirectToOnboarding: true
       };
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -107,24 +89,19 @@ export class AuthService {
       });
 
       if (error) throw error;
-
-      this.handleAuthSuccess("Redirecting to Google signin...");
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
   async handleOAuthCallback(hash: string): Promise<AuthResult | null> {
     try {
-      // Parse hash parameters
       const hashParams = new URLSearchParams(hash.replace('#', '?'));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       
       if (!accessToken) throw new Error('No access token found');
 
-      // Set the session
       const { data: { session }, error } = await supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken || '',
@@ -133,15 +110,12 @@ export class AuthService {
       if (error) throw error;
       if (!session?.user) return null;
       
-      this.handleAuthSuccess("Successfully signed in with Google!");
-      
       return {
         session,
         shouldRedirectToOnboarding: false
       };
     } catch (error) {
-      this.handleAuthError(error);
-      return null;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -157,20 +131,15 @@ export class AuthService {
         shouldRedirectToOnboarding: false
       };
     } catch (error) {
-      this.handleAuthError(error);
-      return null;
+      throw this.formatAuthError(error);
     }
   }
 
   async signOut(): Promise<void> {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      this.handleAuthSuccess("Successfully signed out!");
+    try {      const { error } = await supabase.auth.signOut();
+      if (error) throw this.formatAuthError(error);
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -187,8 +156,7 @@ export class AuthService {
         user: session?.user ?? null
       };
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -196,16 +164,14 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.refreshSession();
       
-      if (error) throw error;
-      if (!session) throw new Error('Failed to refresh session');
+      if (error) throw error;      if (!session) throw this.formatAuthError(new Error('Failed to refresh session'));
       
       return {
         session,
         shouldRedirectToOnboarding: false
       };
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -216,11 +182,8 @@ export class AuthService {
       });
       
       if (error) throw error;
-      
-      this.handleAuthSuccess("Password reset instructions have been sent to your email!");
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
   }
 
@@ -231,27 +194,8 @@ export class AuthService {
       });
       
       if (error) throw error;
-      
-      this.handleAuthSuccess("Password updated successfully!");
     } catch (error) {
-      this.handleAuthError(error);
-      throw error;
+      throw this.formatAuthError(error);
     }
-  }
-
-  handleSessionExpiry() {
-    toast({
-      title: "Session Expired",
-      description: "Your session has expired. Please sign in again.",
-      variant: "destructive",
-    });
-  }
-
-  handleNetworkError() {
-    toast({
-      title: "Network Error",
-      description: "Please check your internet connection and try again.",
-      variant: "destructive",
-    });
   }
 }
