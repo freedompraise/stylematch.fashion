@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
@@ -5,14 +6,7 @@ import { FormActions } from '@/components/ui/form-actions';
 import { Form } from '@/components/ui/form';
 import { paystackClient } from '@/lib/paystackClient';
 import { useToast } from '@/components/ui/use-toast';
-
-export interface PayoutFormData {
-  bank_name: string;
-  bank_code: string;
-  account_number: string;
-  account_name: string;
-  payout_mode: 'automatic' | 'manual';
-}
+import { PayoutFormData } from '@/types';
 
 interface PayoutFormProps {
   initialData?: PayoutFormData;
@@ -99,7 +93,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     }
   };
 
-  const handleSubmit = form.handleSubmit(async (values) => {
+  const handleFormSubmit = async (values: PayoutFormData) => {
     if (!isNameConfirmed) {
       toast({
         title: 'Action Required',
@@ -117,7 +111,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
         variant: 'destructive'
       });
     }
-  });
+  };
 
   const isFormValid = () => {
     return (
@@ -132,7 +126,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <div>
           <label className="block font-semibold mb-1">Payout Mode</label>
           <select 

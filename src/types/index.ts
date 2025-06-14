@@ -1,3 +1,4 @@
+
 import { User } from '@supabase/supabase-js';
 import { VendorProfile } from './VendorSchema';
 
@@ -58,6 +59,15 @@ export interface OnboardingFormValues {
   account_number: string;
   account_name: string;
   store_image?: FileList;
+}
+
+// Payout Form Data
+export interface PayoutFormData {
+  bank_name: string;
+  bank_code: string;
+  account_number: string;
+  account_name: string;
+  payout_mode: 'automatic' | 'manual';
 }
 
 // API Response Types
@@ -132,4 +142,4 @@ export interface VendorProfileService {
 }
 
 export type { VendorProfile } from "./VendorSchema"; 
-
+export type { ProductWithSales } from "./ProductSchema";

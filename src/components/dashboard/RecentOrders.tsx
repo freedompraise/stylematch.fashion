@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Order, OrderStatus } from '@/types/OrderSchema';
@@ -49,7 +50,7 @@ const RecentOrders: React.FC<RecentOrdersProps> = ({ orders }) => {
           {orders.map((order) => (
             <div key={order.id} className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{order.customer_name}</p>
+                <p className="font-medium">{order.customer_info.name}</p>
                 <p className="text-sm text-gray-500">
                   {new Date(order.created_at).toLocaleDateString()}
                 </p>
