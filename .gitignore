@@ -8,7 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-package-lock.json
 yarn.lock
 dist
 dist-ssr
@@ -25,7 +24,6 @@ dist-ssr
 *.sln
 *.sw?
 .cursor/
-.cursorrules
 src/integrations/
 docs/
 stylematch-nextjs/
