@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Instagram, Facebook, MessageCircle, Banknote, Upload } from 'lucide-react';
+import { ArrowRight, Instagram, Facebook, MessageCircle, Upload, AlertCircle } from 'lucide-react';
 import { useVendor } from '@/contexts/VendorContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,20 +16,24 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { OnboardingFormValues } from '@/types';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Logo from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { paystackClient } from '@/lib/paystackClient';
 import { PayoutForm, PayoutFormData, defaultInitialData } from '@/components/payout/PayoutForm';
-import { uploadToCloudinary } from '@/lib/cloudinary';
-import { vendorProfileService } from '@/services/vendorProfileService';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { onboardingService } from '@/services/onboardingService';
 
-const onboardingSchema = z.object({
+const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }),
   name: z.string().min(2, { message: 'Your name is required' }),
   phone: z.string().optional(),
+});
+
+const detailsSchema = z.object({
   bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
-  store_image: z.any().optional(),
+});
+
+const socialSchema = z.object({
   instagram_link: z.string().optional(),
   facebook_link: z.string().optional(),
   wabusiness_link: z.string().optional(),
@@ -37,24 +41,36 @@ const onboardingSchema = z.object({
 
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
-  const [step, setStep] = useState(1);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [cachedPayoutData, setCachedPayoutData] = useState<PayoutFormData | null>(null);
-  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile, createVendorProfile } = useVendor();
+  const { user, refreshVendor, getVendorProfile } = useVendor();
+  
+  const {
+    state,
+    updateBasics,
+    updateDetails,
+    updateSocial,
+    updatePayout,
+    setStep,
+    setSubmitting,
+    setError,
+    clearError,
+    clearState,
+  } = useOnboardingState();
 
-  const form = useForm<OnboardingFormValues>({
-    resolver: zodResolver(onboardingSchema),
+  const form = useForm({
+    resolver: zodResolver(
+      state.step === 1 ? basicsSchema :
+      state.step === 2 ? detailsSchema :
+      socialSchema
+    ),
     defaultValues: {
-      store_name: '',
-      name: '',
-      phone: '',
-      bio: '',
-      instagram_link: '',
-      facebook_link: '',
-      wabusiness_link: '',
+      store_name: state.formData.basics.store_name,
+      name: state.formData.basics.name,
+      phone: state.formData.basics.phone,
+      bio: state.formData.details.bio,
+      instagram_link: state.formData.social.instagram_link,
+      facebook_link: state.formData.social.facebook_link,
+      wabusiness_link: state.formData.social.wabusiness_link,
     },
   });
 
@@ -65,17 +81,17 @@ const VendorOnboarding: React.FC = () => {
       try {
         const data = await getVendorProfile();
         if (data) {
-          // Set form values
-          form.setValue('bio', data.bio || '');
-          form.setValue('instagram_link', data.instagram_url || '');
-          form.setValue('facebook_link', data.facebook_url || '');
-          form.setValue('wabusiness_link', data.wabusiness_url || '');
+          updateDetails({ bio: data.bio || '' });
+          updateSocial({
+            instagram_link: data.instagram_url || '',
+            facebook_link: data.facebook_url || '',
+            wabusiness_link: data.wabusiness_url || '',
+          });
           if (data.banner_image_url) {
-            setUploadedImage(data.banner_image_url);
+            updateDetails({ uploadedImage: data.banner_image_url });
           }
-          // Cache payout data if it exists
           if (data.payout_info) {
-            setCachedPayoutData(data.payout_info as PayoutFormData);
+            updatePayout(data.payout_info as PayoutFormData);
           }
         }
       } catch (error) {
@@ -88,26 +104,26 @@ const VendorOnboarding: React.FC = () => {
       }
     };
     loadVendorData();
-  }, [user, getVendorProfile, form, toast]);
+  }, [user, getVendorProfile, updateDetails, updateSocial, updatePayout, toast]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setUploadedImageFile(file); // Store the file for later upload
+      updateDetails({ uploadedImageFile: file });
       const reader = new FileReader();
       reader.onload = () => {
-        setUploadedImage(reader.result as string);
+        updateDetails({ uploadedImage: reader.result as string });
       };
       reader.readAsDataURL(file);
     }
   };
 
   const validateStep = async () => {
-    if (step === 1) {
+    if (state.step === 1) {
       return await form.trigger(['store_name', 'name', 'phone']);
-    } else if (step === 2) {
-      return await form.trigger(['bio', 'store_image']);
-    } else if (step === 3) {
+    } else if (state.step === 2) {
+      return await form.trigger(['bio']);
+    } else if (state.step === 3) {
       return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
     }
     return true;
@@ -116,7 +132,24 @@ const VendorOnboarding: React.FC = () => {
   const handleNextStep = async () => {
     const isValid = await validateStep();
     if (isValid) {
-      setStep((prevStep) => prevStep + 1);
+      // Save current step data
+      const formValues = form.getValues();
+      if (state.step === 1) {
+        updateBasics({
+          store_name: formValues.store_name,
+          name: formValues.name,
+          phone: formValues.phone,
+        });
+      } else if (state.step === 2) {
+        updateDetails({ bio: formValues.bio });
+      } else if (state.step === 3) {
+        updateSocial({
+          instagram_link: formValues.instagram_link,
+          facebook_link: formValues.facebook_link,
+          wabusiness_link: formValues.wabusiness_link,
+        });
+      }
+      setStep(state.step + 1);
     } else {
       toast({
         title: 'Validation Error',
@@ -127,7 +160,7 @@ const VendorOnboarding: React.FC = () => {
   };
 
   const handlePreviousStep = () => {
-    setStep((prevStep) => prevStep - 1);
+    setStep(state.step - 1);
   };
 
   const handleSubmitProfile = async (payoutData: PayoutFormData) => {
@@ -136,61 +169,48 @@ const VendorOnboarding: React.FC = () => {
       return;
     }
 
-    let uploadedImageUrl: string | undefined;
-
     try {
-      setIsLoading(true);
+      setSubmitting(true);
+      clearError('submission');
 
-      // Upload image if one was selected
-      if (uploadedImageFile) {
-        uploadedImageUrl = await uploadToCloudinary(uploadedImageFile);
+      // Validate all form data is present
+      if (!state.formData.basics.store_name || !state.formData.basics.name || !state.formData.details.bio) {
+        throw new Error('Missing required form data');
       }
 
-      // Create Paystack recipient
-      const result = await paystackClient.createRecipient({
-        account_number: payoutData.account_number,
-        bank_code: payoutData.bank_code,
-        account_name: payoutData.account_name,
-        payout_mode: payoutData.payout_mode
-      });
-
-      // Create vendor profile
-      await createVendorProfile({
-        store_name: form.getValues('store_name'),
-        name: form.getValues('name'),
-        phone: String(form.getValues('phone') ?? ''),
-        bio: form.getValues('bio'),
-        banner_image_url: uploadedImageUrl,
-        instagram_url: form.getValues('instagram_link'),
-        facebook_url: form.getValues('facebook_link'),
-        wabusiness_url: form.getValues('wabusiness_link'),
-        payout_info: {
-          ...payoutData,
-          recipient_code: result.recipient_code,
-        },
-        verification_status: 'pending'
+      // Execute the onboarding transaction
+      await onboardingService.executeOnboarding(user.id, {
+        store_name: state.formData.basics.store_name,
+        name: state.formData.basics.name,
+        phone: state.formData.basics.phone,
+        bio: state.formData.details.bio,
+        instagram_url: state.formData.social.instagram_link,
+        facebook_url: state.formData.social.facebook_link,
+        wabusiness_url: state.formData.social.wabusiness_link,
+        imageFile: state.formData.details.uploadedImageFile,
+        payout: payoutData,
       });
 
       await refreshVendor();
+      clearState(); // Clear saved onboarding state
+      
       toast({
         title: 'Onboarding Complete',
         description: 'Your store profile has been successfully set up.',
       });
+      
       navigate('/dashboard');
     } catch (error) {
       console.error('Error during onboarding:', error);
-        // Use vendorProfileService to clean up the uploaded image if profile creation failed
-      if (uploadedImageUrl) {
-        await vendorProfileService.cleanupFailedCreation(uploadedImageUrl);
-      }
-
+      setError('submission', error instanceof Error ? error.message : 'Failed to complete onboarding');
+      
       toast({
         title: 'Error',
         description: 'Failed to complete onboarding. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -215,34 +235,41 @@ const VendorOnboarding: React.FC = () => {
             <div className="flex mb-8 justify-center">
               <div className="flex items-center">
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   1
                 </div>
-                <div className={`w-16 h-1 ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   2
                 </div>
-                <div className={`w-16 h-1 ${step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  step >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   3
                 </div>
-                <div className={`w-16 h-1 ${step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  step >= 4 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 4 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
                 }`}>
                   4
                 </div>
               </div>
             </div>
 
+            {state.errors.submission && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{state.errors.submission}</AlertDescription>
+              </Alert>
+            )}
+
             <Form {...form}>
               <form className="space-y-6">
-                {step === 1 && (
+                {state.step === 1 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Basics</h2>
                     <FormField
@@ -252,7 +279,11 @@ const VendorOnboarding: React.FC = () => {
                         <FormItem>
                           <FormLabel>Store Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your Fashion Store" {...field} />
+                            <Input 
+                              placeholder="Your Fashion Store" 
+                              {...field} 
+                              defaultValue={state.formData.basics.store_name}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -265,7 +296,11 @@ const VendorOnboarding: React.FC = () => {
                         <FormItem>
                           <FormLabel>Your Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Full Name" {...field} />
+                            <Input 
+                              placeholder="Full Name" 
+                              {...field} 
+                              defaultValue={state.formData.basics.name}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -278,7 +313,11 @@ const VendorOnboarding: React.FC = () => {
                         <FormItem>
                           <FormLabel>Phone (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Phone Number" {...field} value={typeof field.value === 'string' ? field.value : ''} />
+                            <Input 
+                              placeholder="Phone Number" 
+                              {...field} 
+                              defaultValue={state.formData.basics.phone}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -293,7 +332,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 2 && (
+                {state.step === 2 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Details</h2>
                     <div>
@@ -302,9 +341,9 @@ const VendorOnboarding: React.FC = () => {
                       </label>
                       <div className="flex items-center space-x-6">
                         <div className="relative overflow-hidden w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                          {uploadedImage ? (
+                          {state.formData.details.uploadedImage ? (
                             <img 
-                              src={uploadedImage} 
+                              src={state.formData.details.uploadedImage} 
                               alt="Store logo" 
                               className="w-full h-full object-cover"
                             />
@@ -335,6 +374,7 @@ const VendorOnboarding: React.FC = () => {
                               placeholder="Tell customers about your fashion business..."
                               className="min-h-[120px]" 
                               {...field} 
+                              defaultValue={state.formData.details.bio}
                             />
                           </FormControl>
                           <FormMessage />
@@ -361,7 +401,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 3 && (
+                {state.step === 3 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Social Media Links</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -450,7 +490,7 @@ const VendorOnboarding: React.FC = () => {
                   </div>
                 )}
 
-                {step === 4 && (
+                {state.step === 4 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Payout Information</h2>
                     <p className="text-baseContent-secondary text-sm">
@@ -463,13 +503,15 @@ const VendorOnboarding: React.FC = () => {
                         onClick={handlePreviousStep}
                       >
                         Back
-                      </Button>                    </div>
+                      </Button>                    
+                    </div>
                     
                     <PayoutForm
-                      initialData={cachedPayoutData || defaultInitialData}
+                      initialData={state.formData.payout || defaultInitialData}
                       onSubmit={handleSubmitProfile}
                       submitText="Complete Setup"
                       submittingText="Saving..."
+                      disabled={state.isSubmitting}
                     />
                   </div>
                 )}

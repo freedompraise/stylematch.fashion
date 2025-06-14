@@ -19,6 +19,7 @@ interface PayoutFormProps {
   onSubmit: (data: PayoutFormData) => Promise<void>;
   submitText?: string;
   submittingText?: string;
+  disabled?: boolean;
 }
 
 export const defaultInitialData: PayoutFormData = {
@@ -32,8 +33,9 @@ export const defaultInitialData: PayoutFormData = {
 export const PayoutForm: React.FC<PayoutFormProps> = ({
   initialData,
   onSubmit,
-  submitText = 'Save Changes',
-  submittingText = 'Saving...'
+  submitText = 'Save Payout Info',
+  submittingText = 'Saving...',
+  disabled = false
 }) => {
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [resolvedAccountName, setResolvedAccountName] = useState('');
@@ -126,9 +128,11 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     );
   };
 
+  const isSubmitting = form.formState.isSubmitting;
+
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <div>
           <label className="block font-semibold mb-1">Payout Mode</label>
           <select 
@@ -228,10 +232,10 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
         </div>
 
         <FormActions
-          isSubmitting={form.formState.isSubmitting}
           submitText={submitText}
           submittingText={submittingText}
-          disabled={!isFormValid()}
+          isSubmitting={isSubmitting}
+          disabled={disabled || isSubmitting}
         />
       </form>
     </Form>
