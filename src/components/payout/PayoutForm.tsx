@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
@@ -5,20 +6,14 @@ import { FormActions } from '@/components/ui/form-actions';
 import { Form } from '@/components/ui/form';
 import { paystackClient } from '@/lib/paystackClient';
 import { useToast } from '@/components/ui/use-toast';
-
-export interface PayoutFormData {
-  bank_name: string;
-  bank_code: string;
-  account_number: string;
-  account_name: string;
-  payout_mode: 'automatic' | 'manual';
-}
+import { PayoutFormData } from '@/types';
 
 interface PayoutFormProps {
   initialData?: PayoutFormData;
   onSubmit: (data: PayoutFormData) => Promise<void>;
   submitText?: string;
   submittingText?: string;
+  disabled?: boolean;
 }
 
 export const defaultInitialData: PayoutFormData = {
@@ -32,8 +27,9 @@ export const defaultInitialData: PayoutFormData = {
 export const PayoutForm: React.FC<PayoutFormProps> = ({
   initialData,
   onSubmit,
-  submitText = 'Save Changes',
-  submittingText = 'Saving...'
+  submitText = 'Save Payout Info',
+  submittingText = 'Saving...',
+  disabled = false
 }) => {
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   const [resolvedAccountName, setResolvedAccountName] = useState('');
@@ -97,7 +93,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     }
   };
 
-  const handleSubmit = form.handleSubmit(async (values) => {
+  const handleFormSubmit = async (values: PayoutFormData) => {
     if (!isNameConfirmed) {
       toast({
         title: 'Action Required',
@@ -115,7 +111,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
         variant: 'destructive'
       });
     }
-  });
+  };
 
   const isFormValid = () => {
     return (
@@ -126,9 +122,11 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     );
   };
 
+  const isSubmitting = form.formState.isSubmitting;
+
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <div>
           <label className="block font-semibold mb-1">Payout Mode</label>
           <select 
@@ -228,10 +226,10 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
         </div>
 
         <FormActions
-          isSubmitting={form.formState.isSubmitting}
           submitText={submitText}
           submittingText={submittingText}
-          disabled={!isFormValid()}
+          isSubmitting={isSubmitting}
+          disabled={disabled || isSubmitting}
         />
       </form>
     </Form>

@@ -1,14 +1,15 @@
+
 // order.ts
 
 import { z } from 'zod';
 
 export const orderStatusSchema = z.enum([
-  'Pending',
-  'Confirmed',
-  'Processing',
-  'Delivered',
-  'Cancelled',
-  'Completed',
+  'pending',
+  'confirmed', 
+  'processing',
+  'delivered',
+  'cancelled',
+  'completed',
 ]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
@@ -36,7 +37,7 @@ export const orderSchema = z.object({
   customer_info: z.object({
     name: z.string(),
     phone: z.string(),
-    email:z.string().email(),
+    email: z.string().email(),
     address: z.string(),
   }),
 });

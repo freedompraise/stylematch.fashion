@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useVendorData } from '@/services/vendorDataService';
@@ -45,7 +46,7 @@ const SettingsStore: React.FC = () => {
   const onSubmit = async (formData: StoreFormData) => {
     if (!user?.id) return;
     try {
-      await updateVendorProfile(session.user.id, { store_name: formData.store_name }, imageFile);
+      await updateVendorProfile(user.id, { store_name: formData.store_name }, imageFile);
       toast({ title: 'Store updated', description: 'Your store settings have been updated.' });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to update store.', variant: 'destructive' });
