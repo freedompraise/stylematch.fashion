@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 interface FormActionsProps {
-  onCancel: () => void;
+  onCancel?: () => void;
   isSubmitting?: boolean;
   submitText?: string;
   submittingText?: string;
   cancelText?: string;
+  disabled?: boolean;
 }
 
 export function FormActions({ 
@@ -15,23 +16,24 @@ export function FormActions({
   isSubmitting = false,
   submitText = 'Save',
   submittingText = 'Saving...',
-  cancelText = 'Cancel'
+  cancelText = 'Cancel',
+  disabled = false
 }: FormActionsProps) {
   const { formState: { isValid } } = useFormContext();
 
-  return (
-    <div className="flex justify-end space-x-4">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onCancel}
-        disabled={isSubmitting}
-      >
-        {cancelText}
-      </Button>
-      <Button
+  return (    <div className="flex justify-end space-x-4">
+      {onCancel && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
+          {cancelText}
+        </Button>
+      )}      <Button
         type="submit"
-        disabled={!isValid || isSubmitting}
+        disabled={disabled || !isValid || isSubmitting}
       >
         {isSubmitting ? (
           <>

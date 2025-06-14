@@ -3,7 +3,7 @@
 import React from 'react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useToast } from '@/components/ui/use-toast';
-import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
+import { PayoutForm, PayoutFormData, defaultInitialData } from '@/components/payout/PayoutForm';
 import { paystackClient } from '@/lib/paystackClient';
 
 const SettingsPayout: React.FC = () => {
@@ -47,11 +47,9 @@ const SettingsPayout: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Payout Configuration</h1>
-      <PayoutForm
-        initialData={vendor?.payout_info}
+      <h1 className="text-3xl font-bold mb-6">Payout Configuration</h1>      <PayoutForm
+        initialData={vendor?.payout_info as PayoutFormData || defaultInitialData}
         onSubmit={handleSubmit}
-        onCancel={() => {/* Reset to initial values */}}
       />
     </div>
   );

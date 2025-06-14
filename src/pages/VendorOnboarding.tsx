@@ -20,7 +20,9 @@ import { OnboardingFormValues } from '@/types';
 import Logo from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
 import { paystackClient } from '@/lib/paystackClient';
-import { PayoutForm, PayoutFormData } from '@/components/payout/PayoutForm';
+import { PayoutForm, PayoutFormData, defaultInitialData } from '@/components/payout/PayoutForm';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { vendorProfileService } from '@/services/vendorProfileService';
 
 const onboardingSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }),
@@ -38,8 +40,10 @@ const VendorOnboarding: React.FC = () => {
   const [step, setStep] = useState(1);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [cachedPayoutData, setCachedPayoutData] = useState<PayoutFormData | null>(null);
+  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile, updateVendorProfile, createVendorProfile } = useVendor();
+  const { user, refreshVendor, getVendorProfile, createVendorProfile } = useVendor();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
@@ -54,18 +58,24 @@ const VendorOnboarding: React.FC = () => {
     },
   });
 
+  // Load initial vendor data
   useEffect(() => {
     const loadVendorData = async () => {
       if (!user) return;
       try {
         const data = await getVendorProfile();
         if (data) {
+          // Set form values
           form.setValue('bio', data.bio || '');
           form.setValue('instagram_link', data.instagram_url || '');
           form.setValue('facebook_link', data.facebook_url || '');
           form.setValue('wabusiness_link', data.wabusiness_url || '');
           if (data.banner_image_url) {
             setUploadedImage(data.banner_image_url);
+          }
+          // Cache payout data if it exists
+          if (data.payout_info) {
+            setCachedPayoutData(data.payout_info as PayoutFormData);
           }
         }
       } catch (error) {
@@ -83,13 +93,10 @@ const VendorOnboarding: React.FC = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setUploadedImageFile(file); // Store the file for later upload
       const reader = new FileReader();
       reader.onload = () => {
         setUploadedImage(reader.result as string);
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        const fileList = dataTransfer.files;
-        form.setValue('store_image', fileList);
       };
       reader.readAsDataURL(file);
     }
@@ -121,6 +128,70 @@ const VendorOnboarding: React.FC = () => {
 
   const handlePreviousStep = () => {
     setStep((prevStep) => prevStep - 1);
+  };
+
+  const handleSubmitProfile = async (payoutData: PayoutFormData) => {
+    if (!user) {
+      toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
+      return;
+    }
+
+    let uploadedImageUrl: string | undefined;
+
+    try {
+      setIsLoading(true);
+
+      // Upload image if one was selected
+      if (uploadedImageFile) {
+        uploadedImageUrl = await uploadToCloudinary(uploadedImageFile);
+      }
+
+      // Create Paystack recipient
+      const result = await paystackClient.createRecipient({
+        account_number: payoutData.account_number,
+        bank_code: payoutData.bank_code,
+        account_name: payoutData.account_name,
+        payout_mode: payoutData.payout_mode
+      });
+
+      // Create vendor profile
+      await createVendorProfile({
+        store_name: form.getValues('store_name'),
+        name: form.getValues('name'),
+        phone: String(form.getValues('phone') ?? ''),
+        bio: form.getValues('bio'),
+        banner_image_url: uploadedImageUrl,
+        instagram_url: form.getValues('instagram_link'),
+        facebook_url: form.getValues('facebook_link'),
+        wabusiness_url: form.getValues('wabusiness_link'),
+        payout_info: {
+          ...payoutData,
+          recipient_code: result.recipient_code,
+        },
+        verification_status: 'pending'
+      });
+
+      await refreshVendor();
+      toast({
+        title: 'Onboarding Complete',
+        description: 'Your store profile has been successfully set up.',
+      });
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error during onboarding:', error);
+        // Use vendorProfileService to clean up the uploaded image if profile creation failed
+      if (uploadedImageUrl) {
+        await vendorProfileService.cleanupFailedCreation(uploadedImageUrl);
+      }
+
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -385,56 +456,18 @@ const VendorOnboarding: React.FC = () => {
                     <p className="text-baseContent-secondary text-sm">
                       Set up how you'd like to receive payments from your sales
                     </p>
+                    <div className="mb-6">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={handlePreviousStep}
+                      >
+                        Back
+                      </Button>                    </div>
                     
                     <PayoutForm
-                      onSubmit={async (payoutData) => {
-                        if (!user) {
-                          toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
-                          return;
-                        }
-
-                        try {
-                          setIsLoading(true);
-                          const result = await paystackClient.createRecipient({
-                            account_number: payoutData.account_number,
-                            bank_code: payoutData.bank_code,
-                            account_name: payoutData.account_name,
-                            payout_mode: payoutData.payout_mode
-                          });
-
-                          await createVendorProfile({
-                            store_name: form.getValues('store_name'),
-                            name: form.getValues('name'),
-                            phone: String(form.getValues('phone') ?? ''),
-                            bio: form.getValues('bio'),
-                            banner_image_url: uploadedImage || undefined,
-                            instagram_url: form.getValues('instagram_link'),
-                            facebook_url: form.getValues('facebook_link'),
-                            wabusiness_url: form.getValues('wabusiness_link'),
-                            payout_info: {
-                              ...payoutData,
-                              recipient_code: result.recipient_code,
-                            },
-                            verification_status: 'verified'
-                          });
-
-                          await refreshVendor();
-                          toast({
-                            title: 'Onboarding Complete',
-                            description: 'Your store profile has been successfully set up.',
-                          });
-                          navigate('/dashboard');
-                        } catch (error) {
-                          console.error('Error during onboarding:', error);
-                          toast({
-                            title: 'Error',
-                            description: 'Failed to complete onboarding. Please try again.',
-                            variant: 'destructive',
-                          });
-                        } finally {
-                          setIsLoading(false);
-                        }
-                      }}
+                      initialData={cachedPayoutData || defaultInitialData}
+                      onSubmit={handleSubmitProfile}
                       submitText="Complete Setup"
                       submittingText="Saving..."
                     />

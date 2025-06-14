@@ -5,6 +5,7 @@ import supabase from '@/lib/supabaseClient';
 import { VendorProfile, CreateVendorProfileInput, PayoutInfo, VerificationStatus } from '@/types';
 import { z } from 'zod';
 import { VendorServiceError, NotFoundError, ValidationError, DatabaseError } from './errors/VendorServiceError';
+import { getPublicIdFromUrl, deleteFromCloudinary } from '@/lib/cloudinary';
 
 const createVendorProfileSchema = z.object({
   store_name: z.string().min(2, 'Store name required'),
@@ -85,6 +86,23 @@ class VendorProfileService {
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors.map(e => e.message).join(', '));
     }
+
+    // If there's a new banner image, delete the old one first
+    if (updates.banner_image_url) {
+      try {
+        const currentProfile = await this.getVendorProfile(userId);
+        if (currentProfile?.banner_image_url) {
+          const publicId = getPublicIdFromUrl(currentProfile.banner_image_url);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+          }
+        }
+      } catch (error) {
+        console.error('Error deleting old banner image:', error);
+        // Continue with update even if image deletion fails
+      }
+    }
+
     // Update vendors table
     const { data, error } = await supabase
       .from('vendors')
@@ -92,21 +110,50 @@ class VendorProfileService {
       .eq('user_id', userId)
       .select()
       .single();
+
     if (error) {
+      // If update fails and we just uploaded a new image, try to delete it
+      if (updates.banner_image_url) {
+        try {
+          const publicId = getPublicIdFromUrl(updates.banner_image_url);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+          }
+        } catch (deleteError) {
+          console.error('Error deleting image after failed update:', deleteError);
+        }
+      }
       throw new DatabaseError(error.message);
     }
+
     if (!data) {
       throw new DatabaseError('Failed to update vendor profile');
     }
+
     return data as VendorProfile;
   }
 
   async deleteVendorProfile(userId: string): Promise<void> {
+    // Get current profile to delete image
+    try {
+      const currentProfile = await this.getVendorProfile(userId);
+      if (currentProfile?.banner_image_url) {
+        const publicId = getPublicIdFromUrl(currentProfile.banner_image_url);
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting banner image during profile deletion:', error);
+      // Continue with deletion even if image deletion fails
+    }
+
     // Soft delete: set archived flag
     const { error } = await supabase
       .from('vendors')
       .update({ archived: true })
       .eq('user_id', userId);
+
     if (error) {
       throw new DatabaseError(error.message);
     }
@@ -160,6 +207,20 @@ class VendorProfileService {
     }
     return (data ?? []) as VendorProfile[];
   }
+
+  async cleanupFailedCreation(imageUrl: string | null): Promise<void> {
+    if (imageUrl) {
+      try {
+        const publicId = getPublicIdFromUrl(imageUrl);
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+        }
+      } catch (error) {
+        console.error('Error cleaning up image after failed profile creation:', error);
+        // Don't throw - this is best-effort cleanup
+      }
+    }
+  }
 }
 
-export const vendorProfileService = new VendorProfileService(); 
+export const vendorProfileService = new VendorProfileService();
