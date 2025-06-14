@@ -54,7 +54,46 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 ## Key Modules
 
 ### Context Providers
-- **VendorContext**: Single source of truth for vendor authentication, profile data and session management
+
+#### 1. VendorContext
+Single source of truth for vendor authentication, profile data and session management:
+```typescript
+interface VendorContextType {
+  vendor: VendorProfile | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  isOnboarded: boolean;
+  user: User | null;
+  refreshVendor: () => Promise<void>;
+  signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
+  updateVendorProfile: (updates: Partial<VendorProfile>) => Promise<void>;
+  getVendorProfile: (force?: boolean) => Promise<VendorProfile | null>;
+  createVendorProfile: (profile: CreateVendorProfileInput) => Promise<void>;
+}
+```
+
+#### 2. VendorDataProvider
+Manages vendor's business data and operations:
+```typescript
+interface VendorDataContextType {
+  products: Product[];
+  orders: Order[];
+  fetchProducts: (force?: boolean) => Promise<Product[]>;
+  fetchOrders: (force?: boolean) => Promise<Order[]>;
+  createProduct: (product: Partial<Product>) => Promise<Product>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<Product>;
+  deleteProduct: (id: string) => Promise<void>;
+  getVendorStats: () => Promise<{
+    totalProducts: number;
+    totalOrders: number;
+    totalRevenue: number;
+    recentOrders: Order[];
+  }>;
+  // ... other methods
+}
+```
 
 
 ### Components
@@ -180,21 +219,139 @@ VITE_GOOGLE_CLIENT_SECRET=
 - Automated CI/CD pipeline
 - Environment-based configurations
 
+## Data Management Patterns
+
+### 1. Service Layer Pattern
+The application implements a robust service layer pattern with clear responsibilities:
+
+```typescript
+// VendorProfileService example
+class VendorProfileService {
+  async createVendorProfile(userId: string, profile: CreateVendorProfileInput): Promise<VendorProfile>;
+  async getVendorProfile(userId: string, options?: { force?: boolean }): Promise<VendorProfile | null>;
+  async updateVendorProfile(userId: string, updates: Partial<VendorProfile>): Promise<VendorProfile>;
+  async deleteVendorProfile(userId: string): Promise<void>;
+  async verifyVendor(userId: string): Promise<VendorProfile>;
+  async rejectVendor(userId: string, reason: string): Promise<VendorProfile>;
+  async getPendingVendors(): Promise<VendorProfile[]>;
+}
+```
+
+### 2. Transaction Safety Pattern
+```typescript
+// Example from VendorProfileService
+async updateVendorProfile(userId: string, updates: Partial<VendorProfile>): Promise<VendorProfile> {
+  // Pre-transaction preparation
+  if (updates.banner_image_url) {
+    try {
+      const currentProfile = await this.getVendorProfile(userId);
+      if (currentProfile?.banner_image_url) {
+        await deleteFromCloudinary(currentProfile.banner_image_url);
+      }
+    } catch (error) {
+      // Handle cleanup failure gracefully
+      console.error('Error in pre-transaction cleanup:', error);
+    }
+  }
+
+  // Main transaction
+  const { data, error } = await supabase
+    .from('vendors')
+    .update(updates)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  // Post-transaction cleanup on failure
+  if (error) {
+    if (updates.banner_image_url) {
+      await this.cleanupFailedCreation(updates.banner_image_url);
+    }
+    throw new DatabaseError(error.message);
+  }
+
+  return data as VendorProfile;
+}
+```
+
+### 3. Caching Strategy
+```typescript
+// Cache configuration
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+const SESSION_REFRESH_THRESHOLD = 1000 * 60; // 1 minute before expiry
+
+// Cache implementation in VendorContext
+const saveToCache = useCallback((data: Partial<VendorCache>) => {
+  const existing = localStorage.getItem(VENDOR_CACHE_KEY);
+  const cache = existing ? JSON.parse(existing) : {};
+  localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify({
+    ...cache,
+    ...data,
+    timestamp: Date.now()
+  }));
+}, []);
+```
+
+### 4. Validation Pattern
+```typescript
+// Zod schema validation
+const createVendorProfileSchema = z.object({
+  store_name: z.string().min(2, 'Store name required'),
+  name: z.string().min(2, 'Owner name required'),
+  bio: z.string().optional(),
+  instagram_url: z.string().optional(),
+  facebook_url: z.string().optional(),
+  wabusiness_url: z.string().optional(),
+  banner_image_url: z.string().optional(),
+  phone: z.string().optional(),
+  payout_info: z.any().optional(),
+  verification_status: z.enum(['pending', 'verified', 'rejected']),
+  rejection_reason: z.string().optional(),
+});
+```
+
+### 5. Error Handling Pattern
+```typescript
+class VendorServiceError extends Error {
+  constructor(message: string, public code: string) {
+    super(message);
+  }
+}
+
+// Specific error types
+class ValidationError extends VendorServiceError {}
+class NotFoundError extends VendorServiceError {}
+class DatabaseError extends VendorServiceError {}
+```
+
 ## Future Considerations
 1. **Performance Optimization**
    - Implement service workers
    - Add offline support
    - Further optimize bundle size
+   - Add request queuing for poor connections
+   - Enhance caching strategies
 
 2. **Feature Additions**
    - Advanced analytics
    - Inventory management
    - Multi-language support
+   - Real-time order updates
+   - Live chat support
+   - Bulk operations support
 
 3. **Integration Expansions**
    - Additional payment gateways
    - Social media integration
    - Marketing tools
+   - Enhanced analytics dashboard
+   - Advanced search capabilities
+
+4. **Security Enhancements**
+   - Implement rate limiting
+   - Add 2FA support
+   - Enhanced session management
+   - Improved transaction safety
 
 ## Core State Management
 
