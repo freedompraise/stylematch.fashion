@@ -11,6 +11,9 @@ interface PayoutFormProps {
   banks: { name: string; code: string }[];
   onResolveAccount: (bankCode: string, accountNumber: string) => Promise<{ account_name: string }>;
   disabled?: boolean;
+  onAccountNameConfirm?: () => void;
+  isNameConfirmed?: boolean;
+  resolvedAccountName?: string;
 }
 
 export const defaultInitialData: PayoutFormData = {
@@ -26,11 +29,13 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
   onChange,
   banks,
   onResolveAccount,
-  disabled = false
+  disabled = false,
+  onAccountNameConfirm,
+  isNameConfirmed = false,
+  resolvedAccountName: externalResolvedName
 }) => {
-  const [resolvedAccountName, setResolvedAccountName] = useState('');
+  const [resolvedAccountName, setResolvedAccountName] = useState(externalResolvedName || '');
   const [resolving, setResolving] = useState(false);
-  const [isNameConfirmed, setIsNameConfirmed] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<PayoutFormData>({
@@ -43,7 +48,6 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
   const resolveAccountName = async (bankCode: string, accountNumber: string) => {
     if (accountNumber.length !== 10) return;
     setResolving(true);
-    setIsNameConfirmed(false);
     try {
       const result = await onResolveAccount(bankCode, accountNumber);
       setResolvedAccountName(result.account_name);
@@ -72,6 +76,12 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     form.setValue(field, value);
     const currentValues = form.getValues();
     onChange(currentValues);
+  };
+
+  const handleAccountNameClick = () => {
+    if (resolvedAccountName && onAccountNameConfirm) {
+      onAccountNameConfirm();
+    }
   };
 
   return (
@@ -147,15 +157,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
               readOnly 
               value={resolvedAccountName}
               className={isNameConfirmed ? 'bg-green-50 border-green-300' : 'cursor-pointer hover:bg-gray-50'}
-              onClick={() => {
-                if (resolvedAccountName) {
-                  setIsNameConfirmed(true);
-                  toast({
-                    title: 'Account Name Confirmed',
-                    description: 'You have confirmed this is your account name.',
-                  });
-                }
-              }}
+              onClick={handleAccountNameClick}
               disabled={disabled}
             />
           </div>

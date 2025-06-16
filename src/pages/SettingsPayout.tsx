@@ -15,6 +15,7 @@ const SettingsPayout: React.FC = () => {
   const [payoutData, setPayoutData] = useState<PayoutFormData>(vendor?.payout_info as PayoutFormData || defaultInitialData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNameConfirmed, setIsNameConfirmed] = useState(false);
+  const [resolvedAccountName, setResolvedAccountName] = useState('');
 
   useEffect(() => {
     const loadBanks = async () => {
@@ -33,11 +34,27 @@ const SettingsPayout: React.FC = () => {
   }, [toast]);
 
   const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
-    return await paystackClient.resolveAccount(bankCode, accountNumber);
+    const result = await paystackClient.resolveAccount(bankCode, accountNumber);
+    setResolvedAccountName(result.account_name);
+    return result;
   };
 
   const handlePayoutChange = (data: PayoutFormData) => {
     setPayoutData(data);
+    // If we have a resolved account name, check if it matches
+    if (resolvedAccountName && data.account_name === resolvedAccountName) {
+      setIsNameConfirmed(true);
+    }
+  };
+
+  const handleAccountNameConfirm = () => {
+    if (resolvedAccountName) {
+      setIsNameConfirmed(true);
+      toast({
+        title: 'Account Name Confirmed',
+        description: 'You have confirmed this is your account name.',
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -92,11 +109,15 @@ const SettingsPayout: React.FC = () => {
         banks={banks}
         onResolveAccount={handleResolveAccount}
         disabled={isSubmitting}
+        onAccountNameConfirm={handleAccountNameConfirm}
+        isNameConfirmed={isNameConfirmed}
+        resolvedAccountName={resolvedAccountName}
       />
       <div className="mt-6">
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting || !isNameConfirmed}
+          className="w-full"
         >
           {isSubmitting ? 'Saving...' : 'Save Payout Information'}
         </Button>
