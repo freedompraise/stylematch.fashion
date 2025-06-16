@@ -1,33 +1,69 @@
 // SettingsPayout.tsx
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useToast } from '@/components/ui/use-toast';
-import { PayoutForm, PayoutFormData, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutFormData } from '@/types';
 import { paystackClient } from '@/lib/paystackClient';
+import { Button } from '@/components/ui/button';
 
 const SettingsPayout: React.FC = () => {
   const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
   const { toast } = useToast();
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
+  const [payoutData, setPayoutData] = useState<PayoutFormData>(vendor?.payout_info as PayoutFormData || defaultInitialData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNameConfirmed, setIsNameConfirmed] = useState(false);
 
-  const handleSubmit = async (values: PayoutFormData) => {
+  useEffect(() => {
+    const loadBanks = async () => {
+      try {
+        const bankList = await paystackClient.listBanks();
+        setBanks(bankList);
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load banks list. Please refresh the page.',
+          variant: 'destructive'
+        });
+      }
+    };
+    loadBanks();
+  }, [toast]);
+
+  const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
+    return await paystackClient.resolveAccount(bankCode, accountNumber);
+  };
+
+  const handlePayoutChange = (data: PayoutFormData) => {
+    setPayoutData(data);
+  };
+
+  const handleSubmit = async () => {
     if (!user?.id) return;
+    if (!isNameConfirmed) {
+      toast({
+        title: 'Action Required',
+        description: 'Please click on the account name to confirm it is correct.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const result = await paystackClient.createRecipient({
-        account_number: values.account_number,
-        bank_code: values.bank_code,
-        account_name: values.account_name,
-        payout_mode: values.payout_mode
+        account_number: payoutData.account_number,
+        bank_code: payoutData.bank_code,
+        account_name: payoutData.account_name,
+        payout_mode: payoutData.payout_mode
       });
 
       await updateVendorProfile({
         payout_info: {
-          account_number: values.account_number,
-          bank_code: values.bank_code,
-          bank_name: values.bank_name,
-          recipient_code: result.recipient_code,
-          account_name: values.account_name,
-          payout_mode: values.payout_mode
+          ...payoutData,
+          recipient_code: result.recipient_code
         }
       });
 
@@ -42,15 +78,29 @@ const SettingsPayout: React.FC = () => {
         description: 'Failed to update payout info.', 
         variant: 'destructive' 
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Payout Configuration</h1>      <PayoutForm
-        initialData={vendor?.payout_info as PayoutFormData || defaultInitialData}
-        onSubmit={handleSubmit}
+      <h1 className="text-3xl font-bold mb-6">Payout Configuration</h1>
+      <PayoutForm
+        initialData={payoutData}
+        onChange={handlePayoutChange}
+        banks={banks}
+        onResolveAccount={handleResolveAccount}
+        disabled={isSubmitting}
       />
+      <div className="mt-6">
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || !isNameConfirmed}
+        >
+          {isSubmitting ? 'Saving...' : 'Save Payout Information'}
+        </Button>
+      </div>
     </div>
   );
 };

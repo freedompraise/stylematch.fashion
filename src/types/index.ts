@@ -1,4 +1,3 @@
-
 import { User } from '@supabase/supabase-js';
 import { VendorProfile } from './VendorSchema';
 
@@ -68,6 +67,7 @@ export interface PayoutFormData {
   account_number: string;
   account_name: string;
   payout_mode: 'automatic' | 'manual';
+  recipient_code?: string;
 }
 
 // API Response Types

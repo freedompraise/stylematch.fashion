@@ -35,33 +35,68 @@ const updateVendorProfileSchema = z.object({
   rejection_reason: z.string().optional(),
 });
 
-class VendorProfileService {
-  async createVendorProfile(userId: string, profile: CreateVendorProfileInput): Promise<VendorProfile> {
+class VendorProfileService {  async createVendorProfile(userId: string, profile: CreateVendorProfileInput): Promise<VendorProfile> {
     // Validate input
     const parsed = createVendorProfileSchema.safeParse(profile);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors.map(e => e.message).join(', '));
     }
-    // Insert into vendors table
-    const { data, error } = await supabase
-      .from('vendors')
-      .insert({
-        user_id: userId,
-        ...profile,
-        isOnboarded: true, // Assume onboarding complete on creation
-      })
-      .select()
-      .single();
-    if (error) {
-      if (error.code === '23505') { // unique violation
+
+    try {
+      // Check for existing vendor profile
+      const { data: existingVendor } = await supabase
+        .from('vendors')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single();
+
+      if (existingVendor) {
+        
         throw new ValidationError('Vendor profile already exists');
       }
-      throw new DatabaseError(error.message);
+
+      // Update auth.users to mark as vendor
+      const { error: userError } = await supabase.auth.updateUser({
+        data: { is_vendor: true }
+      });
+
+      if (userError) {
+        throw new DatabaseError('Failed to update user vendor status');
+      }
+
+      // Insert into vendors table
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert({
+          user_id: userId,
+          ...profile,
+          isOnboarded: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Rollback user update if vendor creation fails
+        await supabase.auth.updateUser({
+          data: { is_vendor: false }
+        });
+        throw new DatabaseError(error.message);
+      }
+
+      if (!data) {
+        throw new DatabaseError('Failed to create vendor profile');
+      }
+
+      return data as VendorProfile;
+    } catch (error) {
+      // Clean up image if creation fails
+      if (profile.banner_image_url) {
+        await this.cleanupFailedCreation(profile.banner_image_url);
+      }
+      throw error;
     }
-    if (!data) {
-      throw new DatabaseError('Failed to create vendor profile');
-    }
-    return data as VendorProfile;
   }
 
   async getVendorProfile(userId: string, options?: { force?: boolean }): Promise<VendorProfile | null> {

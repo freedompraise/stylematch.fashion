@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, Upload, AlertCircle } from 'lucide-react';
+import { paystackClient } from '@/lib/paystackClient';
 import { useVendor } from '@/contexts/VendorContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,9 +20,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Logo from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { PayoutForm, PayoutFormData, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutFormData } from '@/types';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
-import { onboardingService } from '@/services/onboardingService';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { vendorProfileService } from '@/services/vendorProfileService';
 
 const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }),
@@ -43,6 +46,7 @@ const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, refreshVendor, getVendorProfile } = useVendor();
+  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {
     state,
@@ -106,6 +110,22 @@ const VendorOnboarding: React.FC = () => {
     loadVendorData();
   }, [user, getVendorProfile, updateDetails, updateSocial, updatePayout, toast]);
 
+  useEffect(() => {
+    const loadBanks = async () => {
+      try {
+        const bankList = await paystackClient.listBanks();
+        setBanks(bankList);
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load banks list. Please refresh the page.',
+          variant: 'destructive'
+        });
+      }
+    };
+    loadBanks();
+  }, [toast]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -116,6 +136,10 @@ const VendorOnboarding: React.FC = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
+    return await paystackClient.resolveAccount(bankCode, accountNumber);
   };
 
   const validateStep = async () => {
@@ -163,9 +187,22 @@ const VendorOnboarding: React.FC = () => {
     setStep(state.step - 1);
   };
 
-  const handleSubmitProfile = async (payoutData: PayoutFormData) => {
+  const handlePayoutChange = (data: PayoutFormData) => {
+    updatePayout(data);
+  };
+
+  const handleCompleteOnboarding = async () => {
     if (!user) {
       toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
+      return;
+    }
+
+    if (!state.formData.payout) {
+      toast({
+        title: 'Error',
+        description: 'Please complete the payout information.',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -178,8 +215,28 @@ const VendorOnboarding: React.FC = () => {
         throw new Error('Missing required form data');
       }
 
-      // Execute the onboarding transaction
-      await onboardingService.executeOnboarding(user.id, {
+      // Create recipient in Paystack and get recipient code
+      const payoutInfo = state.formData.payout;
+      const recipientResult = await paystackClient.createRecipient({
+        account_number: payoutInfo.account_number,
+        bank_code: payoutInfo.bank_code,
+        account_name: payoutInfo.account_name,
+        payout_mode: payoutInfo.payout_mode
+      });
+
+      // Upload image first if provided
+      let banner_image_url: string | undefined;
+      if (state.formData.details.uploadedImageFile) {
+        try {
+          banner_image_url = await uploadToCloudinary(state.formData.details.uploadedImageFile);
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          throw new Error('Failed to upload store banner image');
+        }
+      }
+
+      // Create vendor profile with complete information
+      await vendorProfileService.createVendorProfile(user.id, {
         store_name: state.formData.basics.store_name,
         name: state.formData.basics.name,
         phone: state.formData.basics.phone,
@@ -187,8 +244,12 @@ const VendorOnboarding: React.FC = () => {
         instagram_url: state.formData.social.instagram_link,
         facebook_url: state.formData.social.facebook_link,
         wabusiness_url: state.formData.social.wabusiness_link,
-        imageFile: state.formData.details.uploadedImageFile,
-        payout: payoutData,
+        banner_image_url,
+        payout_info: {
+          ...payoutInfo,
+          recipient_code: recipientResult.recipient_code
+        },
+        verification_status: 'pending',
       });
 
       await refreshVendor();
@@ -202,6 +263,19 @@ const VendorOnboarding: React.FC = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Error during onboarding:', error);
+      
+      // Cleanup uploaded image on failure
+      if (error instanceof Error && state.formData.details.uploadedImageFile) {
+        try {
+          const publicId = state.formData.details.uploadedImage?.split('/').pop()?.split('.')[0];
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+          }
+        } catch (cleanupError) {
+          console.error('Error cleaning up uploaded image:', cleanupError);
+        }
+      }
+      
       setError('submission', error instanceof Error ? error.message : 'Failed to complete onboarding');
       
       toast({
@@ -505,14 +579,25 @@ const VendorOnboarding: React.FC = () => {
                         Back
                       </Button>                    
                     </div>
-                    
-                    <PayoutForm
-                      initialData={state.formData.payout || defaultInitialData}
-                      onSubmit={handleSubmitProfile}
-                      submitText="Complete Setup"
-                      submittingText="Saving..."
-                      disabled={state.isSubmitting}
-                    />
+                    <div>
+                      <PayoutForm
+                        initialData={state.formData.payout || defaultInitialData}
+                        onChange={handlePayoutChange}
+                        banks={banks}
+                        onResolveAccount={handleResolveAccount}
+                        disabled={state.isSubmitting}
+                      />
+                    </div>
+                    <div className="mt-6">
+                      <Button
+                        type="button"
+                        onClick={handleCompleteOnboarding}
+                        disabled={state.isSubmitting}
+                        className="w-full"
+                      >
+                        {state.isSubmitting ? 'Creating Profile...' : 'Complete Setup'}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </form>
