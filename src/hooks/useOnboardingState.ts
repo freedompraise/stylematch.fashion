@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { OnboardingFormValues, PayoutFormData } from '@/types';
 
@@ -70,7 +69,7 @@ export function useOnboardingState() {
   const saveState = useCallback((newState: Partial<OnboardingState>) => {
     setState(prev => {
       const updated = { ...prev, ...newState };
-      // Don't save file objects to localStorage
+      // Don't save file objects or large base64 images to localStorage
       const stateToSave = {
         ...updated,
         formData: {
@@ -78,6 +77,7 @@ export function useOnboardingState() {
           details: {
             ...updated.formData.details,
             uploadedImageFile: undefined, // Don't serialize File objects
+            uploadedImage: undefined, // Don't serialize base64 image
           },
         },
       };

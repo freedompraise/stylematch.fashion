@@ -19,7 +19,7 @@ import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { toast } from '@/hooks/use-toast';
 import { AuthService } from '@/services/authService';
-import { useVendor } from '@/contexts/VendorContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -46,6 +46,7 @@ const Auth = (): JSX.Element => {
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const authService = new AuthService();
+  const { signIn, signUp } = useAuth();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -63,13 +64,11 @@ const Auth = (): JSX.Element => {
       confirmPassword: '',
     },
   });
-  const { refreshVendor } = useVendor();
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
-      await authService.signIn(data.email, data.password);
-      await refreshVendor();
+      await signIn(data.email, data.password);
       navigate('/dashboard');
     } catch (error) {
       toast({
@@ -85,16 +84,17 @@ const Auth = (): JSX.Element => {
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     try {
       setIsLoading(true);
-      await authService.signUp({
+      await signUp({
         email: data.email,
         password: data.password,
       });
-      await refreshVendor();
       toast({
         title: 'Account created',
         description: `Thanks for signing up! Please check your email to verify your account. Once verified, you'll be guided through setting up your store profile.`,
       });
-      navigate('/onboarding');
+      setIsLogin(true);
+      loginForm.reset();
+      registerForm.reset();
     } catch (error) {
       toast({
         title: 'Error',

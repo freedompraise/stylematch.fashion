@@ -17,9 +17,9 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 
 ## Core Architectural Principles
 1. **Context-Based State Management**
-   - Separate contexts for different domains (Vendor, Product, Order)
-   - Clear separation of data fetching and UI components
-   - Centralized error handling and loading states
+   - **Separation of Concerns**: Dedicated contexts for distinct domains: `AuthContext` for authentication, `VendorContext` for vendor profile data, and `VendorDataProvider` for business data (products, orders).
+   - **Clear Data Flow**: UI components consume data from contexts, which in turn communicate with a dedicated service layer for external API calls.
+   - **Centralized Logic**: Each context serves as a single source of truth for its domain, centralizing state management logic and reducing component complexity.
 
 2. **Type Safety**
    - Strict TypeScript implementation
@@ -36,65 +36,52 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 .
 ├── components/           # Reusable UI components
 │   ├── ui/              # UI primitives (from shadcn/ui)
+│   ├── auth/            # Auth-specific components
 │   ├── dashboard/       # Dashboard-specific components
 │   ├── layouts/         # Layout components
-│   ├── vendor/          # Vendor-specific components
-│   └── products/        # Product-related components
+│   └── vendor/          # Vendor-specific components
 ├── contexts/            # React Context Providers
-│   ├── VendorContext   # Auth, profile & settings
-│   ├── ProductContext  # Product management
-│   └── OrderContext    # Order processing
+│   ├── AuthContext      # Manages user authentication and session
+│   └── VendorContext    # Manages vendor profile and data providers
 ├── hooks/               # Custom React hooks
 ├── lib/                 # Core utilities & clients
 ├── pages/               # Route components
-├── types/              # TypeScript definitions & schemas
-└── services/           # External service integrations
+├── types/               # TypeScript definitions & schemas
+└── services/            # Business logic and external API communication
 ```
 
-## Key Modules
+## Key Modules & State Flow
 
-### Context Providers
+The application's state management is divided into three main contexts that work together, each with a distinct responsibility. This architecture ensures a clean separation between authentication, user profile management, and business data handling.
 
-#### 1. VendorContext
-Single source of truth for vendor authentication, profile data and session management:
-```typescript
-interface VendorContextType {
-  vendor: VendorProfile | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  isOnboarded: boolean;
-  user: User | null;
-  refreshVendor: () => Promise<void>;
-  signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  getAccessToken: () => Promise<string | null>;
-  updateVendorProfile: (updates: Partial<VendorProfile>) => Promise<void>;
-  getVendorProfile: (force?: boolean) => Promise<VendorProfile | null>;
-  createVendorProfile: (profile: CreateVendorProfileInput) => Promise<void>;
-}
-```
+### Context Providers Explained
 
-#### 2. VendorDataProvider
-Manages vendor's business data and operations:
-```typescript
-interface VendorDataContextType {
-  products: Product[];
-  orders: Order[];
-  fetchProducts: (force?: boolean) => Promise<Product[]>;
-  fetchOrders: (force?: boolean) => Promise<Order[]>;
-  createProduct: (product: Partial<Product>) => Promise<Product>;
-  updateProduct: (id: string, updates: Partial<Product>) => Promise<Product>;
-  deleteProduct: (id: string) => Promise<void>;
-  getVendorStats: () => Promise<{
-    totalProducts: number;
-    totalOrders: number;
-    totalRevenue: number;
-    recentOrders: Order[];
-  }>;
-  // ... other methods
-}
-```
+#### 1. `AuthContext`
+This is the foundation of the authentication system and the single source of truth for the user's session state.
+- **Responsibilities**:
+  - Holds the current `user` and `session` objects from Supabase.
+  - Exposes `signIn`, `signUp`, and `signOut` methods that call the `authService`.
+  - Tracks whether the current authentication flow is for a vendor signup (`isVendorSignup` flag).
+  - It has no knowledge of vendor-specific data.
+- **Consumed By**: `VendorContext`, all authentication pages (`Auth.tsx`, `verification-complete.tsx`), and route guards.
 
+#### 2. `VendorContext`
+This context manages the profile and identity of a vendor. It builds upon `AuthContext`.
+- **Responsibilities**:
+  - Fetches and holds the `vendor` profile from the database using the `user.id` from `AuthContext`.
+  - Provides methods to create and update the vendor profile by calling the `vendorProfileService`.
+  - Manages the vendor's onboarding state.
+- **Consumes**: `AuthContext` (to get the authenticated user).
+- **Consumed By**: All authenticated vendor pages and the `VendorDataProvider`.
+
+#### 3. `VendorDataProvider`
+This provider handles all business-related data for a logged-in vendor.
+- **Responsibilities**:
+  - Manages collections of `products` and `orders`.
+  - Provides functions to fetch, create, update, and delete products and orders.
+  - Calculates vendor statistics (`getVendorStats`).
+- **Consumes**: `VendorContext` (to get the `vendor.user_id` for API calls).
+- **Consumed By**: `ProductManagement.tsx`, `OrderManagement.tsx`, `VendorDashboard.tsx`.
 
 ### Components
 1. **UI Components** (`components/ui/`)

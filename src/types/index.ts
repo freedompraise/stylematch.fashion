@@ -143,3 +143,39 @@ export interface VendorProfileService {
 
 export type { VendorProfile } from "./VendorSchema"; 
 export type { ProductWithSales } from "./ProductSchema";
+
+export interface PaystackPayment {
+  reference: string;
+  amount: number;
+  currency: string;
+  status: 'success' | 'failed' | 'pending';
+  gateway_response: string;
+  paid_at: string;
+  created_at: string;
+  channel: string;
+  ip_address: string;
+  metadata: {
+    custom_fields: Array<{
+      display_name: string;
+      variable_name: string;
+      value: string;
+    }>;
+  };
+  log: {
+    start_time: number;
+    time_spent: number;
+    attempts: number;
+    errors: number;
+    success: boolean;
+    mobile: boolean;
+    input: Array<{
+      name: string;
+      value: string;
+    }>;
+    history: Array<{
+      type: string;
+      message: string;
+      time: number;
+    }>;
+  };
+}

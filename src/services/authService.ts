@@ -15,6 +15,11 @@ interface SessionInfo {
   user: User | null;
 }
 
+export interface AuthState {
+  user: User | null;
+  session: Session | null;
+}
+
 export class AuthService {
   // Private helper methods
   private formatAuthError(error: Error | unknown): AuthError {
@@ -61,21 +66,28 @@ export class AuthService {
   }
 
   // Public methods
-  async signIn(email: string, password: string): Promise<AuthResult> {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+  async getSession(): Promise<Session | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session;
+  }
+
+  async signIn(email: string, password: string): Promise<void> {
+    const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-        if (error) throw this.formatAuthError(error);
-      
-      return {
-        session: data.session,
-        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(data.session),
-      };
-    } catch (error) {
-      throw this.formatAuthError(error);
-    }
+    if (error) throw error;
+  }
+
+  async signOut(): Promise<void> {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  }
+
+  onAuthStateChange(callback: (event: string, session: Session | null) => void) {
+    return supabase.auth.onAuthStateChange((event, session) => {
+      callback(event, session);
+    });
   }
 
   async signUp(formData: AuthFormData): Promise<AuthResult> {
@@ -155,46 +167,6 @@ export class AuthService {
     }
   }
 
-  async signOut(): Promise<void> {
-    try {      const { error } = await supabase.auth.signOut();
-      if (error) throw this.formatAuthError(error);
-    } catch (error) {
-      throw this.formatAuthError(error);
-    }
-  }
-
-  async getCurrentSession(): Promise<SessionInfo> {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) throw error;
-      
-      return {
-        accessToken: session?.access_token ?? null,
-        refreshToken: session?.refresh_token ?? null,
-        expiresAt: session?.expires_at ? session.expires_at * 1000 : null,
-        user: session?.user ?? null
-      };
-    } catch (error) {
-      throw this.formatAuthError(error);
-    }
-  }
-
-  async refreshSession(): Promise<AuthResult> {
-    try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      
-      if (error) throw error;      if (!session) throw this.formatAuthError(new Error('Failed to refresh session'));
-      
-      return {
-        session,
-        shouldRedirectToOnboarding: this.shouldRedirectToOnboarding(session),
-      };
-    } catch (error) {
-      throw this.formatAuthError(error);
-    }
-  }
-
   async resetPassword(email: string): Promise<void> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -219,3 +191,5 @@ export class AuthService {
     }
   }
 }
+
+export const authService = new AuthService();

@@ -1,7 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
-import { useVendorData } from '@/services/vendorDataService';
 import type { VendorProfile } from '@/types/VendorSchema';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,8 +15,7 @@ type StoreFormData = {
 }
 
 const SettingsStore: React.FC = () => {
-  const { user, vendor, refreshVendor } = useVendor();
-  const { updateVendorProfile } = useVendorData();
+  const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
   const { toast } = useToast();
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -44,9 +41,8 @@ const SettingsStore: React.FC = () => {
     }
   };
   const onSubmit = async (formData: StoreFormData) => {
-    if (!user?.id) return;
     try {
-      await updateVendorProfile(user.id, { store_name: formData.store_name }, imageFile);
+      await updateVendorProfile({ store_name: formData.store_name });
       toast({ title: 'Store updated', description: 'Your store settings have been updated.' });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to update store.', variant: 'destructive' });

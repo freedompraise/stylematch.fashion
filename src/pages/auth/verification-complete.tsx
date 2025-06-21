@@ -1,43 +1,34 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthService } from '@/services/authService';
-import { useVendor } from '@/contexts/VendorContext';
+import { authService } from '@/services/authService';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AuthError, AuthErrorType } from '@/services/errors/AuthError';
 
-const authService = new AuthService();
-
 export default function VerificationComplete() {
   const navigate = useNavigate();
-  const { refreshVendor } = useVendor();
+  const { isVendorSignup } = useAuth();
 
   useEffect(() => {
     const handleVerification = async () => {
       try {
-        // Get the hash portion of the URL (contains the tokens)
         const hash = window.location.hash;
         if (!hash) {
           throw new AuthError(AuthErrorType.UNKNOWN, 'No verification token found');
         }
 
-        // Handle the auth callback and get session
         const result = await authService.handleOAuthCallback(hash);
         if (!result?.session) {
           throw new AuthError(AuthErrorType.UNKNOWN, 'Verification failed');
         }
 
-        // Refresh vendor data
-        await refreshVendor();
-
-        // Show success message
         toast({
           title: 'Email Verified',
           description: 'Your email has been verified successfully. Welcome to StyleMatch!',
         });
 
-        // Redirect based on whether they need onboarding
-        if (result.shouldRedirectToOnboarding) {
+        if (isVendorSignup) {
           navigate('/onboarding', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
@@ -55,13 +46,12 @@ export default function VerificationComplete() {
           variant: 'destructive',
         });
 
-        // Redirect back to login
         navigate('/auth', { replace: true });
       }
     };
 
     handleVerification();
-  }, [navigate, refreshVendor]);
+  }, [navigate, isVendorSignup]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">

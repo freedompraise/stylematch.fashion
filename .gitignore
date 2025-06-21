@@ -12,6 +12,7 @@ yarn.lock
 dist
 dist-ssr
 *.local
+.cursorrules
 
 # Editor directories and files
 .vscode/*

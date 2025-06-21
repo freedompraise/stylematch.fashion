@@ -24,7 +24,6 @@ import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
 import { PayoutFormData } from '@/types';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
-import { vendorProfileService } from '@/services/vendorProfileService';
 
 const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }),
@@ -45,7 +44,7 @@ const socialSchema = z.object({
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile } = useVendor();
+  const { user, refreshVendor, getVendorProfile, createVendorProfile } = useVendor();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {
@@ -78,26 +77,19 @@ const VendorOnboarding: React.FC = () => {
     },
   });
 
-  // Load initial vendor data
+  // Load initial vendor data and redirect if vendor profile exists
   useEffect(() => {
+    if (!user) return;
+    // Only call getVendorProfile once when user changes
     const loadVendorData = async () => {
-      if (!user) return;
       try {
         const data = await getVendorProfile();
         if (data) {
-          updateDetails({ bio: data.bio || '' });
-          updateSocial({
-            instagram_link: data.instagram_url || '',
-            facebook_link: data.facebook_url || '',
-            wabusiness_link: data.wabusiness_url || '',
-          });
-          if (data.banner_image_url) {
-            updateDetails({ uploadedImage: data.banner_image_url });
-          }
-          if (data.payout_info) {
-            updatePayout(data.payout_info as PayoutFormData);
-          }
+          // If vendor profile exists, redirect to dashboard
+          navigate('/dashboard', { replace: true });
+          return;
         }
+        // If no profile, do nothing (user is onboarding)
       } catch (error) {
         console.error('Error loading vendor data:', error);
         toast({
@@ -108,7 +100,8 @@ const VendorOnboarding: React.FC = () => {
       }
     };
     loadVendorData();
-  }, [user, getVendorProfile, updateDetails, updateSocial, updatePayout, toast]);
+    // Only depend on user
+  }, [user]);
 
   useEffect(() => {
     const loadBanks = async () => {
@@ -236,7 +229,7 @@ const VendorOnboarding: React.FC = () => {
       }
 
       // Create vendor profile with complete information
-      await vendorProfileService.createVendorProfile(user.id, {
+      await createVendorProfile({
         store_name: state.formData.basics.store_name,
         name: state.formData.basics.name,
         phone: state.formData.basics.phone,
