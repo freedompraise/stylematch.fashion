@@ -1,75 +1,36 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useVendor } from '@/contexts/VendorContext';
-import { useLocation } from 'react-router-dom';
-import PendingVerification from './PendingVerification';
 
-interface RequireVendorProps {
-  children: React.ReactNode;
-  redirectTo?: string;
-}
-
-const FullscreenLoader = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen text-lg">
-    <div className="flex items-center justify-center mb-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-    </div>
-    <div className="text-baseContent-secondary">Loading your store...</div>
-  </div>
-);
-
-export function RequireVendor({ 
-  children, 
-  redirectTo = '/auth'
-}: RequireVendorProps) {
-  const { isAuthenticated, isOnboarded, loading, vendor, user } = useVendor();
+const RequireVendor: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { vendor, loading: vendorLoading } = useVendor();
   const location = useLocation();
 
-  // Debug logging for component state
-  console.debug('RequireVendor Debug:', {
-    path: location.pathname,
-    isAuthenticated,
-    isOnboarded,
-    loading,
-    hasUser: !!user,
-    hasVendor: !!vendor,
-    vendorData: vendor,
-    timestamp: new Date().toISOString()
-  });
-
-  // Show loading state during initial authentication check
-  if (loading) {
-    console.debug('RequireVendor: Loading vendor state...');
-    return <FullscreenLoader />;
+  // Show loading state while checking auth and vendor status
+  if (authLoading || vendorLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-lg">
+        <Loader2 className="animate-spin" size={24} />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
   }
 
-  // Redirect to auth if not authenticated
-  if (!isAuthenticated || !user) {
-    console.debug('RequireVendor: User not authenticated, redirecting to:', redirectTo);
-    return <Navigate to={redirectTo} state={{ from: location.pathname }} replace />;
+  // If not authenticated, redirect to auth page
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Special handling for onboarding route
-  if (location.pathname === '/onboarding') {
-    // Redirect to dashboard if already onboarded
-    if (isOnboarded) {
-      console.debug('RequireVendor: Already onboarded, redirecting to dashboard');
-      return <Navigate to="/dashboard" replace />;
-    }
-    console.debug('RequireVendor: Allowing access to onboarding page');
-    return <>{children}</>;
+  // If no vendor profile exists, redirect to onboarding
+  if (!vendor) {
+    return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
-  // For all other protected routes
-  if (!isOnboarded && location.pathname !== '/onboarding') {
-    console.debug('RequireVendor: Not onboarded, redirecting to onboarding');
-    return <Navigate to="/onboarding" state={{ from: location.pathname }} replace />;
-  }
-
-  // Allow access to route if all conditions are met
-  console.debug('RequireVendor: All conditions met, rendering protected content');
+  // If all checks pass, render the protected content
   return <>{children}</>;
-}
+};
 
 export default RequireVendor;

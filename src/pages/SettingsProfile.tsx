@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
-import { useVendorData } from '@/services/vendorDataService';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
@@ -16,8 +15,7 @@ interface ProfileFormData {
 }
 
 const SettingsProfile: React.FC = () => {
-  const { user, vendor, refreshVendor } = useVendor();
-  const { updateVendorProfile } = useVendorData();
+  const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
 
   const form = useForm<ProfileFormData>({
     defaultValues: {
@@ -41,7 +39,6 @@ const SettingsProfile: React.FC = () => {
     }
   }, [vendor, form]);
   const onSubmit = async (formData: ProfileFormData) => {
-    if (!user?.id) return;
     try {
       // Prepare safe update object, sending null for empty optional fields
       const updateData = {
@@ -51,7 +48,7 @@ const SettingsProfile: React.FC = () => {
         facebook_url: formData.facebook_url || null,
         wabusiness_url: formData.wabusiness_url || null,
       };
-      await updateVendorProfile(user.id, updateData);
+      await updateVendorProfile(updateData);
       await refreshVendor(); // Refresh vendor data in context
       toast({ title: 'Profile updated', description: 'Your profile has been updated.' });
     } catch (err) {

@@ -81,8 +81,8 @@ const VendorDashboard: React.FC = () => {
     navigate('/products')
   }
 
-  const navigateToOnboarding = () => {
-    navigate('/onboarding')
+  const navigateToProfile = () => {
+    navigate('/settings')
   }
 
   if (isLoading) {
@@ -95,7 +95,7 @@ const VendorDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <DashboardEmptyState
             onAddProduct={navigateToProducts}
-            onCompleteProfile={navigateToOnboarding}
+            onCompleteProfile={navigateToProfile}
           />
         </div>
       </div>

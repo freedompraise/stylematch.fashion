@@ -1,27 +1,30 @@
 // VendorContext.tsx
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { User } from '@supabase/supabase-js';
-import supabase from '@/lib/supabaseClient';
-import { VendorProfile } from '@/types/VendorSchema';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
-import { AuthService } from '@/services/authService';
-import { vendorProfileService } from '@/services/vendorProfileService';
+import { useAuth } from './AuthContext';
+import {
+  getVendorProfile as getVendorProfileService,
+  updateVendorProfile as updateVendorProfileService,
+  createVendorProfile as createVendorProfileService,
+  deleteVendorProfile as deleteVendorProfileService,
+  verifyVendor as verifyVendorService,
+  rejectVendor as rejectVendorService
+} from '@/services/vendorProfileService';
+import { VendorProfile, CreateVendorProfileInput } from '@/types';
+import { User } from '@supabase/supabase-js';
 
 interface VendorContextType {
+  user: User | null;
   vendor: VendorProfile | null;
   loading: boolean;
-  isAuthenticated: boolean;
-  isOnboarded: boolean;
-  user: User | null;
+  error: Error | null;
   refreshVendor: () => Promise<void>;
-  signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  getAccessToken: () => Promise<string | null>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
   getVendorProfile: (force?: boolean) => Promise<VendorProfile | null>;
-  createVendorProfile: (profile: import('@/types').CreateVendorProfileInput) => Promise<void>;
+  createVendorProfile: (profile: CreateVendorProfileInput, imageFile?: File) => Promise<void>;
+  clearCache: () => void;
+  signOut: () => Promise<void>;
 }
 
 interface VendorCache {
@@ -32,331 +35,209 @@ interface VendorCache {
     step: string;
     data: any;
   };
-  session: {
-    lastRefresh: string;
-    expiresAt: string;
-  };
 }
 
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
-const SESSION_REFRESH_THRESHOLD = 1000 * 60; // 1 minute before expiry
 const VENDOR_CACHE_KEY = 'vendor_cache';
 
 const VendorContext = createContext<VendorContextType | undefined>(undefined);
-const authService = new AuthService();
 
 export function VendorProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const { user, isAuthenticated, signOut: authSignOut } = useAuth();
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isOnboarded, setIsOnboarded] = useState(false);
-  const [hasVendor, setHasVendor] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingVendor, setIsLoadingVendor] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+
+  // Debug: Log context state changes
+  useEffect(() => {
+    console.log('[VendorContext] user:', user);
+  }, [user]);
+  useEffect(() => {
+    console.log('[VendorContext] vendor:', vendor);
+  }, [vendor]);
+  useEffect(() => {
+    console.log('[VendorContext] loading:', loading);
+  }, [loading]);
+  useEffect(() => {
+    if (error) console.error('[VendorContext] error:', error);
+  }, [error]);
 
   // Cache Management
-  const saveToCache = useCallback((data: Partial<VendorCache>) => {
-    const existing = localStorage.getItem(VENDOR_CACHE_KEY);
-    const cache = existing ? JSON.parse(existing) : {};
-    localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify({
-      ...cache,
-      ...data,
-      timestamp: Date.now()
-    }));
+  const saveToCache = useCallback((data: { profile: VendorProfile; ttl: number }) => {
+    try {
+      const cacheData = {
+        profile: data.profile,
+        timestamp: Date.now(),
+        ttl: data.ttl
+      };
+      localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify(cacheData));
+      console.log('[VendorContext] Saved to cache:', cacheData);
+    } catch (error) {
+      console.error('Error saving to cache:', error);
+    }
   }, []);
 
   const loadFromCache = useCallback(() => {
-    const cached = localStorage.getItem(VENDOR_CACHE_KEY);
-    if (!cached) return null;
-
-    const data = JSON.parse(cached);
-    if (Date.now() - data.timestamp > data.ttl) {
-      localStorage.removeItem(VENDOR_CACHE_KEY);
+    try {
+      const cached = localStorage.getItem(VENDOR_CACHE_KEY);
+      if (!cached) return null;
+      const { profile, timestamp, ttl } = JSON.parse(cached);
+      if (Date.now() - timestamp > ttl) {
+        localStorage.removeItem(VENDOR_CACHE_KEY);
+        console.log('[VendorContext] Cache expired, removed');
+        return null;
+      }
+      console.log('[VendorContext] Loaded from cache:', { profile, timestamp, ttl });
+      return { profile };
+    } catch (error) {
+      console.error('Error loading from cache:', error);
       return null;
     }
-    return data;
   }, []);
 
   const clearCache = useCallback(() => {
     localStorage.removeItem(VENDOR_CACHE_KEY);
+    setVendor(null);
+    setError(null);
+    console.log('[VendorContext] Cleared cache and vendor state');
   }, []);
 
-  // Session Management
-  const refreshSession = useCallback(async () => {
-    try {
-      const authResult = await authService.refreshSession();
-      if (!authResult.session) throw new Error('Failed to refresh session');
-      
-      setUser(authResult.session.user);
-      setSessionExpiresAt(authResult.session.expires_at ? authResult.session.expires_at * 1000 : null);
-      
-      saveToCache({
-        session: {
-          lastRefresh: new Date().toISOString(),
-          expiresAt: authResult.session.expires_at 
-            ? new Date(authResult.session.expires_at * 1000).toISOString() 
-            : ''
-        }
-      });
-    } catch (error) {
-      throw error;
-    }
-  }, [saveToCache]);
-
-  const signOut = useCallback(async () => {
-    try {
-      await authService.signOut();
-      setUser(null);
-      setVendor(null);
-      setSessionExpiresAt(null);
-      clearCache();
-      navigate('/auth');
-    } catch (error) {
-      throw error;
-    }
-  }, [clearCache, navigate]);
-
   // Load vendor data
-  const loadVendor = useCallback(async (userId: string) => {
-    if (!userId || isLoadingVendor) {
-      console.log('Skipping vendor load:', { userId, isLoadingVendor });
+  const loadVendor = useCallback(async () => {
+    console.log('[VendorContext] loadVendor called');
+    if (!user?.id || isLoadingVendor) {
+      console.log('[VendorContext] Skipping loadVendor: user?.id or isLoadingVendor falsey', user?.id, isLoadingVendor);
       return;
     }
-
-    console.log('Loading vendor for userId:', userId);
     setIsLoadingVendor(true);
-    
     try {
-      // Use vendorProfileService to fetch vendor profile
-      const data = await vendorProfileService.getVendorProfile(userId);
+      const data = await getVendorProfileService(user.id);
       if (data) {
         setVendor(data);
-        setHasVendor(true);
-        setIsOnboarded(data.isOnboarded || false);
         saveToCache({
           profile: data,
           ttl: CACHE_TTL
         });
+        console.log('[VendorContext] Vendor loaded and set:', data);
       } else {
         setVendor(null);
-        setHasVendor(false);
-        setIsOnboarded(false);
+        console.log('[VendorContext] No vendor found');
       }
     } catch (err) {
-      console.error('Error in loadVendor:', err);
       setError(err instanceof Error ? err : new Error('Failed to load vendor'));
       setVendor(null);
-      setHasVendor(false);
-      setIsOnboarded(false);
+      console.error('[VendorContext] Error in loadVendor:', err);
     } finally {
       setIsLoadingVendor(false);
       setLoading(false);
     }
-  }, [isLoadingVendor, saveToCache]);
+  }, [isLoadingVendor, saveToCache, user?.id]);
 
   const getVendorProfile = useCallback(async (force = false) => {
+    console.log('[VendorContext] getVendorProfile called, force:', force);
     if (!user?.id) return null;
     if (!force && vendor) {
       return vendor;
     }
     try {
-      // Use vendorProfileService to fetch vendor profile
-      const data = await vendorProfileService.getVendorProfile(user.id);
+      const data = await getVendorProfileService(user.id);
       if (data) {
         setVendor(data);
         saveToCache({
           profile: data,
           ttl: CACHE_TTL
         });
+        console.log('[VendorContext] Vendor profile fetched and set:', data);
         return data;
       }
       return null;
     } catch (error) {
-      console.error('Error getting vendor profile:', error);
+      console.error('[VendorContext] Error getting vendor profile:', error);
       return null;
     }
   }, [user?.id, vendor, saveToCache]);
 
+  // Only call the service, do not handle Cloudinary logic here
   const updateVendorProfile = useCallback(async (updates: Partial<VendorProfile>, imageFile?: File) => {
+    console.log('[VendorContext] updateVendorProfile called', updates, imageFile);
     if (!user?.id) throw new Error('No user ID available');
-    let imageUrl: string | undefined;
-    let uploadedImagePublicId: string | undefined;
-    let oldImagePublicId: string | undefined;
     try {
-      if (imageFile) {
-        imageUrl = await uploadToCloudinary(imageFile);
-        uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
-        const currentProfile = await vendorProfileService.getVendorProfile(user.id);
-        if (currentProfile?.banner_image_url) {
-          oldImagePublicId = getPublicIdFromUrl(currentProfile.banner_image_url);
-        }
-      }
-      const data = await vendorProfileService.updateVendorProfile(user.id, {
-        ...updates,
-        ...(imageUrl && { banner_image_url: imageUrl })
-      });
-      if (oldImagePublicId) {
-        await deleteFromCloudinary(oldImagePublicId);
-      }
+      const data = await updateVendorProfileService(user.id, updates, imageFile);
       setVendor(data);
       saveToCache({
         profile: data,
         ttl: CACHE_TTL
       });
+      console.log('[VendorContext] Vendor profile updated:', data);
       return;
     } catch (error) {
-      if (uploadedImagePublicId) {
-        await deleteFromCloudinary(uploadedImagePublicId);
-      }
+      console.error('[VendorContext] Error updating vendor profile:', error);
       throw error;
     }
   }, [user?.id, saveToCache]);
 
-  // Add createVendorProfile method (fixed signature)
-  const createVendorProfile = useCallback(async (profile) => {
+  // Only call the service, do not handle Cloudinary logic here
+  const createVendorProfile = useCallback(async (profile: CreateVendorProfileInput, imageFile?: File) => {
+    console.log('[VendorContext] createVendorProfile called', profile, imageFile);
     if (!user?.id) throw new Error('No user ID available');
     try {
-      const data = await vendorProfileService.createVendorProfile(user.id, profile);
+      const data = await createVendorProfileService(user.id, profile, imageFile);
       setVendor(data);
-      setHasVendor(true);
-      setIsOnboarded(data.isOnboarded || false);
       saveToCache({
         profile: data,
         ttl: CACHE_TTL
       });
+      console.log('[VendorContext] Vendor profile created:', data);
     } catch (error) {
+      console.error('[VendorContext] Error creating vendor profile:', error);
       throw error;
     }
   }, [user?.id, saveToCache]);
 
-  // Initialize auth state
+  const signOut = async () => {
+    clearCache();
+    await authSignOut();
+    console.log('[VendorContext] Signed out');
+  };
+
+  // Initialize vendor state when auth state changes
   useEffect(() => {
-    if (isInitialized) return;
-    
-    const initializeAuth = async () => {
-      try {
-        // First check cache
-        const cached = loadFromCache();
-        if (cached?.profile && cached?.session) {
-          console.debug('Using cached vendor data');
-          setVendor(cached.profile);
-          setHasVendor(true);
-          setIsOnboarded(cached.profile.isOnboarded || false);
-          setLoading(false);
-          return;
-        }
-
-        const session = await authService.getCurrentSession();
-        
-        if (session.user?.id) {
-          setUser(session.user);
-          setIsAuthenticated(true);
-          setSessionExpiresAt(session.expiresAt);
-          await loadVendor(session.user.id);
-        } else {
-          setIsAuthenticated(false);
-          setVendor(null);
-          setHasVendor(false);
-          setIsOnboarded(false);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Error in initializeAuth:', err);
-        setIsAuthenticated(false);
-        setVendor(null);
-        setHasVendor(false);
-        setIsOnboarded(false);
-        setLoading(false);
-      } finally {
-        setIsInitialized(true);
-      }
-    };
-
-    initializeAuth();
-  }, [isInitialized, loadVendor, loadFromCache]);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.debug('Auth state changed:', { event, userId: session?.user?.id });
-      
-      if (event === 'SIGNED_IN' && session?.user?.id) {
-        if (!user || user.id !== session.user.id) {
-          setIsAuthenticated(true);
-          setUser(session.user);
-          setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null);
-          await loadVendor(session.user.id);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setIsAuthenticated(false);
-        setUser(null);
-        setVendor(null);
-        setHasVendor(false);
-        setIsOnboarded(false);
-        setSessionExpiresAt(null);
-        clearCache();
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [isInitialized, loadVendor, user, clearCache]);
-
-  // Auto-refresh session
-  useEffect(() => {
-    if (sessionExpiresAt) {
-      const timeUntilExpiry = sessionExpiresAt - Date.now();
-      if (timeUntilExpiry > 0) {
-        const refreshTimer = setTimeout(refreshSession, timeUntilExpiry - SESSION_REFRESH_THRESHOLD);
-        return () => clearTimeout(refreshTimer);
-      }
+    console.log('[VendorContext] useEffect for auth state change', { isAuthenticated, user });
+    if (!isAuthenticated) {
+      setVendor(null);
+      clearCache();
+      setLoading(false);
+      return;
     }
-  }, [sessionExpiresAt, refreshSession]);
+    if (user?.id) {
+      const cached = loadFromCache();
+      if (cached) {
+        setVendor(cached.profile);
+        setLoading(false);
+        console.log('[VendorContext] Used cached vendor profile');
+        return;
+      }
+      loadVendor();
+    }
+  }, [isAuthenticated, user?.id, loadVendor, loadFromCache, clearCache]);
 
-  const getAccessToken = useCallback(async () => {
-    const { accessToken } = await authService.getCurrentSession();
-    return accessToken;
-  }, []);
-
-  const contextValue = useMemo(() => ({
+  const value = {
+    user,
     vendor,
     loading,
-    isAuthenticated,
-    isOnboarded,
-    user,
-    refreshVendor: () => loadVendor(user?.id ?? ''),
-    signOut,
-    refreshSession,
-    getAccessToken,
+    error,
+    refreshVendor: () => loadVendor(),
     updateVendorProfile,
     getVendorProfile,
     createVendorProfile,
-  }), [
-    vendor,
-    loading,
-    isAuthenticated,
-    isOnboarded,
-    user,
-    loadVendor,
-    signOut,
-    refreshSession,
-    getAccessToken,
-    updateVendorProfile,
-    getVendorProfile,
-    createVendorProfile,
-  ]);
+    clearCache,
+    signOut
+  };
 
   return (
-    <VendorContext.Provider value={contextValue}>
+    <VendorContext.Provider value={value}>
       {children}
     </VendorContext.Provider>
   );
@@ -367,14 +248,5 @@ export function useVendor() {
   if (!context) {
     throw new Error('useVendor must be used within a VendorProvider');
   }
-  
-  // Add debug log
-  console.debug('VendorContext state:', {
-    loading: context.loading,
-    isAuthenticated: context.isAuthenticated,
-    hasVendor: !!context.vendor,
-    isOnboarded: context.isOnboarded
-  });
-  
   return context;
 }

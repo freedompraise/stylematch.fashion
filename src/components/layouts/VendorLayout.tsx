@@ -42,8 +42,8 @@ const navigationItems = [
     subItems: [{ title: 'All Products', path: '/products' }]
   },
   { title: 'Orders', icon: ShoppingCart, path: '/orders' },
-  { title: 'Customers', icon: Users, path: '/customers' },
-  { title: 'Payments', icon: CreditCard, path: '/payments' },
+  // { title: 'Customers', icon: Users, path: '/customers' },
+  // { title: 'Payments', icon: CreditCard, path: '/payments' },
   {
     title: 'Settings',
     icon: Settings,

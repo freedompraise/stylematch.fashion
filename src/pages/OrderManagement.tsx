@@ -55,7 +55,7 @@ const OrderManagement: React.FC = () => {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetchOrders(user.id);
+    fetchOrders();
     // eslint-disable-next-line
   }, [user?.id, fetchOrders]);
   
