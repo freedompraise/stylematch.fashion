@@ -18,6 +18,7 @@ interface VendorContextType {
   user: User | null;
   vendor: VendorProfile | null;
   loading: boolean;
+  restoring: boolean;
   error: Error | null;
   refreshVendor: () => Promise<void>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
@@ -27,14 +28,47 @@ interface VendorContextType {
   signOut: () => Promise<void>;
 }
 
+// Utility: Only cache non-sensitive fields from the vendor profile
+function getCacheSafeVendorProfile(profile: VendorProfile): Partial<VendorProfile> {
+  // List of fields safe to cache
+  const {
+    user_id,
+    store_name,
+    name,
+    bio,
+    instagram_url,
+    facebook_url,
+    wabusiness_url,
+    banner_image_url,
+    verification_status,
+    isOnboarded,
+    onboarding_step,
+    last_session_refresh,
+    auth_metadata,
+    // payout_info intentionally omitted
+  } = profile;
+  return {
+    user_id,
+    store_name,
+    name,
+    bio,
+    instagram_url,
+    facebook_url,
+    wabusiness_url,
+    banner_image_url,
+    verification_status,
+    isOnboarded,
+    onboarding_step,
+    last_session_refresh,
+    auth_metadata,
+  };
+}
+
+// Remove onboarding from VendorCache, and only cache non-sensitive fields
 interface VendorCache {
-  profile: VendorProfile;
+  profile: Partial<VendorProfile>;
   timestamp: number;
   ttl: number;
-  onboarding: {
-    step: string;
-    data: any;
-  };
 }
 
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
@@ -47,6 +81,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, signOut: authSignOut } = useAuth();
   const [vendor, setVendor] = useState<VendorProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [restoring, setRestoring] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isLoadingVendor, setIsLoadingVendor] = useState(false);
 
@@ -67,8 +102,9 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
   // Cache Management
   const saveToCache = useCallback((data: { profile: VendorProfile; ttl: number }) => {
     try {
-      const cacheData = {
-        profile: data.profile,
+      const safeProfile = getCacheSafeVendorProfile(data.profile);
+      const cacheData: VendorCache = {
+        profile: safeProfile,
         timestamp: Date.now(),
         ttl: data.ttl
       };
@@ -83,7 +119,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     try {
       const cached = localStorage.getItem(VENDOR_CACHE_KEY);
       if (!cached) return null;
-      const { profile, timestamp, ttl } = JSON.parse(cached);
+      const { profile, timestamp, ttl } = JSON.parse(cached) as VendorCache;
       if (Date.now() - timestamp > ttl) {
         localStorage.removeItem(VENDOR_CACHE_KEY);
         console.log('[VendorContext] Cache expired, removed');
@@ -205,21 +241,27 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
   // Initialize vendor state when auth state changes
   useEffect(() => {
     console.log('[VendorContext] useEffect for auth state change', { isAuthenticated, user });
+    setRestoring(true);
     if (!isAuthenticated) {
       setVendor(null);
       clearCache();
       setLoading(false);
+      setRestoring(false);
       return;
     }
     if (user?.id) {
       const cached = loadFromCache();
       if (cached) {
-        setVendor(cached.profile);
+        setVendor(cached.profile as VendorProfile);
         setLoading(false);
+        setRestoring(false);
         console.log('[VendorContext] Used cached vendor profile');
+        loadVendor();
         return;
       }
-      loadVendor();
+      loadVendor().finally(() => setRestoring(false));
+    } else {
+      setRestoring(false);
     }
   }, [isAuthenticated, user?.id, loadVendor, loadFromCache, clearCache]);
 
@@ -227,6 +269,7 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
     user,
     vendor,
     loading,
+    restoring,
     error,
     refreshVendor: () => loadVendor(),
     updateVendorProfile,

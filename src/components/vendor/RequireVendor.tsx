@@ -6,11 +6,11 @@ import { useVendor } from '@/contexts/VendorContext';
 
 const RequireVendor: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { vendor, loading: vendorLoading } = useVendor();
+  const { vendor, loading: vendorLoading, restoring } = useVendor();
   const location = useLocation();
 
   // Show loading state while checking auth and vendor status
-  if (authLoading || vendorLoading) {
+  if (authLoading || vendorLoading || restoring) {
     return (
       <div className="flex items-center justify-center min-h-screen text-lg">
         <Loader2 className="animate-spin" size={24} />

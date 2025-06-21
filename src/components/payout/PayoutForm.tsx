@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Form } from '@/components/ui/form';
@@ -44,6 +44,12 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
       ...initialData
     }
   });
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset({ ...defaultInitialData, ...initialData });
+    }
+  }, [initialData, form.reset]);
 
   const resolveAccountName = async (bankCode: string, accountNumber: string) => {
     if (accountNumber.length !== 10) return;

@@ -118,7 +118,7 @@ const VendorOnboarding: React.FC = () => {
 
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
-    updateDetails({ uploadedImageFile: file });
+      updateDetails({ uploadedImageFile: file });
   };
   
   const handlePreviewUrlChange = (url: string | null) => {
@@ -330,7 +330,7 @@ const VendorOnboarding: React.FC = () => {
                           <FormControl>
                             <Input 
                               placeholder="Full Name" 
-                              {...field}
+                              {...field} 
                             />
                           </FormControl>
                           <FormMessage />
@@ -346,7 +346,7 @@ const VendorOnboarding: React.FC = () => {
                           <FormControl>
                             <Input 
                               placeholder="Phone Number" 
-                              {...field}
+                              {...field} 
                             />
                           </FormControl>
                           <FormMessage />
@@ -387,7 +387,7 @@ const VendorOnboarding: React.FC = () => {
                             <Textarea 
                               placeholder="Tell customers about your fashion business..."
                               className="min-h-[120px]" 
-                              {...field}
+                              {...field} 
                             />
                           </FormControl>
                           <FormMessage />
