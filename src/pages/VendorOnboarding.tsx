@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Instagram, Facebook, MessageCircle, Upload, AlertCircle } from 'lucide-react';
+import { ArrowRight, Instagram, Facebook, MessageCircle, AlertCircle } from 'lucide-react';
 import { paystackClient } from '@/lib/paystackClient';
 import { useVendor } from '@/contexts/VendorContext';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
 import { PayoutFormData } from '@/types';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
-import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 
 const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }),
@@ -44,7 +44,7 @@ const socialSchema = z.object({
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, refreshVendor, getVendorProfile, createVendorProfile } = useVendor();
+  const { user, createVendorProfile, getVendorProfile } = useVendor();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {
@@ -59,6 +59,8 @@ const VendorOnboarding: React.FC = () => {
     clearError,
     clearState,
   } = useOnboardingState();
+  const [imageFile, setImageFile] = useState<File | null>(state.formData.details.uploadedImageFile);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(state.formData.details.uploadedImage);
 
   const form = useForm({
     resolver: zodResolver(
@@ -80,16 +82,12 @@ const VendorOnboarding: React.FC = () => {
   // Load initial vendor data and redirect if vendor profile exists
   useEffect(() => {
     if (!user) return;
-    // Only call getVendorProfile once when user changes
     const loadVendorData = async () => {
       try {
         const data = await getVendorProfile();
         if (data) {
-          // If vendor profile exists, redirect to dashboard
           navigate('/dashboard', { replace: true });
-          return;
         }
-        // If no profile, do nothing (user is onboarding)
       } catch (error) {
         console.error('Error loading vendor data:', error);
         toast({
@@ -100,8 +98,7 @@ const VendorOnboarding: React.FC = () => {
       }
     };
     loadVendorData();
-    // Only depend on user
-  }, [user]);
+  }, [user, getVendorProfile, navigate, toast]);
 
   useEffect(() => {
     const loadBanks = async () => {
@@ -119,16 +116,14 @@ const VendorOnboarding: React.FC = () => {
     loadBanks();
   }, [toast]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      updateDetails({ uploadedImageFile: file });
-      const reader = new FileReader();
-      reader.onload = () => {
-        updateDetails({ uploadedImage: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageFileChange = (file: File | null) => {
+    setImageFile(file);
+    updateDetails({ uploadedImageFile: file });
+  };
+  
+  const handlePreviewUrlChange = (url: string | null) => {
+    setPreviewUrl(url);
+    updateDetails({ uploadedImage: url });
   };
 
   const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
@@ -149,7 +144,6 @@ const VendorOnboarding: React.FC = () => {
   const handleNextStep = async () => {
     const isValid = await validateStep();
     if (isValid) {
-      // Save current step data
       const formValues = form.getValues();
       if (state.step === 1) {
         updateBasics({
@@ -203,12 +197,11 @@ const VendorOnboarding: React.FC = () => {
       setSubmitting(true);
       clearError('submission');
 
-      // Validate all form data is present
       if (!state.formData.basics.store_name || !state.formData.basics.name || !state.formData.details.bio) {
-        throw new Error('Missing required form data');
+        setError('submission', 'Missing required form data');
+        return;
       }
 
-      // Create recipient in Paystack and get recipient code
       const payoutInfo = state.formData.payout;
       const recipientResult = await paystackClient.createRecipient({
         account_number: payoutInfo.account_number,
@@ -217,18 +210,6 @@ const VendorOnboarding: React.FC = () => {
         payout_mode: payoutInfo.payout_mode
       });
 
-      // Upload image first if provided
-      let banner_image_url: string | undefined;
-      if (state.formData.details.uploadedImageFile) {
-        try {
-          banner_image_url = await uploadToCloudinary(state.formData.details.uploadedImageFile);
-        } catch (error) {
-          console.error('Error uploading image:', error);
-          throw new Error('Failed to upload store banner image');
-        }
-      }
-
-      // Create vendor profile with complete information
       await createVendorProfile({
         store_name: state.formData.basics.store_name,
         name: state.formData.basics.name,
@@ -237,43 +218,28 @@ const VendorOnboarding: React.FC = () => {
         instagram_url: state.formData.social.instagram_link,
         facebook_url: state.formData.social.facebook_link,
         wabusiness_url: state.formData.social.wabusiness_link,
-        banner_image_url,
         payout_info: {
           ...payoutInfo,
           recipient_code: recipientResult.recipient_code
         },
         verification_status: 'pending',
-      });
+      }, imageFile || undefined);
 
-      await refreshVendor();
-      clearState(); // Clear saved onboarding state
+      clearState();
       
       toast({
         title: 'Onboarding Complete',
         description: 'Your store profile has been successfully set up.',
       });
       
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error) {
-      console.error('Error during onboarding:', error);
-      
-      // Cleanup uploaded image on failure
-      if (error instanceof Error && state.formData.details.uploadedImageFile) {
-        try {
-          const publicId = state.formData.details.uploadedImage?.split('/').pop()?.split('.')[0];
-          if (publicId) {
-            await deleteFromCloudinary(publicId);
-          }
-        } catch (cleanupError) {
-          console.error('Error cleaning up uploaded image:', cleanupError);
-        }
-      }
-      
-      setError('submission', error instanceof Error ? error.message : 'Failed to complete onboarding');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete onboarding';
+      setError('submission', errorMessage);
       
       toast({
         title: 'Error',
-        description: 'Failed to complete onboarding. Please try again.',
+        description: `${errorMessage}. Please try again.`,
         variant: 'destructive',
       });
     } finally {
@@ -335,7 +301,7 @@ const VendorOnboarding: React.FC = () => {
             )}
 
             <Form {...form}>
-              <form className="space-y-6">
+              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                 {state.step === 1 && (
                   <div className="space-y-6 animate-fade-in">
                     <h2 className="text-xl font-semibold text-baseContent">Store Basics</h2>
@@ -349,7 +315,6 @@ const VendorOnboarding: React.FC = () => {
                             <Input 
                               placeholder="Your Fashion Store" 
                               {...field} 
-                              defaultValue={state.formData.basics.store_name}
                             />
                           </FormControl>
                           <FormMessage />
@@ -365,8 +330,7 @@ const VendorOnboarding: React.FC = () => {
                           <FormControl>
                             <Input 
                               placeholder="Full Name" 
-                              {...field} 
-                              defaultValue={state.formData.basics.name}
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -382,8 +346,7 @@ const VendorOnboarding: React.FC = () => {
                           <FormControl>
                             <Input 
                               placeholder="Phone Number" 
-                              {...field} 
-                              defaultValue={state.formData.basics.phone}
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -406,28 +369,12 @@ const VendorOnboarding: React.FC = () => {
                       <label className="block text-sm font-medium text-baseContent mb-2">
                         Store Logo
                       </label>
-                      <div className="flex items-center space-x-6">
-                        <div className="relative overflow-hidden w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                          {state.formData.details.uploadedImage ? (
-                            <img 
-                              src={state.formData.details.uploadedImage} 
-                              alt="Store logo" 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Upload className="text-gray-400" />
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                        </div>
-                        <div className="text-sm text-baseContent-secondary">
-                          Upload your store logo or brand icon
-                        </div>
-                      </div>
+                      <StoreImageUpload
+                        imageFile={imageFile}
+                        onImageFileChange={handleImageFileChange}
+                        previewUrl={previewUrl}
+                        onPreviewUrlChange={handlePreviewUrlChange}
+                      />
                     </div>
                     
                     <FormField
@@ -440,8 +387,7 @@ const VendorOnboarding: React.FC = () => {
                             <Textarea 
                               placeholder="Tell customers about your fashion business..."
                               className="min-h-[120px]" 
-                              {...field} 
-                              defaultValue={state.formData.details.bio}
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />

@@ -5,51 +5,61 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { useForm, FormProvider } from 'react-hook-form';
 import { FormActions } from '@/components/ui/form-actions';
-import CloudinaryImage from '@/components/CloudinaryImage';
 import { Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 
 type StoreFormData = {
   store_name: string;
-  banner_image_url: string | null;
-}
+};
 
 const SettingsStore: React.FC = () => {
-  const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
+  const { vendor, updateVendorProfile } = useVendor();
   const { toast } = useToast();
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const form = useForm<StoreFormData>({
     defaultValues: {
       store_name: vendor?.store_name || '',
-      banner_image_url: vendor?.banner_image_url || null,
-    }
+    },
   });
 
   useEffect(() => {
     if (vendor) {
       form.reset({
         store_name: vendor.store_name || '',
-        banner_image_url: vendor.banner_image_url || null,
       });
+      if (vendor.banner_image_url) {
+        setPreviewUrl(vendor.banner_image_url);
+      } else {
+        setPreviewUrl(null);
+      }
     }
   }, [vendor, form]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-    }
-  };
   const onSubmit = async (formData: StoreFormData) => {
     try {
-      await updateVendorProfile({ store_name: formData.store_name });
+      const updates: Partial<typeof vendor> = { store_name: formData.store_name };
+      // If there's no preview URL, it means the user removed the image.
+      if (previewUrl === null && vendor?.banner_image_url) {
+        updates.banner_image_url = null;
+      }
+      
+      await updateVendorProfile(updates, imageFile || undefined);
+      
+      setImageFile(null); // Clear the file input after submission
       toast({ title: 'Store updated', description: 'Your store settings have been updated.' });
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to update store.', variant: 'destructive' });
     }
   };
 
-  const bannerImageUrl = form.watch('banner_image_url');
+  const handleCancel = () => {
+    form.reset({ store_name: vendor?.store_name || '' });
+    setImageFile(null);
+    setPreviewUrl(vendor?.banner_image_url || null);
+  };
 
   return (
     <div className="max-w-xl mx-auto">
@@ -68,7 +78,7 @@ const SettingsStore: React.FC = () => {
                 onClick={() => {
                   const storeName = form.getValues('store_name');
                   if (!storeName) return;
-                  const link = `https://stylematch.fashion/store/${storeName}`;
+                  const link = `https://www.stylematch.fashion/store/${storeName}`;
                   navigator.clipboard.writeText(link);
                   toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
                 }}
@@ -81,24 +91,16 @@ const SettingsStore: React.FC = () => {
           </div>
           <div>
             <label className="block font-semibold mb-1">Banner Image</label>
-            {bannerImageUrl && (
-              <div className="mb-2">
-                <CloudinaryImage
-                  publicId={bannerImageUrl}
-                  alt="Store Banner"
-                  width={400}
-                  height={120}
-                  className="rounded-md"
-                />
-              </div>
-            )}
-            <Input type="file" accept="image/*" onChange={handleImageChange} />
+            <StoreImageUpload
+              imageFile={imageFile}
+              onImageFileChange={setImageFile}
+              previewUrl={previewUrl}
+              onPreviewUrlChange={setPreviewUrl}
+              existingImageUrl={vendor?.banner_image_url}
+            />
           </div>
           <FormActions
-            onCancel={() => {
-              form.reset();
-              setImageFile(null);
-            }}
+            onCancel={handleCancel}
             isSubmitting={form.formState.isSubmitting}
             submitText="Save Changes"
             submittingText="Saving..."
