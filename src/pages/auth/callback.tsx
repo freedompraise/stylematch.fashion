@@ -28,7 +28,7 @@ export default function AuthCallback() {
         }
 
         // Successful login - let RequireVendor handle the routing
-        navigate('/dashboard', { replace: true });
+        navigate('/vendor/dashboard', { replace: true });
       } catch (err) {
         console.error('Auth callback error:', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');

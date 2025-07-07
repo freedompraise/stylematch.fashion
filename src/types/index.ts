@@ -107,6 +107,7 @@ export interface PayoutInfo {
   recipient_code?: string;
   account_name?: string;
   payout_mode?: 'automatic' | 'manual';
+  subaccount_code?: string;
 }
 
 export interface CreateVendorProfileInput {

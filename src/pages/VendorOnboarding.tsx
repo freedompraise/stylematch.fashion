@@ -44,7 +44,7 @@ const socialSchema = z.object({
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, createVendorProfile, getVendorProfile } = useVendor();
+  const { user, createVendorProfile} = useVendor();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {
@@ -78,27 +78,6 @@ const VendorOnboarding: React.FC = () => {
       wabusiness_link: state.formData.social.wabusiness_link,
     },
   });
-
-  // Load initial vendor data and redirect if vendor profile exists
-  useEffect(() => {
-    if (!user) return;
-    const loadVendorData = async () => {
-      try {
-        const data = await getVendorProfile();
-        if (data) {
-          navigate('/dashboard', { replace: true });
-        }
-      } catch (error) {
-        console.error('Error loading vendor data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load your profile data',
-          variant: 'destructive'
-        });
-      }
-    };
-    loadVendorData();
-  }, [user, getVendorProfile, navigate, toast]);
 
   useEffect(() => {
     const loadBanks = async () => {
@@ -203,12 +182,26 @@ const VendorOnboarding: React.FC = () => {
       }
 
       const payoutInfo = state.formData.payout;
-      const recipientResult = await paystackClient.createRecipient({
-        account_number: payoutInfo.account_number,
+
+      console.log('[Onboarding] Creating Paystack subaccount with:', {
+        business_name: state.formData.basics.store_name,
         bank_code: payoutInfo.bank_code,
-        account_name: payoutInfo.account_name,
-        payout_mode: payoutInfo.payout_mode
+        account_number: payoutInfo.account_number,
+        percentage_charge: 2
       });
+      const subaccountResult = await paystackClient.createSubaccount({
+        business_name: state.formData.basics.store_name,
+        bank_code: payoutInfo.bank_code,
+        account_number: payoutInfo.account_number,
+        percentage_charge: 2 // 2% to platform
+      });
+      console.log('[Onboarding] Subaccount creation result:', subaccountResult);
+
+      const payout_info_payload = {
+        ...payoutInfo,
+        subaccount_code: subaccountResult.subaccount_code
+      };
+      console.log('[Onboarding] Submitting vendor profile with payout_info:', payout_info_payload);
 
       await createVendorProfile({
         store_name: state.formData.basics.store_name,
@@ -218,11 +211,8 @@ const VendorOnboarding: React.FC = () => {
         instagram_url: state.formData.social.instagram_link,
         facebook_url: state.formData.social.facebook_link,
         wabusiness_url: state.formData.social.wabusiness_link,
-        payout_info: {
-          ...payoutInfo,
-          recipient_code: recipientResult.recipient_code
-        },
-        verification_status: 'pending',
+        payout_info: payout_info_payload,
+        verification_status: 'verified', // TODO: change to pending after testing
       }, imageFile || undefined);
 
       clearState();
@@ -232,7 +222,7 @@ const VendorOnboarding: React.FC = () => {
         description: 'Your store profile has been successfully set up.',
       });
       
-      navigate('/dashboard', { replace: true });
+      navigate('/vendor/dashboard', { replace: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to complete onboarding';
       setError('submission', errorMessage);

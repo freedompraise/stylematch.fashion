@@ -29,9 +29,9 @@ export default function VerificationComplete() {
         });
 
         if (isVendorSignup) {
-          navigate('/onboarding', { replace: true });
+          navigate('/vendor/onboarding', { replace: true });
         } else {
-          navigate('/dashboard', { replace: true });
+          navigate('/vendor/dashboard', { replace: true });
         }
       } catch (error) {
         console.error('Verification error:', error);

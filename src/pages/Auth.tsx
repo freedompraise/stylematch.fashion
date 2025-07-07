@@ -69,7 +69,7 @@ const Auth = (): JSX.Element => {
     try {
       setIsLoading(true);
       await signIn(data.email, data.password);
-      navigate('/dashboard');
+      navigate('/vendor/dashboard');
     } catch (error) {
       toast({
         title: 'Error',

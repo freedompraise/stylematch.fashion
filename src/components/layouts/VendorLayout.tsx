@@ -34,25 +34,25 @@ import {
 import { useVendorSearch } from '@/hooks/use-vendor-search';
 
 const navigationItems = [
-  { title: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { title: 'Dashboard', icon: LayoutDashboard, path: '/vendor/dashboard' },
   {
     title: 'Products',
     icon: Package,
-    path: '/products',
-    subItems: [{ title: 'All Products', path: '/products' }]
+    path: '/vendor/products',
+    subItems: [{ title: 'All Products', path: '/vendor/products' }]
   },
-  { title: 'Orders', icon: ShoppingCart, path: '/orders' },
+  { title: 'Orders', icon: ShoppingCart, path: '/vendor/orders' },
   // { title: 'Customers', icon: Users, path: '/customers' },
   // { title: 'Payments', icon: CreditCard, path: '/payments' },
   {
     title: 'Settings',
     icon: Settings,
-    path: '/settings',
+    path: '/vendor/settings',
     subItems: [
-      { title: 'Profile', path: '/settings' },
-      { title: 'Store', path: '/settings/store' },
-      { title: 'Payout', path: '/settings/payout' },
-      { title: 'Danger Zone', path: '/settings/danger' },
+      { title: 'Profile', path: '/vendor/settings' },
+      { title: 'Store', path: '/vendor/settings/store' },
+      { title: 'Payout', path: '/vendor/settings/payout' },
+      { title: 'Danger Zone', path: '/vendor/settings/danger' },
     ]
   }
 ];
@@ -89,7 +89,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
         <Sidebar className="border-r border-sidebar-border bg-sidebar-background text-sidebar-foreground">
         <SidebarHeader className="flex h-16 items-center px-4 border-b border-sidebar-border">
   <Link
-    to="/dashboard"
+    to="/vendor/dashboard"
     className="flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-primary hover:bg-sidebar-accent/50"
   >
     <span className="text-base font-bricolage font-bold leading-none">StyleMatch</span>

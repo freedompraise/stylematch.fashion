@@ -31,7 +31,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   </div>;
   
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/vendor/dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -56,7 +56,7 @@ export default function AppRoutes() {
       
       {/* Vendor onboarding route - requires auth but not vendor profile */}
       <Route
-        path="/onboarding"
+        path="/vendor/onboarding"
         element={
           <RequireAuth>
             <VendorOnboarding />
@@ -72,10 +72,10 @@ export default function AppRoutes() {
           </RequireVendor>
         }
       >
-        <Route path="dashboard" element={<VendorDashboard />} />
-        <Route path="products" element={<ProductManagement />} />
-        <Route path="products/:category" element={<ProductManagement />} />
-        <Route path="orders" element={<OrderManagement />} />
+        <Route path="vendor/dashboard" element={<VendorDashboard />} />
+        <Route path="vendor/products" element={<ProductManagement />} />
+        <Route path="vendor/products/:category" element={<ProductManagement />} />
+        <Route path="vendor/orders" element={<OrderManagement />} />
         <Route 
           path="customers" 
           element={
@@ -94,7 +94,7 @@ export default function AppRoutes() {
             </div>
           } 
         />
-        <Route path="settings">
+        <Route path="vendor/settings">
           <Route index element={<SettingsProfile />} />
           <Route path="store" element={<SettingsStore />} />
           <Route path="payout" element={<SettingsPayout />} />

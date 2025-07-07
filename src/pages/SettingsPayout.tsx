@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useToast } from '@/components/ui/use-toast';
 import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
-import { PayoutFormData } from '@/types';
 import { paystackClient } from '@/lib/paystackClient';
 import { Button } from '@/components/ui/button';
+import type { PayoutFormData as BasePayoutFormData } from '@/types';
+
+type PayoutFormData = BasePayoutFormData & { subaccount_code?: string };
 
 const SettingsPayout: React.FC = () => {
   const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
@@ -78,21 +80,26 @@ const SettingsPayout: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const result = await paystackClient.createRecipient({
-        account_number: payoutData.account_number,
-        bank_code: payoutData.bank_code,
-        account_name: payoutData.account_name,
-        payout_mode: payoutData.payout_mode
-      });
-
+      // Only update existing subaccount if subaccount_code exists
+      if (!payoutData.subaccount_code) {
+        toast({
+          title: 'No Subaccount',
+          description: 'No Paystack subaccount found. Please contact support or re-onboard.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      // Here you would call a new paystackClient.updateSubaccount if you want to update details on Paystack
+      // For now, just sync changes to Supabase
+      const payout_info_payload = {
+        ...payoutData,
+        bank_name: banks.find(b => b.code === payoutData.bank_code)?.name || payoutData.bank_name,
+      };
+      console.log('[SettingsPayout] Updating vendor profile payout_info:', payout_info_payload);
       await updateVendorProfile({
-        payout_info: {
-          ...payoutData,
-          bank_name: banks.find(b => b.code === payoutData.bank_code)?.name || payoutData.bank_name,
-          recipient_code: result.recipient_code,
-        }
+        payout_info: payout_info_payload
       });
-
       await refreshVendor();
       toast({ 
         title: 'Payout info updated', 

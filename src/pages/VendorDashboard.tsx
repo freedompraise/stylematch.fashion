@@ -78,11 +78,11 @@ const VendorDashboard: React.FC = () => {
   }, [user?.id, getVendorStats, products.length])
  
   const navigateToProducts = () => {
-    navigate('/products')
+    navigate('/vendor/products')
   }
 
   const navigateToProfile = () => {
-    navigate('/settings')
+    navigate('/vendor/settings')
   }
 
   if (isLoading) {

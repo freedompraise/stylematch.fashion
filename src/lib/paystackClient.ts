@@ -12,11 +12,8 @@ interface AccountResolution {
   bank_id: number;
 }
 
-interface RecipientResponse {
-  recipient_code: string;
-  account_number: string;
-  account_name: string;
-  bank_code: string;
+interface SubaccountResponse {
+  subaccount_code: string;
 }
 
 class PaystackClient {
@@ -53,14 +50,15 @@ class PaystackClient {
     });
   }
 
-  async createRecipient(data: {
-    account_number: string;
+  async createSubaccount(data: {
+    business_name: string;
     bank_code: string;
-    account_name: string;
-    payout_mode: 'automatic' | 'manual';
-  }): Promise<RecipientResponse> {
-    return this.request<RecipientResponse>('create_recipient', data);
+    account_number: string;
+    percentage_charge: number;
+  }): Promise<SubaccountResponse> {
+    return this.request<SubaccountResponse>('create_subaccount', data);
   }
 }
 
-export const paystackClient = new PaystackClient(); 
+export const paystackClient = new PaystackClient();
+export type { SubaccountResponse }; 
