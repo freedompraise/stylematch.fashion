@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useVendor } from '@/contexts/VendorContext';
 import { useToast } from '@/components/ui/use-toast';
-import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
 import { paystackClient } from '@/lib/paystackClient';
 import { Button } from '@/components/ui/button';
 import type { PayoutFormData as BasePayoutFormData } from '@/types';

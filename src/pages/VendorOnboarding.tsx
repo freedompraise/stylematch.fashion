@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Logo from '@/components/Logo';
 import { useToast } from '@/hooks/use-toast';
-import { PayoutForm, defaultInitialData } from '@/components/payout/PayoutForm';
+import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
 import { PayoutFormData } from '@/types';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';

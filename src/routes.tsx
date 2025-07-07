@@ -14,13 +14,13 @@ import VendorOnboarding from '@/pages/VendorOnboarding';
 import VendorDashboard from '@/pages/VendorDashboard';
 import ProductManagement from '@/pages/ProductManagement';
 import OrderManagement from '@/pages/OrderManagement';
-import Storefront from '@/pages/Storefront';
 import NotFound from '@/pages/NotFound';
-import VendorLayout from '@/components/layouts/VendorLayout';
+import VendorLayout from '@/components/vendor/VendorLayout';
 import SettingsProfile from '@/pages/SettingsProfile';
 import SettingsStore from '@/pages/SettingsStore';
 import SettingsPayout from '@/pages/SettingsPayout';
 import SettingsDangerZone from '@/pages/SettingsDangerZone';
+import React, { lazy } from 'react';
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -43,6 +43,12 @@ const VendorRoutes = () => (
   </VendorLayout>
 );
 
+// Lazy load buyer storefront pages
+const Storefront = lazy(() => import('./pages/Storefront'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const StoreCheckout = lazy(() => import('./pages/StoreCheckout'));
+const StoreConfirmation = lazy(() => import('./pages/StoreConfirmation'));
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -52,7 +58,7 @@ export default function AppRoutes() {
       <Route path="/auth/verification-complete" element={<VerificationComplete />} />
       <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/store/:name" element={<Storefront />} />
+      <Route path="/store/:name" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
       
       {/* Vendor onboarding route - requires auth but not vendor profile */}
       <Route
@@ -101,6 +107,12 @@ export default function AppRoutes() {
           <Route path="danger" element={<SettingsDangerZone />} />
         </Route>
       </Route>
+
+      {/* Buyer Storefront Public Routes */}
+      <Route path="/store/:vendorSlug" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
+      <Route path="/store/:vendorSlug/product/:productId" element={<React.Suspense fallback={<div>Loading...</div>}><ProductDetail /></React.Suspense>} />
+      <Route path="/store/:vendorSlug/checkout" element={<React.Suspense fallback={<div>Loading...</div>}><StoreCheckout /></React.Suspense>} />
+      <Route path="/store/:vendorSlug/confirmation" element={<React.Suspense fallback={<div>Loading...</div>}><StoreConfirmation /></React.Suspense>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

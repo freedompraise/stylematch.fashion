@@ -143,7 +143,7 @@ export interface VendorProfileService {
 }
 
 export type { VendorProfile } from "./VendorSchema"; 
-export type { ProductWithSales } from "./ProductSchema";
+export type { Product, ProductWithSales } from "./ProductSchema";
 
 export interface PaystackPayment {
   reference: string;
