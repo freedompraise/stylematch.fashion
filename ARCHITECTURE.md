@@ -89,16 +89,12 @@ This provider handles all business-related data for a logged-in vendor.
    - Custom form components
    - Dialog and modal components
 
-2. **Dashboard Components** (`components/dashboard/`)
+2. **Vendor Components** (`components/vendor/`)
    - DashboardStats: Analytics and metrics
    - SalesChart: Revenue visualization
    - TopProducts: Best-selling items
    - RecentOrders: Latest order management
 
-3. **Layout Components** (`components/layouts/`)
-   - VendorLayout: Main dashboard layout
-   - Navbar: Navigation component
-   - Footer: Global footer
 
 ### Services
 - **Supabase Integration**
@@ -375,3 +371,31 @@ AuthService -> VendorContext -> VendorDataProvider
      ↑              ↓                  ↓
   Supabase     Components         Database
 ```
+
+## Buyer Storefront & Purchase Flow (2025 July Update)
+
+### Contexts & State
+- **BuyerVendorContext**: Provides vendor profile and products by slug for all buyer-facing pages. Ensures a single DB call and shared state across Storefront, ProductDetail, Checkout, and Confirmation. No dependency on vendor session or VendorContext.
+- **CartContext**: Manages buyer cart state, persisted in localStorage. Exposes add/remove/update/clear and total calculation. Used in Storefront, ProductDetail, and Checkout.
+
+### Service Layer
+- **buyerStorefrontService.ts**: Contains all buyer-facing data logic (fetch vendor, fetch products, create order, get vendor subaccount for Paystack split). No vendor session/context dependency.
+- **Order/Payment**: On checkout, creates order in Supabase, fetches vendor subaccount via RPC, and initializes Paystack payment with split (2% platform, 98% vendor). Handles payment callback and updates order status.
+
+### Buyer Page Flow
+1. **/store/:vendorSlug**: Storefront page, shows vendor info and products from BuyerVendorContext.
+2. **/store/:vendorSlug/product/:productId**: Product detail, uses context for vendor/product, no extra DB call.
+3. **/store/:vendorSlug/checkout**: Uses context for vendor, products, and cart. Collects delivery info, creates order, and initiates payment.
+4. **/store/:vendorSlug/confirmation**: Fetches order by ID, shows payment/order status.
+
+### Decoupling
+- All buyer-facing logic is fully decoupled from vendor session/context. No useVendor or VendorContext is used in buyer pages, hooks, or services.
+- BuyerVendorContext is only initialized at the /store/:vendorSlug route level and is independent of authentication/session.
+
+### Extensibility
+- Delivery info and methods are extensible for future delivery service integration.
+- Cart and order types are centralized in types/index.ts for maintainability.
+- Payment split logic is handled via Supabase RPC for vendor subaccount.
+
+### Data Access & Supabase Calls
+- All Supabase/database calls for buyer flows are encapsulated in service modules (e.g., buyerStorefrontService.ts). UI components and pages do not make direct Supabase calls; they only use hooks/services for data access. This ensures strict separation of concerns and maintainability.

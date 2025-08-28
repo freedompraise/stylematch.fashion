@@ -1,69 +1,45 @@
-import { useEffect } from 'react';
+import React from 'react';
+import { useAuthStore } from '@/stores';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '@/services/authService';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { AuthError, AuthErrorType } from '@/services/errors/AuthError';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle } from 'lucide-react';
 
-export default function VerificationComplete() {
+const VerificationComplete: React.FC = () => {
+  const { isVendorSignup } = useAuthStore();
   const navigate = useNavigate();
-  const { isVendorSignup } = useAuth();
 
-  useEffect(() => {
-    const handleVerification = async () => {
-      try {
-        const hash = window.location.hash;
-        if (!hash) {
-          throw new AuthError(AuthErrorType.UNKNOWN, 'No verification token found');
-        }
-
-        const result = await authService.handleOAuthCallback(hash);
-        if (!result?.session) {
-          throw new AuthError(AuthErrorType.UNKNOWN, 'Verification failed');
-        }
-
-        toast({
-          title: 'Email Verified',
-          description: 'Your email has been verified successfully. Welcome to StyleMatch!',
-        });
-
-        if (isVendorSignup) {
-          navigate('/vendor/onboarding', { replace: true });
-        } else {
-          navigate('/vendor/dashboard', { replace: true });
-        }
-      } catch (error) {
-        console.error('Verification error:', error);
-        
-        const message = error instanceof AuthError
-          ? error.message
-          : 'Email verification failed. Please try signing in.';
-
-        toast({
-          title: 'Verification Failed',
-          description: message,
-          variant: 'destructive',
-        });
-
-        navigate('/auth', { replace: true });
-      }
-    };
-
-    handleVerification();
-  }, [navigate, isVendorSignup]);
+  const handleContinue = () => {
+    if (isVendorSignup) {
+      navigate('/vendor/onboarding');
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-      <div className="text-center space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-        <h1 className="text-xl font-semibold text-baseContent">
-          Completing Verification
-        </h1>
-        <p className="text-baseContent-secondary">
-          Please wait while we verify your email...
-        </p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+          <CardTitle className="text-2xl">Email Verified!</CardTitle>
+          <CardDescription>
+            Your email address has been successfully verified.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-sm text-muted-foreground mb-6">
+            You can now access your account and start using our platform.
+          </p>
+          <Button onClick={handleContinue} className="w-full">
+            Continue
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default VerificationComplete;

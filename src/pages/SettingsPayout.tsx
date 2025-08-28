@@ -1,139 +1,122 @@
 // SettingsPayout.tsx
 
-import React, { useState, useEffect } from 'react';
-import { useVendor } from '@/contexts/VendorContext';
+import React, { useState } from 'react';
+import { useVendorStore } from '@/stores';
+import { useVendorData } from '@/services/vendorDataService';
 import { useToast } from '@/components/ui/use-toast';
-import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
-import { paystackClient } from '@/lib/paystackClient';
 import { Button } from '@/components/ui/button';
-import type { PayoutFormData as BasePayoutFormData } from '@/types';
-
-type PayoutFormData = BasePayoutFormData & { subaccount_code?: string };
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const SettingsPayout: React.FC = () => {
-  const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
+  const { user, vendor, refreshVendor, updateVendorProfile } = useVendorStore();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
-  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
-  const [loadingBanks, setLoadingBanks] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isNameConfirmed, setIsNameConfirmed] = useState(false);
-  const [resolvedAccountName, setResolvedAccountName] = useState('');
-  const [payoutData, setPayoutData] = useState<PayoutFormData>(
-    defaultInitialData
-  );
+  const [formData, setFormData] = useState({
+    bank_name: vendor?.bank_name || '',
+    account_number: vendor?.account_number || '',
+    account_name: vendor?.account_name || '',
+  });
 
-  useEffect(() => {
-    if (vendor?.payout_info) {
-      setPayoutData(vendor.payout_info as PayoutFormData);
-      setResolvedAccountName(vendor.payout_info.account_name || '');
-      // If a recipient code exists, it means the info is saved and confirmed.
-      setIsNameConfirmed(!!vendor.payout_info.recipient_code);
-    }
-  }, [vendor]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-  useEffect(() => {
-    const fetchBanks = async () => {
-      try {
-        const bankList = await paystackClient.listBanks();
-        setBanks(bankList);
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Could not fetch bank list.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoadingBanks(false);
-      }
-    };
-    fetchBanks();
-  }, [toast]);
-
-  const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
-    setIsNameConfirmed(false); // Force re-confirmation on new resolution
     try {
-      const result = await paystackClient.resolveAccount(bankCode, accountNumber);
-      setResolvedAccountName(result.account_name);
-      return result;
-    } catch (error) {
-      setResolvedAccountName('');
+      await updateVendorProfile({
+        bank_name: formData.bank_name,
+        account_number: formData.account_number,
+        account_name: formData.account_name,
+      });
       toast({
-        title: 'Could not verify account',
-        description: 'Please check the bank and account number.',
+        title: 'Payout settings updated',
+        description: 'Your payout information has been updated successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update payout settings. Please try again.',
         variant: 'destructive',
       });
-      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!user?.id) return;
-    if (!isNameConfirmed) {
-      toast({
-        title: 'Confirm Account Name',
-        description: 'Please confirm the resolved account name before saving.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Only update existing subaccount if subaccount_code exists
-      if (!payoutData.subaccount_code) {
-        toast({
-          title: 'No Subaccount',
-          description: 'No Paystack subaccount found. Please contact support or re-onboard.',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      // Here you would call a new paystackClient.updateSubaccount if you want to update details on Paystack
-      // For now, just sync changes to Supabase
-      const payout_info_payload = {
-        ...payoutData,
-        bank_name: banks.find(b => b.code === payoutData.bank_code)?.name || payoutData.bank_name,
-      };
-      console.log('[SettingsPayout] Updating vendor profile payout_info:', payout_info_payload);
-      await updateVendorProfile({
-        payout_info: payout_info_payload
-      });
-      await refreshVendor();
-      toast({ 
-        title: 'Payout info updated', 
-        description: 'Your payout information has been updated.' 
-      });
-    } catch (error) {
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to update payout info.', 
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
-    <div className="max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Payout Configuration</h1>
-      <div className="space-y-6">
-        <PayoutForm
-          initialData={payoutData}
-          onChange={setPayoutData}
-          banks={banks}
-          onResolveAccount={handleResolveAccount}
-          disabled={loadingBanks || isSubmitting}
-          onAccountNameConfirm={() => setIsNameConfirmed(true)}
-          isNameConfirmed={isNameConfirmed}
-          resolvedAccountName={resolvedAccountName}
-        />
-        <Button onClick={handleSubmit} disabled={isSubmitting || loadingBanks || !isNameConfirmed}>
-          {isSubmitting ? 'Saving...' : 'Save Payout Information'}
-        </Button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Payout Settings</h1>
+        <p className="text-muted-foreground">
+          Configure your bank account details for receiving payments.
+        </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Bank Account Information</CardTitle>
+          <CardDescription>
+            Update your bank account details for payouts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bank_name">Bank Name</Label>
+              <Select
+                value={formData.bank_name}
+                onValueChange={(value) => handleInputChange('bank_name', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your bank" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="access-bank">Access Bank</SelectItem>
+                  <SelectItem value="gtbank">GTBank</SelectItem>
+                  <SelectItem value="zenith-bank">Zenith Bank</SelectItem>
+                  <SelectItem value="first-bank">First Bank</SelectItem>
+                  <SelectItem value="uba">UBA</SelectItem>
+                  <SelectItem value="ecobank">Ecobank</SelectItem>
+                  <SelectItem value="fidelity-bank">Fidelity Bank</SelectItem>
+                  <SelectItem value="stanbic-ibtc">Stanbic IBTC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="account_number">Account Number</Label>
+              <Input
+                id="account_number"
+                value={formData.account_number}
+                onChange={(e) => handleInputChange('account_number', e.target.value)}
+                placeholder="Enter your account number"
+                maxLength={10}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="account_name">Account Name</Label>
+              <Input
+                id="account_name"
+                value={formData.account_name}
+                onChange={(e) => handleInputChange('account_name', e.target.value)}
+                placeholder="Enter account holder name"
+              />
+            </div>
+
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Payout Settings'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

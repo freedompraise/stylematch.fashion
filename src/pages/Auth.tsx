@@ -19,7 +19,7 @@ import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { toast } from '@/hooks/use-toast';
 import { AuthService } from '@/services/authService';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -46,7 +46,7 @@ const Auth = (): JSX.Element => {
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const authService = new AuthService();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp } = useAuthStore();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),

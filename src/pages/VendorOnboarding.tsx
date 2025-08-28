@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, AlertCircle } from 'lucide-react';
 import { paystackClient } from '@/lib/paystackClient';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -44,7 +44,7 @@ const socialSchema = z.object({
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, createVendorProfile} = useVendor();
+  const { user, createVendorProfile} = useVendorStore();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {

@@ -1,6 +1,7 @@
 export interface VendorProfile {
   user_id: string;
   store_name: string;
+  store_slug: string;
   name: string;
   bio?: string;
   instagram_url?: string;

@@ -5,7 +5,8 @@ import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, createProductInputSchema } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
 import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
+import { VendorProfile } from '@/types';
 
 export type VendorDataContextType = {
   products: Product[];
@@ -37,11 +38,7 @@ export type VendorDataContextType = {
 const VendorDataContext = createContext<VendorDataContextType | undefined>(undefined);
 
 export const VendorDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const vendorContext = useVendor();
-  if (!vendorContext) {
-    throw new Error('VendorDataProvider must be used within a VendorProvider');
-  }
-  const { vendor } = vendorContext;
+  const { vendor } = useVendorStore();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);

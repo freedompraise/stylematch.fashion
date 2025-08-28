@@ -1,94 +1,111 @@
 import React, { useEffect } from 'react';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
+import { useVendorData } from '@/services/vendorDataService';
+import { useToast } from '@/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/use-toast';
-import { useForm, FormProvider } from 'react-hook-form';
-import { FormActions } from '@/components/ui/form-actions';
-
-interface ProfileFormData {
-  name: string;
-  bio: string;
-  instagram_url: string;
-  facebook_url: string;
-  wabusiness_url: string;
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 
 const SettingsProfile: React.FC = () => {
-  const { user, vendor, refreshVendor, updateVendorProfile } = useVendor();
+  const { user, vendor, refreshVendor, updateVendorProfile } = useVendorStore();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
-  const form = useForm<ProfileFormData>({
-    defaultValues: {
-      name: vendor?.name || '',
-      bio: vendor?.bio || '',
-      instagram_url: vendor?.instagram_url || '',
-      facebook_url: vendor?.facebook_url || '',
-      wabusiness_url: vendor?.wabusiness_url || '',
-    }
+  const [formData, setFormData] = useState({
+    name: vendor?.name || '',
+    email: user?.email || '',
+    phone: vendor?.phone || '',
   });
 
-  useEffect(() => {
-    if (vendor) {
-      form.reset({
-        name: vendor.name || '',
-        bio: vendor.bio || '',
-        instagram_url: vendor.instagram_url || '',
-        facebook_url: vendor.facebook_url || '',
-        wabusiness_url: vendor.wabusiness_url || '',
-      });
-    }
-  }, [vendor, form]);
-  const onSubmit = async (formData: ProfileFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      // Prepare safe update object, sending null for empty optional fields
-      const updateData = {
+      await updateVendorProfile({
         name: formData.name,
-        bio: formData.bio || null,
-        instagram_url: formData.instagram_url || null,
-        facebook_url: formData.facebook_url || null,
-        wabusiness_url: formData.wabusiness_url || null,
-      };
-      await updateVendorProfile(updateData);
-      await refreshVendor(); // Refresh vendor data in context
-      toast({ title: 'Profile updated', description: 'Your profile has been updated.' });
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to update profile.', variant: 'destructive' });
+        phone: formData.phone,
+      });
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
-    <div className="max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Profile Settings</h1>
-      <FormProvider {...form}>
-        <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-          <div>
-            <label className="block font-semibold mb-1">Name</label>
-            <Input {...form.register('name', { required: true })} />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Bio</label>
-            <Textarea {...form.register('bio')} rows={3} />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Instagram URL</label>
-            <Input {...form.register('instagram_url')} />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Facebook URL</label>
-            <Input {...form.register('facebook_url')} />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">WhatsApp Business URL</label>
-            <Input {...form.register('wabusiness_url')} />
-          </div>
-          <FormActions
-            onCancel={() => form.reset()}
-            isSubmitting={form.formState.isSubmitting}
-            submitText="Save Changes"
-            submittingText="Saving..."
-          />
-        </form>
-      </FormProvider>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Profile Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your personal information and contact details.
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Personal Information</CardTitle>
+          <CardDescription>
+            Update your name, email, and phone number.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                disabled
+                className="bg-gray-50"
+              />
+              <p className="text-sm text-muted-foreground">
+                Email address cannot be changed. Contact support if needed.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="Enter your phone number"
+              />
+            </div>
+
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Profile'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

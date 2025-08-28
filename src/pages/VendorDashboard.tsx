@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
-import { useVendor } from '@/contexts/VendorContext'
+import { useVendorStore } from '@/stores'
 import { useVendorData } from '@/services/vendorDataService'
 import DashboardStats from '@/components/vendor/dashboard/DashboardStats'
 import SalesChart from '@/components/vendor/dashboard/SalesChart'
@@ -21,7 +21,7 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { user} = useVendor()
+  const { user} = useVendorStore()
   const {
     products,
     getVendorStats,

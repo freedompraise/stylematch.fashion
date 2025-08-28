@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
 import { Product } from '@/types/ProductSchema';
 import { useVendorData } from '@/services/vendorDataService';
 import { FilterBar } from '@/components/vendor/FilterBar';
@@ -14,7 +14,7 @@ import { ProductList } from '@/components/vendor/products/ProductList';
 
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useVendor();
+  const { user } = useVendorStore();
   const {
     products,
     fetchProducts,

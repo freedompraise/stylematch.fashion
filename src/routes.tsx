@@ -2,7 +2,7 @@
 
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores';
 import RequireVendor from '@/components/vendor/RequireVendor';
 import Index from '@/pages/Index';
 import Auth from '@/pages/Auth';
@@ -23,7 +23,7 @@ import SettingsDangerZone from '@/pages/SettingsDangerZone';
 import React, { lazy } from 'react';
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuthStore();
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">
     <Loader2 className="animate-spin" size={24} />
@@ -58,7 +58,6 @@ export default function AppRoutes() {
       <Route path="/auth/verification-complete" element={<VerificationComplete />} />
       <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/store/:name" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
       
       {/* Vendor onboarding route - requires auth but not vendor profile */}
       <Route
@@ -121,7 +120,7 @@ export default function AppRoutes() {
 
 // New auth guard component
 const RequireAuth = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuthStore();
   const location = useLocation();
 
   if (loading) {

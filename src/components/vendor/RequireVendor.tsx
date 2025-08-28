@@ -3,12 +3,11 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useVendor } from '@/contexts/VendorContext';
+import { useAuthStore, useVendorStore } from '@/stores';
 
 const RequireVendor: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { vendor, loading: vendorLoading, ready } = useVendor();
+  const { isAuthenticated, loading: authLoading } = useAuthStore();
+  const { vendor, loading: vendorLoading, ready } = useVendorStore();
   const location = useLocation();
 
   const isOnboardingPage = location.pathname.startsWith('/vendor/onboarding');

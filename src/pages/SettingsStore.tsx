@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useVendor } from '@/contexts/VendorContext';
-import type { VendorProfile } from '@/types/VendorSchema';
-import { Input } from '@/components/ui/input';
+import { useVendorStore } from '@/stores';
+import { useVendorData } from '@/services/vendorDataService';
 import { useToast } from '@/components/ui/use-toast';
-import { useForm, FormProvider } from 'react-hook-form';
-import { FormActions } from '@/components/ui/form-actions';
-import { Clipboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Clipboard } from 'lucide-react';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 
 type StoreFormData = {
@@ -14,21 +15,28 @@ type StoreFormData = {
 };
 
 const SettingsStore: React.FC = () => {
-  const { vendor, updateVendorProfile } = useVendor();
+  const { vendor, updateVendorProfile } = useVendorStore();
   const { toast } = useToast();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const form = useForm<StoreFormData>({
-    defaultValues: {
-      store_name: vendor?.store_name || '',
-    },
+  const [formData, setFormData] = useState({
+    store_name: vendor?.store_name || '',
+    bio: vendor?.bio || '',
+    instagram_url: vendor?.instagram_url || '',
+    facebook_url: vendor?.facebook_url || '',
+    wabusiness_url: vendor?.wabusiness_url || '',
   });
 
   useEffect(() => {
     if (vendor) {
-      form.reset({
+      setFormData({
         store_name: vendor.store_name || '',
+        bio: vendor.bio || '',
+        instagram_url: vendor.instagram_url || '',
+        facebook_url: vendor.facebook_url || '',
+        wabusiness_url: vendor.wabusiness_url || '',
       });
       if (vendor.banner_image_url) {
         setPreviewUrl(vendor.banner_image_url);
@@ -36,27 +44,52 @@ const SettingsStore: React.FC = () => {
         setPreviewUrl(null);
       }
     }
-  }, [vendor, form]);
+  }, [vendor]);
 
-  const onSubmit = async (formData: StoreFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      const updates: Partial<typeof vendor> = { store_name: formData.store_name };
+      const updates: Partial<typeof vendor> = {
+        store_name: formData.store_name,
+        bio: formData.bio,
+        instagram_url: formData.instagram_url,
+        facebook_url: formData.facebook_url,
+        wabusiness_url: formData.wabusiness_url,
+      };
       // If there's no preview URL, it means the user removed the image.
       if (previewUrl === null && vendor?.banner_image_url) {
         updates.banner_image_url = null;
       }
-      
       await updateVendorProfile(updates, imageFile || undefined);
-      
-      setImageFile(null); // Clear the file input after submission
-      toast({ title: 'Store updated', description: 'Your store settings have been updated.' });
-    } catch (err) {
-      toast({ title: 'Error', description: 'Failed to update store.', variant: 'destructive' });
+      toast({
+        title: 'Store settings updated',
+        description: 'Your store settings have been updated successfully.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update store settings. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleCancel = () => {
-    form.reset({ store_name: vendor?.store_name || '' });
+    setFormData({
+      store_name: vendor?.store_name || '',
+      bio: vendor?.bio || '',
+      instagram_url: vendor?.instagram_url || '',
+      facebook_url: vendor?.facebook_url || '',
+      wabusiness_url: vendor?.wabusiness_url || '',
+    });
     setImageFile(null);
     setPreviewUrl(vendor?.banner_image_url || null);
   };
@@ -64,49 +97,105 @@ const SettingsStore: React.FC = () => {
   return (
     <div className="max-w-xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Store Settings</h1>
-      <FormProvider {...form}>
-        <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-          <div>
-            <label className="block font-semibold mb-1">Store Name</label>
-            <div className="flex items-center gap-2">
-              <Input {...form.register('store_name', { required: true })} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1"
-                onClick={() => {
-                  const storeName = form.getValues('store_name');
-                  if (!storeName) return;
-                  const link = `https://www.stylematch.fashion/store/${storeName}`;
-                  navigator.clipboard.writeText(link);
-                  toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
-                }}
-                disabled={!form.watch('store_name')}
-              >
-                <Clipboard className="w-4 h-4" />
-                Copy Link
-              </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Store Information</CardTitle>
+          <CardDescription>
+            Update your store name, description, and social media links.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="store_name">Store Name</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="store_name"
+                  value={formData.store_name}
+                  onChange={(e) => handleInputChange('store_name', e.target.value)}
+                  placeholder="Enter your store name"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                  onClick={() => {
+                    const storeName = formData.store_name;
+                    if (!storeName) return;
+                    const link = `https://www.stylematch.fashion/store/${storeName}`;
+                    navigator.clipboard.writeText(link);
+                    toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
+                  }}
+                  disabled={!formData.store_name}
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Copy Link
+                </Button>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block font-semibold mb-1">Banner Image</label>
-            <StoreImageUpload
-              imageFile={imageFile}
-              onImageFileChange={setImageFile}
-              previewUrl={previewUrl}
-              onPreviewUrlChange={setPreviewUrl}
-              existingImageUrl={vendor?.banner_image_url}
-            />
-          </div>
-          <FormActions
-            onCancel={handleCancel}
-            isSubmitting={form.formState.isSubmitting}
-            submitText="Save Changes"
-            submittingText="Saving..."
-          />
-        </form>
-      </FormProvider>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Store Description</Label>
+              <Textarea
+                id="bio"
+                value={formData.bio}
+                onChange={(e) => handleInputChange('bio', e.target.value)}
+                placeholder="Describe your store and what you sell"
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="instagram_url">Instagram URL</Label>
+              <Input
+                id="instagram_url"
+                type="url"
+                value={formData.instagram_url}
+                onChange={(e) => handleInputChange('instagram_url', e.target.value)}
+                placeholder="https://instagram.com/yourstore"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="facebook_url">Facebook URL</Label>
+              <Input
+                id="facebook_url"
+                type="url"
+                value={formData.facebook_url}
+                onChange={(e) => handleInputChange('facebook_url', e.target.value)}
+                placeholder="https://facebook.com/yourstore"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="wabusiness_url">WhatsApp Business URL</Label>
+              <Input
+                id="wabusiness_url"
+                type="url"
+                value={formData.wabusiness_url}
+                onChange={(e) => handleInputChange('wabusiness_url', e.target.value)}
+                placeholder="https://wa.me/yournumber"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="banner_image">Banner Image</Label>
+              <StoreImageUpload
+                imageFile={imageFile}
+                onImageFileChange={setImageFile}
+                previewUrl={previewUrl}
+                onPreviewUrlChange={setPreviewUrl}
+                existingImageUrl={vendor?.banner_image_url}
+              />
+            </div>
+
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Store Settings'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

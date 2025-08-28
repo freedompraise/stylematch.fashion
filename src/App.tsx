@@ -1,21 +1,35 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { VendorProvider } from '@/contexts/VendorContext';
+import { useEffect } from 'react';
 import { VendorDataProvider } from './services/vendorDataService';
 import AppRoutes from '@/routes';
 import { Toaster } from '@/components/ui/toaster';
+import { useAuthStore, initializeAuth, initializeVendor } from '@/stores';
 
 function App() {
+  const { user } = useAuthStore();
+  
+  useEffect(() => {
+    // Initialize auth state
+    const subscription = initializeAuth();
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+  
+  useEffect(() => {
+    // Initialize vendor state when user changes
+    if (user) {
+      initializeVendor(user);
+    }
+  }, [user]);
+
   return (
     <Router>
-      <AuthProvider>
-        <VendorProvider>
-          <VendorDataProvider>
-            <AppRoutes />
-            <Toaster />
-          </VendorDataProvider>
-        </VendorProvider>
-      </AuthProvider>
+      <VendorDataProvider>
+        <AppRoutes />
+        <Toaster />
+      </VendorDataProvider>
     </Router>
   );
 }

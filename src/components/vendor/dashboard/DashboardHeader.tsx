@@ -1,8 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LogOut, Plus } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useVendor } from '@/contexts/VendorContext';
+import { useAuthStore, useVendorStore } from '@/stores';
 import { useVendorData } from '@/services/vendorDataService';
 import { Navigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,8 +11,8 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onAddProduct }) => {
-  const { signOut } = useAuth();
-  const { clearCache } = useVendor();
+  const { signOut } = useAuthStore();
+  const { clearCache } = useVendorStore();
   const { resetVendorData } = useVendorData();
   const { toast } = useToast();
 

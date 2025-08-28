@@ -96,7 +96,7 @@ export interface RouteConfig {
   isProtected: boolean;
 }
 
-// Vendor Profile Service Types (see docs/vendor-profile-service.spec.md)
+// Vendor Profile Service Types 
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 
@@ -179,4 +179,25 @@ export interface PaystackPayment {
       time: number;
     }>;
   };
+}
+
+// Buyer Cart Types
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+  size?: string;
+  color?: string;
+  vendor_slug: string;
+}
+
+export interface CartContextType {
+  items: CartItem[];
+  addItem: (item: CartItem) => void;
+  removeItem: (id: string, size?: string, color?: string) => void;
+  updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
+  clearCart: () => void;
+  getTotal: () => number;
 }
