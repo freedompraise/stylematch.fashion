@@ -1,18 +1,23 @@
 import supabase from '@/lib/supabaseClient';
 import { VendorProfile, Product } from '@/types';
 
-export async function getVendorBySlug(slug: string): Promise<VendorProfile | null> {
-  const { data, error } = await supabase
-    .from('vendor_storefront_view')
-    .select('*')
-    .eq('store_slug', slug)
-    .single();
-  if (error) return null;
-  return data as VendorProfile;
+export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
+ const { data, error } = await supabase
+   .from('vendors')
+   .select('*')
+   .eq('store_slug', storeSlug)
+   .single();
+   
+ if (error) {
+   if (error.code === 'PGRST116') {
+     return null;
+   }
+   throw new Error(`Failed to fetch vendor: ${error.message}`);
+ }
+ return data as VendorProfile;
 }
 
 export async function getProductsByVendorSlug(slug: string): Promise<Product[]> {
-  // First, get the vendor by slug
   const vendor = await getVendorBySlug(slug);
   if (!vendor) return [];
   const { data, error } = await supabase
