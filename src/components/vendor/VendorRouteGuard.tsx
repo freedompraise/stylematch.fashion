@@ -11,29 +11,41 @@ interface VendorRouteGuardProps {
 }
 
 const VendorRouteGuard: React.FC<VendorRouteGuardProps> = ({ children, route }) => {
-  const { user, isAuthenticated, loading: authLoading } = useAuthStore();
+  const { user, session, isAuthenticated, loading: authLoading } = useAuthStore();
   const { vendor, loading, error, loadVendorForRoute } = useVendorStore();
   const location = useLocation();
 
   useEffect(() => {
-    if (user?.id && !vendor && !loading && !authLoading) {
+    // Only load vendor if we have a user and auth is not loading
+    if (user?.id && !vendor && !loading && !authLoading && session) {
       loadVendorForRoute(user.id, route);
     }
-  }, [user?.id, route, vendor, loading, authLoading, loadVendorForRoute]);
+  }, [user?.id, route, vendor, loading, authLoading, session, loadVendorForRoute]);
 
-  // Show loading while auth is loading or vendor is loading
-  if (authLoading || loading) {
+  // Show loading while auth is initializing
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-lg">
         <Loader2 className="animate-spin" size={24} />
-        <span className="ml-2">Loading...</span>
+        <span className="ml-2">Initializing...</span>
       </div>
     );
   }
 
-  // Redirect to auth if not authenticated
-  if (!isAuthenticated) {
-    console.log('[VendorRouteGuard] Not authenticated, redirecting to /auth');
+  // Debug logging
+  console.log('[VendorRouteGuard] State:', {
+    authLoading,
+    loading,
+    isAuthenticated,
+    hasUser: !!user?.id,
+    hasSession: !!session,
+    hasVendor: !!vendor,
+    error: error?.message
+  });
+
+  // Only check authentication after auth loading is complete AND we have a definitive answer
+  if (!authLoading && !session && !user) {
+    console.log('[VendorRouteGuard] No session or user, redirecting to /auth');
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -47,8 +59,8 @@ const VendorRouteGuard: React.FC<VendorRouteGuardProps> = ({ children, route }) 
     );
   }
 
-  // Redirect to onboarding if no vendor profile exists
-  if (!vendor && !error) {
+  // Redirect to onboarding if no vendor profile exists (but user is authenticated)
+  if (session && user && !vendor && !error && !loading) {
     console.log('[VendorRouteGuard] No vendor profile, redirecting to /vendor/onboarding');
     return <Navigate to="/vendor/onboarding" state={{ from: location }} replace />;
   }
