@@ -213,7 +213,6 @@ const { createVendorProfile} = useVendorStore();
         facebook_url: state.formData.social.facebook_link,
         wabusiness_url: state.formData.social.wabusiness_link,
         payout_info: payout_info_payload,
-        verification_status: 'verified', // TODO: change to pending after testing
       }, imageFile || undefined);
 
       clearState();

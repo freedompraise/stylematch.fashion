@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Form } from '@/components/ui/form';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { PayoutFormData } from '@/types';
 
 interface PayoutFormProps {
@@ -94,23 +94,24 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
     <Form {...form}>
       <form className="space-y-6">
         <div>
-          <label className="block font-semibold mb-1">Payout Mode</label>
+          <label className="block font-semibold mb-1 text-baseContent">Payout Mode</label>
           <select 
             {...form.register('payout_mode', { required: true })} 
-            className="input w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
             onChange={(e) => handleFieldChange('payout_mode', e.target.value)}
             disabled={disabled}
           >
+            <option value="">Select Payout Mode</option>
             <option value="automatic">Automatic</option>
             <option value="manual">Manual</option>
           </select>
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Bank</label>
+          <label className="block font-semibold mb-1 text-baseContent">Bank</label>
           <select
             {...form.register('bank_code', { required: true })}
-            className="input w-full"
+            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
             onChange={async e => {
               const code = e.target.value;
               const bank = banks.find(b => b.code === code);
@@ -127,13 +128,13 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
           >
             <option value="">Select Bank</option>
             {banks.map(b => (
-              <option key={b.code} value={b.code}>{b.name}</option>
+              <option key={b.code} value={b.code} className="text-baseContent">{b.name}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Account Number</label>
+          <label className="block font-semibold mb-1 text-baseContent">Account Number</label>
           <Input
             {...form.register('account_number', { required: true })}
             maxLength={10}
@@ -156,7 +157,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
         </div>
 
         <div>
-          <label className="block font-semibold mb-1">Account Name</label>
+          <label className="block font-semibold mb-1 text-baseContent">Account Name</label>
           <div className="relative">
             <Input 
               {...form.register('account_name', { required: true })} 
