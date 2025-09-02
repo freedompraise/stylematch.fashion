@@ -1,8 +1,9 @@
 // routes.tsx
 
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useAuthStore } from '@/stores';
+import { useAuthStore } from '@/stores/authStore';
+import { useVendorStore } from '@/stores/vendorStore';
 import VendorRouteGuard from '@/components/vendor/VendorRouteGuard';
 
 import Index from '@/pages/Index';
@@ -24,17 +25,28 @@ import SettingsDangerZone from '@/pages/vendor/SettingsDangerZone';
 import React, { lazy } from 'react';
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuthStore();
+  const { user, session, loading } = useAuthStore();
+
+  // Debug logging
+  console.log('[AuthRoute] State:', {
+    loading,
+    hasUser: !!user?.id,
+    hasSession: !!session,
+    pathname: window.location.pathname
+  });
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">
     <Loader2 className="animate-spin" size={24} />
     <span className="ml-2">Loading Auth...</span>
   </div>;
   
-  if (isAuthenticated) {
+  // Only redirect if not loading and we have a session/user
+  if (!loading && session && user) {
+    console.log('[AuthRoute] User authenticated, redirecting to dashboard');
     return <Navigate to="/vendor/dashboard" replace />;
   }
 
+  console.log('[AuthRoute] Showing auth page');
   return <>{children}</>;
 };
 
@@ -60,42 +72,42 @@ export default function AppRoutes() {
       <Route
         path="/vendor/onboarding"
         element={
-          <RequireAuth>
+          <OnboardingRouteGuard>
             <VendorOnboarding />
-          </RequireAuth>
+          </OnboardingRouteGuard>
         }
       />
 
       {/* Vendor routes - requires both auth and vendor profile */}
-      <Route path="vendor/dashboard" element={
+      <Route path="/vendor/dashboard" element={
         <VendorRouteGuard route="dashboard">
           <VendorLayout>
             <VendorDashboard />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/products" element={
+      <Route path="/vendor/products" element={
         <VendorRouteGuard route="products">
           <VendorLayout>
             <ProductManagement />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/products/:category" element={
+      <Route path="/vendor/products/:category" element={
         <VendorRouteGuard route="products">
           <VendorLayout>
             <ProductManagement />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/orders" element={
+      <Route path="/vendor/orders" element={
         <VendorRouteGuard route="orders">
           <VendorLayout>
             <OrderManagement />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="customers" element={
+      <Route path="/vendor/customers" element={
         <VendorRouteGuard route="customers">
           <VendorLayout>
             <div className="p-6">
@@ -105,7 +117,7 @@ export default function AppRoutes() {
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="payments" element={
+      <Route path="/vendor/payments" element={
         <VendorRouteGuard route="payments">
           <VendorLayout>
             <div className="p-6">
@@ -115,28 +127,28 @@ export default function AppRoutes() {
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/settings" element={
+      <Route path="/vendor/settings" element={
         <VendorRouteGuard route="settings">
           <VendorLayout>
             <SettingsProfile />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/settings/store" element={
+      <Route path="/vendor/settings/store" element={
         <VendorRouteGuard route="settings">
           <VendorLayout>
             <SettingsStore />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/settings/payout" element={
+      <Route path="/vendor/settings/payout" element={
         <VendorRouteGuard route="settings">
           <VendorLayout>
             <SettingsPayout />
           </VendorLayout>
         </VendorRouteGuard>
       } />
-      <Route path="vendor/settings/danger" element={
+      <Route path="/vendor/settings/danger" element={
         <VendorRouteGuard route="settings">
           <VendorLayout>
             <SettingsDangerZone />
@@ -154,22 +166,43 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+// Onboarding route guard - requires auth but not vendor profile
+const OnboardingRouteGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, session, loading: authLoading } = useAuthStore();
+  const { vendor, loading: vendorLoading } = useVendorStore();
 
-// New auth guard component
-const RequireAuth = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuthStore();
-  const location = useLocation();
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen text-lg">
-      <Loader2 className="animate-spin" size={24} />
-      <span className="ml-2">Loading Auth...</span>
-    </div>;
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-lg">
+        <Loader2 className="animate-spin" size={24} />
+        <span className="ml-2">Initializing...</span>
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+  // Debug logging
+  console.log('[OnboardingRouteGuard] State:', {
+    authLoading,
+    vendorLoading,
+    hasUser: !!user?.id,
+    hasSession: !!session,
+    hasVendor: !!vendor
+  });
+
+  // Redirect to auth if not authenticated
+  if (!authLoading && !session && !user) {
+    console.log('[OnboardingRouteGuard] Not authenticated, redirecting to /auth');
+    return <Navigate to="/auth" replace />;
   }
 
+  // If user already has a verified vendor profile, redirect to dashboard
+  if (vendor && vendor.verification_status === 'verified') {
+    console.log('[OnboardingRouteGuard] User already verified, redirecting to dashboard');
+    return <Navigate to="/vendor/dashboard" replace />;
+  }
+
+  console.log('[OnboardingRouteGuard] Auth check passed, showing onboarding');
   return <>{children}</>;
 };
+
