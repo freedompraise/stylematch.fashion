@@ -15,8 +15,6 @@ const createVendorProfileSchema = z.object({
   banner_image_url: z.string().optional(),
   phone: z.string().optional(),
   payout_info: z.any().optional(),
-  verification_status: z.enum(['pending', 'verified', 'rejected']),
-  rejection_reason: z.string().optional(),
 });
 
 const updateVendorProfileSchema = z.object({
@@ -29,8 +27,6 @@ const updateVendorProfileSchema = z.object({
   banner_image_url: z.string().optional(),
   phone: z.string().optional(),
   payout_info: z.any().optional(),
-  verification_status: z.enum(['pending', 'verified', 'rejected']).optional(),
-  rejection_reason: z.string().optional(),
 });
 
 export async function checkSlugExists(slug: string): Promise<boolean> {
@@ -85,6 +81,7 @@ export async function createVendorProfile(userId: string, profile: CreateVendorP
         ...profile,
         ...(imageUrl && { banner_image_url: imageUrl }),
         isOnboarded: true,
+        verification_status: 'pending',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -98,6 +95,7 @@ export async function createVendorProfile(userId: string, profile: CreateVendorP
     if (!data) {
       throw new DatabaseError('Failed to create vendor profile');
     }
+    
     return data as VendorProfile;
   } catch (error) {
     if (imageUrl) {
@@ -108,18 +106,55 @@ export async function createVendorProfile(userId: string, profile: CreateVendorP
 }
 
 export async function getVendorProfile(userId: string): Promise<VendorProfile | null> {
-  const { data, error } = await supabase
-    .from('vendors')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
+  console.log('[VendorProfileService] Fetching vendor for user:', userId);
+  
+  try {
+    // Try the standard query first
+    const { data, error } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+      
+    if (error) {
+      console.error('[VendorProfileService] Error fetching vendor:', error);
+      if (error.code === 'PGRST116') {
+        console.log('[VendorProfileService] No vendor found (PGRST116)');
+        return null;
+      }
+      
+      // If we get a 406 error, try a different approach
+      if (error.code === '406') {
+        console.log('[VendorProfileService] Got 406 error, trying alternative query...');
+        const { data: altData, error: altError } = await supabase
+          .from('vendors')
+          .select('user_id, store_name, store_slug, name, bio, instagram_url, facebook_url, wabusiness_url, phone, banner_image_url, payout_info, isOnboarded, verification_status, archived, created_at, updated_at')
+          .eq('user_id', userId)
+          .maybeSingle();
+          
+        if (altError) {
+          console.error('[VendorProfileService] Alternative query also failed:', altError);
+          throw new DatabaseError(altError.message);
+        }
+        
+        if (altData) {
+          console.log('[VendorProfileService] Vendor found with alternative query:', altData);
+          return altData as VendorProfile;
+        }
+        
+        console.log('[VendorProfileService] No vendor found with alternative query');
+        return null;
+      }
+      
+      throw new DatabaseError(error.message);
     }
-    throw new DatabaseError(error.message);
+    
+    console.log('[VendorProfileService] Vendor found:', data);
+    return data as VendorProfile;
+  } catch (err) {
+    console.error('[VendorProfileService] Unexpected error:', err);
+    throw err;
   }
-  return data as VendorProfile;
 }
 
 
@@ -202,7 +237,7 @@ export async function deleteVendorProfile(userId: string): Promise<void> {
 export async function verifyVendor(userId: string): Promise<VendorProfile> {
   const { data, error } = await supabase
     .from('vendors')
-    .update({ verification_status: 'verified', rejection_reason: null })
+    .update({ verification_status: 'verified' })
     .eq('user_id', userId)
     .select()
     .single();
@@ -218,7 +253,7 @@ export async function verifyVendor(userId: string): Promise<VendorProfile> {
 export async function rejectVendor(userId: string, reason: string): Promise<VendorProfile> {
   const { data, error } = await supabase
     .from('vendors')
-    .update({ verification_status: 'rejected', rejection_reason: reason })
+    .update({ verification_status: 'rejected' })
     .eq('user_id', userId)
     .select()
     .single();
@@ -226,7 +261,7 @@ export async function rejectVendor(userId: string, reason: string): Promise<Vend
     throw new DatabaseError(error.message);
   }
   if (!data) {
-    throw new NotFoundError('Vendor not found');
+    throw new NotFoundError('VendorProfile not found');
   }
   return data as VendorProfile;
 }

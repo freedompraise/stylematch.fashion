@@ -3,23 +3,24 @@
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores';
-import RequireVendor from '@/components/vendor/RequireVendor';
+import VendorRouteGuard from '@/components/vendor/VendorRouteGuard';
+
 import Index from '@/pages/Index';
-import Auth from '@/pages/Auth';
+import Auth from '@/pages/auth/Index';
 import AuthCallback from '@/pages/auth/callback';
 import VerificationComplete from '@/pages/auth/verification-complete';
 import ForgotPassword from '@/pages/auth/forgot-password';
 import ResetPassword from '@/pages/auth/reset-password';
-import VendorOnboarding from '@/pages/VendorOnboarding';
-import VendorDashboard from '@/pages/VendorDashboard';
-import ProductManagement from '@/pages/ProductManagement';
-import OrderManagement from '@/pages/OrderManagement';
+import VendorOnboarding from '@/pages/vendor/VendorOnboarding';
+import VendorDashboard from '@/pages/vendor/VendorDashboard';
+import ProductManagement from '@/pages/vendor/ProductManagement';
+import OrderManagement from '@/pages/vendor/OrderManagement';
 import NotFound from '@/pages/NotFound';
 import VendorLayout from '@/components/vendor/VendorLayout';
-import SettingsProfile from '@/pages/SettingsProfile';
-import SettingsStore from '@/pages/SettingsStore';
-import SettingsPayout from '@/pages/SettingsPayout';
-import SettingsDangerZone from '@/pages/SettingsDangerZone';
+import SettingsProfile from '@/pages/vendor/SettingsProfile';
+import SettingsStore from '@/pages/vendor/SettingsStore';
+import SettingsPayout from '@/pages/vendor/SettingsPayout';
+import SettingsDangerZone from '@/pages/vendor/SettingsDangerZone';
 import React, { lazy } from 'react';
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
@@ -37,17 +38,13 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const VendorRoutes = () => (
-  <VendorLayout>
-    <Outlet />
-  </VendorLayout>
-);
+
 
 // Lazy load buyer storefront pages
-const Storefront = lazy(() => import('./pages/Storefront'));
-const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const StoreCheckout = lazy(() => import('./pages/StoreCheckout'));
-const StoreConfirmation = lazy(() => import('./pages/StoreConfirmation'));
+const Storefront = lazy(() => import('./pages/buyer/Storefront'));
+const ProductDetail = lazy(() => import('./pages/buyer/ProductDetail'));
+const StoreCheckout = lazy(() => import('./pages/buyer/StoreCheckout'));
+const StoreConfirmation = lazy(() => import('./pages/buyer/StoreConfirmation'));
 
 export default function AppRoutes() {
   return (
@@ -70,42 +67,82 @@ export default function AppRoutes() {
       />
 
       {/* Vendor routes - requires both auth and vendor profile */}
-      <Route
-        element={
-          <RequireVendor>
-            <VendorRoutes />
-          </RequireVendor>
-        }
-      >
-        <Route path="vendor/dashboard" element={<VendorDashboard />} />
-        <Route path="vendor/products" element={<ProductManagement />} />
-        <Route path="vendor/products/:category" element={<ProductManagement />} />
-        <Route path="vendor/orders" element={<OrderManagement />} />
-        <Route 
-          path="customers" 
-          element={
+      <Route path="vendor/dashboard" element={
+        <VendorRouteGuard route="dashboard">
+          <VendorLayout>
+            <VendorDashboard />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/products" element={
+        <VendorRouteGuard route="products">
+          <VendorLayout>
+            <ProductManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/products/:category" element={
+        <VendorRouteGuard route="products">
+          <VendorLayout>
+            <ProductManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/orders" element={
+        <VendorRouteGuard route="orders">
+          <VendorLayout>
+            <OrderManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="customers" element={
+        <VendorRouteGuard route="customers">
+          <VendorLayout>
             <div className="p-6">
               <h1 className="text-3xl font-bold">Customers</h1>
               <p className="mt-4">Customer management page coming soon.</p>
             </div>
-          } 
-        />
-        <Route 
-          path="payments" 
-          element={
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="payments" element={
+        <VendorRouteGuard route="payments">
+          <VendorLayout>
             <div className="p-6">
               <h1 className="text-3xl font-bold">Payments</h1>
               <p className="mt-4">Payment management page coming soon.</p>
             </div>
-          } 
-        />
-        <Route path="vendor/settings">
-          <Route index element={<SettingsProfile />} />
-          <Route path="store" element={<SettingsStore />} />
-          <Route path="payout" element={<SettingsPayout />} />
-          <Route path="danger" element={<SettingsDangerZone />} />
-        </Route>
-      </Route>
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/settings" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsProfile />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/settings/store" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsStore />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/settings/payout" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsPayout />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="vendor/settings/danger" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsDangerZone />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
 
       {/* Buyer Storefront Public Routes */}
       <Route path="/store/:vendorSlug" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />

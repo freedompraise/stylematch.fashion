@@ -1,23 +1,23 @@
 import React from 'react';
 import { useVendorStore } from '@/stores';
-import { useVendorData } from '@/services/vendorDataService';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
 const SettingsDangerZone: React.FC = () => {
-  const { user, signOut } = useVendorStore();
-  const { deleteProduct, fetchProducts } = useVendorData();
+  const { vendor, signOut, removeProduct, fetchProducts, deleteProduct } = useVendorStore();
   const { toast } = useToast();
 
   const handleDeleteAllProducts = async () => {
+    if (!vendor?.user_id) return;
+    
     if (!confirm('Are you sure you want to delete all products? This action cannot be undone.')) {
       return;
     }
 
     try {
-      const products = await fetchProducts();
+      const products = await fetchProducts(false);
       await Promise.all(products.map(product => deleteProduct(product.id)));
       
       toast({
@@ -34,13 +34,15 @@ const SettingsDangerZone: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
+    if (!vendor?.user_id) return;
+    
     if (!confirm('Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.')) {
       return;
     }
 
     try {
       // Delete all products first
-      const products = await fetchProducts();
+      const products = await fetchProducts(false);
       await Promise.all(products.map(product => deleteProduct(product.id)));
       
       // Sign out and redirect

@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Order, OrderStatus } from '@/types/OrderSchema'
 import { ProductWithSales } from '@/types/ProductSchema'
 import { useVendorStore } from '@/stores'
-import { useVendorData } from '@/services/vendorDataService'
 import DashboardStats from '@/components/vendor/dashboard/DashboardStats'
 import SalesChart from '@/components/vendor/dashboard/SalesChart'
 import RecentOrders from '@/components/vendor/dashboard/RecentOrders'
@@ -21,11 +20,7 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { user} = useVendorStore()
-  const {
-    products,
-    getVendorStats,
-  } = useVendorData();
+  const { vendor, products, orders, calculateVendorStats, getTopProducts } = useVendorStore()
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     totalSales: 0,
@@ -38,12 +33,13 @@ const VendorDashboard: React.FC = () => {
   const [salesData, setSalesData] = useState<{ name: string; sales: number }[]>([])
   const [hasProducts, setHasProducts] = useState(false)
   const [hasOrders, setHasOrders] = useState(false)
+
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.id) return
+      if (!vendor?.user_id) return
       setIsLoading(true)
       try {
-        const vendorStats = await getVendorStats()
+        const vendorStats = calculateVendorStats(products, orders)
         setStats({
           totalSales: vendorStats.totalRevenue,
           totalOrders: vendorStats.totalOrders,
@@ -53,15 +49,7 @@ const VendorDashboard: React.FC = () => {
         setRecentOrders(vendorStats.recentOrders as Order[])
         setHasProducts(products.length > 0)
         setHasOrders(vendorStats.totalOrders > 0)
-        setTopProducts(
-          products
-            .map(p => ({
-              ...p,
-              sales: recentOrders.filter(order => order.product_id === p.id).length
-            }))
-            .sort((a, b) => b.sales - a.sales)
-            .slice(0, 5)
-        )
+        setTopProducts(getTopProducts(products, orders))
         setSalesData([])
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -75,7 +63,7 @@ const VendorDashboard: React.FC = () => {
       }
     }
     fetchData()
-  }, [user?.id, getVendorStats, products.length])
+  }, [vendor?.user_id, products, orders, calculateVendorStats, getTopProducts])
  
   const navigateToProducts = () => {
     navigate('/vendor/products')

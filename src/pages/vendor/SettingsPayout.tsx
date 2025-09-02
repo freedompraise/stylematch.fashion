@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useVendorStore } from '@/stores';
-import { useVendorData } from '@/services/vendorDataService';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const SettingsPayout: React.FC = () => {
-  const { user, vendor, refreshVendor, updateVendorProfile } = useVendorStore();
+  const { vendor, updateVendorProfile } = useVendorStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 

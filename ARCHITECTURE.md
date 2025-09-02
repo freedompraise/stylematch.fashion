@@ -19,11 +19,12 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 
 ## Core Architectural Principles
 
-1. **Context-Based State Management**
+1. **Zustand-Based State Management**
 
-   - **Separation of Concerns**: Dedicated contexts for distinct domains: `AuthContext` for authentication, `VendorContext` for vendor profile data, and `VendorDataProvider` for business data (products, orders).
-   - **Clear Data Flow**: UI components consume data from contexts, which in turn communicate with a dedicated service layer for external API calls.
-   - **Centralized Logic**: Each context serves as a single source of truth for its domain, centralizing state management logic and reducing component complexity.
+   - **Separation of Concerns**: Dedicated stores for distinct domains: `AuthStore` for authentication, `VendorStore` for vendor profile and business data (products, orders), and `VendorDataService` for business operations.
+   - **Route-Based Loading**: Vendor data is loaded only when accessing vendor routes, preventing premature API calls and improving performance.
+   - **Intelligent Caching**: Route-specific caching with automatic invalidation ensures data freshness while minimizing API calls.
+   - **Clean Data Flow**: UI components consume data from stores, which communicate with a dedicated service layer for external API calls.
 
 2. **Type Safety**
 
@@ -46,9 +47,12 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 │   ├── dashboard/       # Dashboard-specific components
 │   ├── layouts/         # Layout components
 │   └── vendor/          # Vendor-specific components
-├── contexts/            # React Context Providers
-│   ├── AuthContext      # Manages user authentication and session
-│   └── VendorContext    # Manages vendor profile and data providers
+├── stores/              # Zustand State Stores
+│   ├── authStore.ts     # Manages user authentication and session
+│   ├── vendorStore.ts   # Manages vendor profile with route-based loading
+│   ├── buyerStore.ts    # Manages buyer cart and state
+│   ├── marketplaceStore.ts # Manages marketplace data
+│   └── uiStore.ts       # Manages UI state
 ├── hooks/               # Custom React hooks
 ├── lib/                 # Core utilities & clients
 ├── pages/               # Route components
@@ -58,11 +62,11 @@ StyleMatch is a frontend application designed to transform local fashion vendors
 
 ## Key Modules & State Flow
 
-The application's state management is divided into three main contexts that work together, each with a distinct responsibility. This architecture ensures a clean separation between authentication, user profile management, and business data handling.
+The application's state management is built on Zustand stores with route-based loading for optimal performance and clean separation of concerns.
 
-### Context Providers Explained
+### Store Architecture
 
-#### 1. `AuthContext`
+#### 1. `AuthStore`
 
 This is the foundation of the authentication system and the single source of truth for the user's session state.
 
@@ -71,29 +75,41 @@ This is the foundation of the authentication system and the single source of tru
   - Exposes `signIn`, `signUp`, and `signOut` methods that call the `authService`.
   - Tracks whether the current authentication flow is for a vendor signup (`isVendorSignup` flag).
   - It has no knowledge of vendor-specific data.
-- **Consumed By**: `VendorContext`, all authentication pages (`Auth.tsx`, `verification-complete.tsx`), and route guards.
+- **Consumed By**: All authentication pages and route guards.
 
-#### 2. `VendorContext`
+#### 2. `VendorStore`
 
-This context manages the profile and identity of a vendor. It builds upon `AuthContext`.
+This store manages the profile, identity, and business data of a vendor with route-based loading.
 
 - **Responsibilities**:
-  - Fetches and holds the `vendor` profile from the database using the `user.id` from `AuthContext`.
+  - Loads vendor profile only when accessing vendor routes via `loadVendorForRoute(userId, route)`.
   - Provides methods to create and update the vendor profile by calling the `vendorProfileService`.
   - Manages the vendor's onboarding state.
-- **Consumes**: `AuthContext` (to get the authenticated user).
-- **Consumed By**: All authenticated vendor pages and the `VendorDataProvider`.
+  - Stores products and orders data with loading states.
+  - Implements intelligent caching with route-specific invalidation.
+- **Consumes**: `AuthStore` (to get the authenticated user).
+- **Consumed By**: All authenticated vendor pages via `VendorRouteGuard`.
 
-#### 3. `VendorDataProvider`
+#### 3. `VendorDataService`
 
-This provider handles all business-related data for a logged-in vendor.
+This service handles all business-related data operations for vendors.
 
 - **Responsibilities**:
-  - Manages collections of `products` and `orders`.
-  - Provides functions to fetch, create, update, and delete products and orders.
-  - Calculates vendor statistics (`getVendorStats`).
-- **Consumes**: `VendorContext` (to get the `vendor.user_id` for API calls).
+  - Pure service functions for vendor business operations
+  - Handles all Supabase calls for products and orders
+  - Provides CRUD operations for vendor business data
+  - Keeps stores clean by handling "dirty" database operations
+- **Consumes**: `VendorStore` (to get the `vendor.user_id` for API calls).
 - **Consumed By**: `ProductManagement.tsx`, `OrderManagement.tsx`, `VendorDashboard.tsx`.
+
+### Route-Based Loading
+
+The application implements a sophisticated route-based loading system that prevents premature vendor data fetching:
+
+- **VendorRouteGuard**: Each vendor route is wrapped with this component that loads vendor data only when needed.
+- **Route-Specific Caching**: Vendor data is cached per route with intelligent invalidation.
+- **No Global Initialization**: Vendor data is never loaded globally, only when accessing vendor routes.
+- **Clean Separation**: Auth and vendor concerns are completely separated.
 
 ### Components
 
@@ -152,9 +168,11 @@ This provider handles all business-related data for a logged-in vendor.
 
 ## State Management
 
-- Context-based architecture for global state
-- React Query for server state management
-- Local state for component-specific data
+- **Zustand-based architecture** for global state management
+- **Route-based loading** for optimal performance
+- **Intelligent caching** with route-specific invalidation
+- **Clean separation** between auth and vendor concerns
+- **Local state** for component-specific data
 
 ## Form Handling
 
@@ -390,46 +408,184 @@ class DatabaseError extends VendorServiceError {}
    - Enhanced session management
    - Improved transaction safety
 
-## Core State Management
+## Revised Authentication Flow
 
-### VendorContext
+The authentication flow has been redesigned to implement route-based loading and clean separation of concerns.
 
-VendorContext serves as the central hub for vendor authentication and data management:
-
-1. **Authentication & Session**
-
-   - Manages vendor authentication state
-   - Handles session refresh and expiry
-   - Integrates with Supabase Auth
-   - Caches auth tokens
-
-2. **Vendor Profile**
-
-   - Maintains vendor profile data
-   - Tracks onboarding status
-   - Caches profile data with TTL
-   - Handles profile updates
-
-3. **Route Protection**
-
-   - RequireVendor component for protected routes
-   - Manages auth redirects
-   - Handles onboarding flow
-
-4. **Integration**
-   - Works alongside AuthService for auth operations
-   - Uses VendorDataProvider for data operations
-   - Maintains local cache in localStorage
-
-### State Flow
+### Auth Flow Overview
 
 ```
-AuthService -> VendorContext -> VendorDataProvider
-     ↑              ↓                  ↓
-  Auth Flow     Auth State        Vendor Data
-     ↑              ↓                  ↓
-  Supabase     Components         Database
+1. App Initialization
+   ↓
+2. AuthStore Initialization (only auth state)
+   ↓
+3. User Authentication
+   ↓
+4. Route-Based Vendor Loading (only when needed)
+   ↓
+5. Vendor Profile Management
 ```
+
+### Detailed Flow
+
+#### 1. **App Initialization**
+
+```typescript
+// App.tsx - Only initializes auth, no vendor loading
+useEffect(() => {
+  const subscription = initializeAuth();
+  return () => subscription?.unsubscribe();
+}, []);
+```
+
+#### 2. **AuthStore Initialization**
+
+- **Purpose**: Initialize authentication state only
+- **What it does**:
+  - Sets up Supabase auth listener
+  - Restores session from localStorage
+  - Sets loading state to false
+- **What it doesn't do**: No vendor profile loading
+
+#### 3. **User Authentication**
+
+- **Login Flow**:
+
+  1. User enters credentials on `/auth`
+  2. `AuthStore.signIn()` calls `authService.signIn()`
+  3. Supabase authenticates user
+  4. `AuthStore` updates with new session/user
+  5. User redirected to intended destination
+
+- **Signup Flow**:
+  1. User registers on `/auth`
+  2. `AuthStore.signUp()` calls `authService.signUp()`
+  3. Email verification sent
+  4. User completes verification
+  5. User redirected to onboarding
+
+#### 4. **Route-Based Vendor Loading**
+
+**For Public Routes** (/, /auth, /store/:slug):
+
+- No vendor data loaded
+- Only auth state available
+
+**For Vendor Routes** (/vendor/\*):
+
+- `VendorRouteGuard` component wraps each route
+- Calls `loadVendorForRoute(userId, route)` only when accessing vendor routes
+- Checks cache first, then fetches from database if needed
+- Redirects to onboarding if no vendor profile exists
+
+**For Onboarding Route** (/vendor/onboarding):
+
+- Only requires authentication
+- No vendor profile required
+- User can complete onboarding process
+
+#### 5. **Vendor Profile Management**
+
+**Profile Creation**:
+
+```typescript
+// VendorOnboarding.tsx
+const { user } = useAuthStore(); // Get user from auth store
+const { createVendorProfile } = useVendorStore(); // Create profile
+
+// After successful creation, user can access vendor routes
+```
+
+**Profile Updates**:
+
+```typescript
+// Settings pages
+const { updateVendorProfile } = useVendorStore();
+// Updates both database and cache
+```
+
+### Route Protection Strategy
+
+#### **AuthRoute** (for /auth pages)
+
+```typescript
+const AuthRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuthStore();
+
+  if (loading) return <LoadingSpinner />;
+  if (isAuthenticated) return <Navigate to="/vendor/dashboard" />;
+
+  return <>{children}</>;
+};
+```
+
+#### **VendorRouteGuard** (for vendor pages)
+
+```typescript
+const VendorRouteGuard = ({ children, route }) => {
+  const { user, isAuthenticated } = useAuthStore();
+  const { vendor, loading, loadVendorForRoute } = useVendorStore();
+
+  // Load vendor data only when needed
+  useEffect(() => {
+    if (user?.id && !vendor && !loading) {
+      loadVendorForRoute(user.id, route);
+    }
+  }, [user?.id, route]);
+
+  // Handle different states
+  if (!isAuthenticated) return <Navigate to="/auth" />;
+  if (loading) return <LoadingSpinner />;
+  if (!vendor) return <Navigate to="/vendor/onboarding" />;
+
+  return <>{children}</>;
+};
+```
+
+### State Management Flow
+
+```
+AuthStore (Auth State Only)
+    ↓
+User Authentication
+    ↓
+Route Access
+    ↓
+VendorRouteGuard (Loads vendor data only when needed)
+    ↓
+VendorStore (Route-specific caching)
+    ↓
+VendorDataService (Business operations)
+```
+
+### Key Benefits of Revised Flow
+
+1. **No Premature Loading**: Vendor data only loads when accessing vendor routes
+2. **Clean Separation**: Auth and vendor concerns are completely separate
+3. **Efficient Caching**: Route-specific caching prevents unnecessary API calls
+4. **Better Performance**: No global vendor initialization on app load
+5. **Error Prevention**: Eliminates 406 errors and redirect loops
+6. **Maintainable**: Each component has a single responsibility
+
+### Error Handling
+
+**Auth Errors**:
+
+- Handled by `AuthStore`
+- User-friendly error messages
+- Redirect to auth page if session invalid
+
+**Vendor Errors**:
+
+- Handled by `VendorRouteGuard`
+- Distinguishes between missing profile (expected) and real errors
+- Graceful fallback to onboarding
+
+**Network Errors**:
+
+- Retry mechanisms in service layer
+- Fallback to cached data when possible
+- User notification via toast messages
 
 ## Buyer Storefront & Purchase Flow (2025 July Update)
 

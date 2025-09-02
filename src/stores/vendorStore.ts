@@ -7,7 +7,10 @@ import {
   updateVendorProfile as updateVendorProfileService,
   createVendorProfile as createVendorProfileService
 } from '@/services/vendorProfileService';
+import { vendorDataService, VendorStats, ProductWithSales } from '@/services/vendorDataService';
 import { VendorProfile, CreateVendorProfileInput } from '@/types';
+import { Product, CreateProductInput } from '@/types/ProductSchema';
+import { Order } from '@/types/OrderSchema';
 
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
@@ -29,18 +32,22 @@ interface OnboardingState {
 }
 
 interface VendorCache {
-  profile: Partial<VendorProfile>;
+  profile: VendorProfile;
   timestamp: number;
-  ttl: number;
+  routeAccessed: string;
 }
 
 interface VendorState {
   // State
-  user: User | null;
   vendor: VendorProfile | null;
   loading: boolean;
   error: Error | null;
-  ready: boolean; // hydration complete
+  
+  // Vendor business data
+  products: Product[];
+  orders: Order[];
+  productsLoaded: boolean;
+  ordersLoaded: boolean;
   
   // Onboarding state
   onboardingState: OnboardingState;
@@ -50,19 +57,39 @@ interface VendorState {
   lastVendorPath: string | null;
   
   // Actions
-  setUser: (user: User | null) => void;
   setVendor: (vendor: VendorProfile | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: Error | null) => void;
-  setReady: (ready: boolean) => void;
-  refreshVendor: () => Promise<VendorProfile | void>;
+  loadVendorForRoute: (userId: string, route: string) => Promise<VendorProfile | null>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
-  getVendorProfile: (force?: boolean) => Promise<VendorProfile | null>;
   createVendorProfile: (profile: CreateVendorProfileInput, imageFile?: File) => Promise<void>;
-  clearCache: () => void;
+  clearVendorData: () => void;
   signOut: () => Promise<void>;
   storeLastVendorPath: (path: string) => void;
   getLastVendorPath: () => string | null;
+  
+  // Product actions
+  setProducts: (products: Product[]) => void;
+  addProduct: (product: Product) => void;
+  updateProduct: (id: string, updates: Partial<Product>) => void;
+  removeProduct: (id: string) => void;
+  setProductsLoaded: (loaded: boolean) => void;
+  fetchProducts: (useCache?: boolean) => Promise<Product[]>;
+  createProduct: (productData: CreateProductInput) => Promise<Product>;
+  deleteProduct: (productId: string) => Promise<void>;
+  
+  // Order actions
+  setOrders: (orders: Order[]) => void;
+  addOrder: (order: Order) => void;
+  updateOrder: (id: string, updates: Partial<Order>) => void;
+  removeOrder: (id: string) => void;
+  setOrdersLoaded: (loaded: boolean) => void;
+  fetchOrders: (useCache?: boolean) => Promise<Order[]>;
+  deleteOrder: (orderId: string) => Promise<void>;
+  
+  // Stats and analytics
+  calculateVendorStats: (products: Product[], orders: Order[]) => VendorStats;
+  getTopProducts: (products: Product[], orders: Order[]) => ProductWithSales[];
   
   // Onboarding actions
   initializeOnboarding: () => void;
@@ -75,19 +102,6 @@ interface VendorState {
   getPreviousOnboardingStep: () => OnboardingStep | null;
   isOnboardingStepComplete: (stepId: string) => boolean;
   getOnboardingProgress: () => number;
-}
-
-function getCacheSafeVendorProfile(profile: VendorProfile): Partial<VendorProfile> {
-  const {
-    user_id, store_name, name, bio, instagram_url, facebook_url,
-    wabusiness_url, banner_image_url, verification_status,
-    isOnboarded, onboarding_step, last_session_refresh, auth_metadata
-  } = profile;
-  return {
-    user_id, store_name, name, bio, instagram_url, facebook_url,
-    wabusiness_url, banner_image_url, verification_status,
-    isOnboarded, onboarding_step, last_session_refresh, auth_metadata
-  };
 }
 
 const defaultOnboardingSteps: OnboardingStep[] = [
@@ -137,11 +151,13 @@ export const useVendorStore = create<VendorState>()(
   persist(
     (set, get) => ({
       // Initial state
-      user: null,
       vendor: null,
-      loading: true,
+      loading: false,
       error: null,
-      ready: false,
+      products: [],
+      orders: [],
+      productsLoaded: false,
+      ordersLoaded: false,
       onboardingState: {
         currentStep: 1,
         steps: defaultOnboardingSteps,
@@ -153,11 +169,121 @@ export const useVendorStore = create<VendorState>()(
       lastVendorPath: null,
       
       // Actions
-      setUser: (user: User | null) => set({ user }),
-      setVendor: (vendor: VendorProfile | null) => set({ vendor }),
-      setLoading: (loading: boolean) => set({ loading }),
-      setError: (error: Error | null) => set({ error }),
-      setReady: (ready: boolean) => set({ ready }),
+      setVendor: (vendor: VendorProfile | null) => {
+        set({ vendor, error: null });
+        console.log('[VendorStore] Vendor set:', vendor?.store_name);
+      },
+      
+      setLoading: (loading: boolean) => {
+        set({ loading });
+      },
+      
+      setError: (error: Error | null) => {
+        set({ error });
+        console.error('[VendorStore] Error set:', error?.message);
+      },
+      
+      loadVendorForRoute: async (userId: string, route: string) => {
+        const { vendorCache } = get();
+        
+        // Check cache first
+        if (vendorCache && 
+            vendorCache.routeAccessed === route && 
+            Date.now() - vendorCache.timestamp < CACHE_TTL) {
+          set({ vendor: vendorCache.profile, error: null });
+          console.log('[VendorStore] Using cached vendor data for route:', route);
+          return vendorCache.profile;
+        }
+        
+        set({ loading: true, error: null });
+        console.log('[VendorStore] Loading vendor for route:', route);
+        
+        try {
+          const data = await getVendorProfileService(userId);
+          if (data) {
+            set({ vendor: data, loading: false, error: null });
+            
+            // Cache with route info
+            const cacheData: VendorCache = {
+              profile: data,
+              timestamp: Date.now(),
+              routeAccessed: route
+            };
+            set({ vendorCache: cacheData });
+            console.log('[VendorStore] Vendor loaded and cached for route:', route);
+            return data;
+          } else {
+            set({ vendor: null, loading: false, error: null });
+            console.log('[VendorStore] No vendor found for user');
+            return null;
+          }
+        } catch (err) {
+          console.error('[VendorStore] Vendor load failed:', err);
+          const error = err instanceof Error ? err : new Error('Failed to load vendor');
+          set({ error, loading: false });
+          return null;
+        }
+      },
+      
+      updateVendorProfile: async (updates: Partial<VendorProfile>, imageFile?: File) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        const updated = await updateVendorProfileService(vendor.user_id, updates, imageFile);
+        set({ vendor: updated, error: null });
+        
+        // Update cache
+        const cacheData: VendorCache = {
+          profile: updated,
+          timestamp: Date.now(),
+          routeAccessed: get().vendorCache?.routeAccessed || 'unknown'
+        };
+        set({ vendorCache: cacheData });
+        console.log('[VendorStore] Vendor updated:', updated);
+      },
+      
+      createVendorProfile: async (profile: CreateVendorProfileInput, imageFile?: File) => {
+        const { vendorCache } = get();
+        const userId = vendorCache?.profile.user_id;
+        if (!userId) throw new Error('No user ID');
+        
+        const created = await createVendorProfileService(userId, profile, imageFile);
+        set({ vendor: created, error: null });
+        
+        // Cache with current route
+        const cacheData: VendorCache = {
+          profile: created,
+          timestamp: Date.now(),
+          routeAccessed: get().vendorCache?.routeAccessed || 'onboarding'
+        };
+        set({ vendorCache: cacheData });
+        console.log('[VendorStore] Vendor created:', created);
+      },
+      
+      clearVendorData: () => {
+        set({ 
+          vendor: null, 
+          error: null, 
+          loading: false,
+          products: [],
+          orders: [],
+          productsLoaded: false,
+          ordersLoaded: false,
+          vendorCache: null 
+        });
+        console.log('[VendorStore] Vendor data cleared');
+      },
+      
+      signOut: async () => {
+        get().clearVendorData();
+        set({ 
+          vendor: null, 
+          error: null, 
+          loading: false,
+          lastVendorPath: null
+        });
+        console.log('[VendorStore] Signed out');
+      },
       
       storeLastVendorPath: (path: string) => {
         set({ lastVendorPath: path });
@@ -168,96 +294,156 @@ export const useVendorStore = create<VendorState>()(
         return get().lastVendorPath;
       },
       
-      refreshVendor: async () => {
-        const { user } = get();
-        if (!user?.id) return;
+      // Product actions
+      setProducts: (products: Product[]) => {
+        set({ products });
+      },
+      
+      addProduct: (product: Product) => {
+        set((state) => ({ products: [product, ...state.products] }));
+      },
+      
+      updateProduct: (id: string, updates: Partial<Product>) => {
+        set((state) => ({
+          products: state.products.map(p => (p.id === id ? { ...p, ...updates } : p))
+        }));
+      },
+      
+      removeProduct: (id: string) => {
+        set((state) => ({ products: state.products.filter(p => p.id !== id) }));
+      },
+      
+      setProductsLoaded: (loaded: boolean) => {
+        set({ productsLoaded: loaded });
+      },
+
+      fetchProducts: async (useCache: boolean = true) => {
+        const { vendor, products } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
         
-        console.log('[VendorStore] Fetching vendor from DB...');
         try {
-          const data = await getVendorProfileService(user.id);
-          if (data) {
-            set({ vendor: data, error: null });
-            // Save to cache
-            const cacheData: VendorCache = {
-              profile: getCacheSafeVendorProfile(data),
-              timestamp: Date.now(),
-              ttl: CACHE_TTL
-            };
-            set({ vendorCache: cacheData });
-            console.log('[VendorStore] Vendor fetched and saved:', data);
-            return data;
-          } else {
-            set({ vendor: null });
-            console.log('[VendorStore] No vendor found for user');
-            return null;
-          }
-        } catch (err) {
-          console.error('[VendorStore] Vendor fetch failed:', err);
-          const error = err instanceof Error ? err : new Error('Failed to fetch vendor');
-          set({ error });
-          return null;
+          const fetchedProducts = await vendorDataService.fetchProducts(
+            vendor.user_id, 
+            useCache, 
+            products
+          );
+          set({ products: fetchedProducts, productsLoaded: true });
+          return fetchedProducts;
+        } catch (error) {
+          console.error('[VendorStore] Error fetching products:', error);
+          throw error;
+        }
+      },
+
+      createProduct: async (productData: CreateProductInput) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const createdProduct = await vendorDataService.createProduct(productData, vendor.user_id);
+          set((state) => ({ products: [createdProduct, ...state.products] }));
+          return createdProduct;
+        } catch (error) {
+          console.error('[VendorStore] Error creating product:', error);
+          throw error;
+        }
+      },
+
+      deleteProduct: async (productId: string) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          await vendorDataService.deleteProduct(productId, vendor.user_id);
+          set((state) => ({ products: state.products.filter(p => p.id !== productId) }));
+        } catch (error) {
+          console.error('[VendorStore] Error deleting product:', error);
+          throw error;
         }
       },
       
-      updateVendorProfile: async (updates: Partial<VendorProfile>, imageFile?: File) => {
-        const { user } = get();
-        if (!user?.id) throw new Error('No user ID');
+      // Order actions
+      setOrders: (orders: Order[]) => {
+        set({ orders });
+      },
+      
+      addOrder: (order: Order) => {
+        set((state) => ({ orders: [order, ...state.orders] }));
+      },
+      
+      updateOrder: (id: string, updates: Partial<Order>) => {
+        set((state) => ({
+          orders: state.orders.map(o => (o.id === id ? { ...o, ...updates } : o))
+        }));
+      },
+      
+      removeOrder: (id: string) => {
+        set((state) => ({ orders: state.orders.filter(o => o.id !== id) }));
+      },
+      
+      setOrdersLoaded: (loaded: boolean) => {
+        set({ ordersLoaded: loaded });
+      },
+
+      fetchOrders: async (useCache: boolean = true) => {
+        const { vendor, orders } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
         
-        const updated = await updateVendorProfileService(user.id, updates, imageFile);
-        set({ vendor: updated, error: null });
+        try {
+          const fetchedOrders = await vendorDataService.fetchOrders(
+            vendor.user_id, 
+            useCache, 
+            orders
+          );
+          set({ orders: fetchedOrders, ordersLoaded: true });
+          return fetchedOrders;
+        } catch (error) {
+          console.error('[VendorStore] Error fetching orders:', error);
+          throw error;
+        }
+      },
+
+      deleteOrder: async (orderId: string) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
         
-        // Save to cache
-        const cacheData: VendorCache = {
-          profile: getCacheSafeVendorProfile(updated),
-          timestamp: Date.now(),
-          ttl: CACHE_TTL
+        try {
+          await vendorDataService.deleteOrder(orderId, vendor.user_id);
+          set((state) => ({ orders: state.orders.filter(o => o.id !== orderId) }));
+        } catch (error) {
+          console.error('[VendorStore] Error deleting order:', error);
+          throw error;
+        }
+      },
+      
+      // Stats and analytics
+      calculateVendorStats: (products: Product[], orders: Order[]): VendorStats => {
+        const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        const totalOrders = orders.length;
+        const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+        const lowStockProducts = products.filter(p => p.stock_quantity <= 5).length;
+        
+        const recentOrders = orders
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 10);
+
+        return {
+          totalRevenue,
+          totalOrders,
+          recentOrders,
+          averageOrderValue,
+          lowStockProducts
         };
-        set({ vendorCache: cacheData });
-        console.log('[VendorStore] Vendor updated:', updated);
       },
-      
-      getVendorProfile: async (force = false) => {
-        const { user, vendor } = get();
-        if (!user?.id) return null;
-        
-        if (!force && vendor) return vendor;
-        
-        const result = await get().refreshVendor();
-        return result || null;
-      },
-      
-      createVendorProfile: async (profile: CreateVendorProfileInput, imageFile?: File) => {
-        const { user } = get();
-        if (!user?.id) throw new Error('No user ID');
-        
-        const created = await createVendorProfileService(user.id, profile, imageFile);
-        set({ vendor: created, error: null });
-        
-        // Save to cache
-        const cacheData: VendorCache = {
-          profile: getCacheSafeVendorProfile(created),
-          timestamp: Date.now(),
-          ttl: CACHE_TTL
-        };
-        set({ vendorCache: cacheData });
-        console.log('[VendorStore] Vendor created:', created);
-      },
-      
-      clearCache: () => {
-        set({ vendorCache: null, vendor: null });
-        console.log('[VendorStore] Cache cleared');
-      },
-      
-      signOut: async () => {
-        get().clearCache();
-        set({ 
-          user: null, 
-          vendor: null, 
-          error: null, 
-          ready: false,
-          lastVendorPath: null
-        });
-        console.log('[VendorStore] Signed out');
+
+      getTopProducts: (products: Product[], orders: Order[]): ProductWithSales[] => {
+        return products
+          .map(product => ({
+            ...product,
+            sales: orders.filter(order => order.product_id === product.id).length
+          }))
+          .sort((a, b) => b.sales - a.sales)
+          .slice(0, 5);
       },
       
       // Onboarding actions
@@ -272,22 +458,14 @@ export const useVendorStore = create<VendorState>()(
       },
       
       completeOnboardingStep: (stepId: string) => {
-        set((state) => {
-          const updatedSteps = state.onboardingState.steps.map(step =>
-            step.id === stepId ? { ...step, completed: true } : step
-          );
-          
-          const isComplete = updatedSteps.every(step => step.completed);
-          
-          return {
+        set((state) => ({
             onboardingState: {
               ...state.onboardingState,
-              steps: updatedSteps,
-              isComplete,
-              completedAt: isComplete ? Date.now() : state.onboardingState.completedAt
-            }
-          };
-        });
+            steps: state.onboardingState.steps.map(step =>
+              step.id === stepId ? { ...step, completed: true } : step
+            )
+          }
+        }));
       },
       
       setOnboardingStep: (stepNumber: number) => {
@@ -355,40 +533,8 @@ export const useVendorStore = create<VendorState>()(
       partialize: (state) => ({ 
         onboardingState: state.onboardingState,
         vendorCache: state.vendorCache,
-        lastVendorPath: state.lastVendorPath,
-        ready: state.ready
+        lastVendorPath: state.lastVendorPath
       }),
     }
   )
 );
-
-// Initialize vendor state
-export const initializeVendor = async (user: User | null) => {
-  const { setUser, setLoading, setReady, vendorCache } = useVendorStore.getState();
-  
-  setLoading(true);
-  setReady(false);
-  setUser(user);
-  
-  if (!user?.id) {
-    setLoading(false);
-    setReady(true);
-    return;
-  }
-  
-  // Check cache
-  if (vendorCache && Date.now() - vendorCache.timestamp < vendorCache.ttl) {
-    const cachedVendor = vendorCache.profile as VendorProfile;
-    if (cachedVendor.verification_status === 'verified') {
-      useVendorStore.getState().setVendor(cachedVendor);
-      setLoading(false);
-      setReady(true);
-      return;
-    }
-  }
-  
-  // If not verified or no cache, fetch from DB
-  await useVendorStore.getState().refreshVendor();
-  setLoading(false);
-  setReady(true);
-};

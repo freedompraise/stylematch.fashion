@@ -32,7 +32,6 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { useVendorStore } from '@/stores';
 import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
-import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
@@ -44,10 +43,9 @@ interface AddProductDialogProps {
 export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);  const [activeTab, setActiveTab] = useState('manual');
   const { toast } = useToast();
-  const { user } = useVendorStore();
+  const { vendor, createProduct } = useVendorStore();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
-  const { createProducts } = useVendorData();
 
   const form = useForm<{ root: ProductFormValues }>({
     resolver: zodResolver(z.object({ root: productsSchema })),
@@ -58,9 +56,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         price: 0,
         stock_quantity: 0,
         category: '',
-        color: [],
-        size: [],
-        vendor_id: user?.id || '',
+        color: '',
+        size: '',
+        vendor_id: vendor?.user_id || '',
       }]
     }
   });
@@ -77,9 +75,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       price: 0,
       stock_quantity: 0,
       category: '',
-      color: [],
-      size: [],
-      vendor_id: user?.id || '',
+      color: '',
+      size: '',
+      vendor_id: vendor?.user_id || '',
     });
     setProductImages([...productImages, null]);
     setPreviewUrls([...previewUrls, null]);
@@ -106,7 +104,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   };
 
   const onSubmit = async (data: { root: ProductFormValues }) => {
-    if (!user?.id) {
+    if (!vendor?.user_id) {
       toast({
         title: "Authentication required",
         description: "Please log in to create products.",
@@ -116,33 +114,34 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     }
 
     try {
-      // Use the new context service for image upload and creation
-      const createdProducts = await createProducts(
-        data.root.map((product, index) => ({
-          ...product,
-          vendor_id: user.id,
-          image: productImages[index]!,
-        }))
-      );
+      // Create products using the store
+      const createdProducts: Product[] = [];
+      for (let i = 0; i < data.root.length; i++) {
+        const productData = {
+          ...data.root[i],
+          vendor_id: vendor.user_id,
+        };
+        
+        const createdProduct = await createProduct(productData);
+        createdProducts.push(createdProduct);
+      }
 
       onProductsAdded(createdProducts);
       toast({
         title: "Products created",
-        description: "Your products have been created successfully.",
-        variant: "default"
+        description: `${createdProducts.length} product(s) have been created successfully.`,
       });
-
+      setOpen(false);
       form.reset();
       setProductImages([]);
       setPreviewUrls([]);
-      setOpen(false);
     } catch (error) {
+      console.error('Error creating products:', error);
       toast({
-        title: "Error creating products",
-        description: "Could not create your products. Please try again.",
+        title: "Error",
+        description: "Failed to create products. Please try again.",
         variant: "destructive"
       });
-      console.error("Error during product creation process:", error);
     }
   };
 
@@ -281,13 +280,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={size}
                             type="button"
-                            variant={((form.getValues(`root.${index}.size`) as string[]) || []).includes(size) ? 'default' : 'outline'}
+                            variant={form.getValues(`root.${index}.size`) === size ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentSizes = (form.getValues(`root.${index}.size`) as string[]) || [];
-                              const newSizes = currentSizes.includes(size)
-                                ? currentSizes.filter(s => s !== size)
-                                : [...currentSizes, size];
-                              form.setValue(`root.${index}.size`, newSizes);
+                              const currentSize = form.getValues(`root.${index}.size`) || '';
+                              const newSize = currentSize === size ? '' : size;
+                              form.setValue(`root.${index}.size`, newSize);
                             }}
                             className="h-8"
                           >
@@ -307,13 +304,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={color}
                             type="button"
-                            variant={((form.getValues(`root.${index}.color`) as string[]) || []).includes(color) ? 'default' : 'outline'}
+                            variant={form.getValues(`root.${index}.color`) === color ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentColors = (form.getValues(`root.${index}.color`) as string[]) || [];
-                              const newColors = currentColors.includes(color)
-                                ? currentColors.filter(c => c !== color)
-                                : [...currentColors, color];
-                              form.setValue(`root.${index}.color`, newColors);
+                              const currentColor = form.getValues(`root.${index}.color`) || '';
+                              const newColor = currentColor === color ? '' : color;
+                              form.setValue(`root.${index}.color`, newColor);
                             }}
                             className="h-8"
                           >
