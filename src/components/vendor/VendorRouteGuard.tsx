@@ -59,8 +59,18 @@ const VendorRouteGuard: React.FC<VendorRouteGuardProps> = ({ children, route }) 
     );
   }
 
+  // Wait for vendor loading to complete before making routing decisions
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-lg">
+        <Loader2 className="animate-spin" size={24} />
+        <span className="ml-2">Loading vendor profile...</span>
+      </div>
+    );
+  }
+
   // Redirect to onboarding if no vendor profile exists (but user is authenticated)
-  if (session && user && !vendor && !error && !loading) {
+  if (session && user && !vendor && !error) {
     console.log('[VendorRouteGuard] No vendor profile, redirecting to /vendor/onboarding');
     return <Navigate to="/vendor/onboarding" state={{ from: location }} replace />;
   }

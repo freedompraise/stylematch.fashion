@@ -526,8 +526,9 @@ export const useVendorStore = create<VendorState>()(
     {
       name: 'vendor-storage',
       partialize: (state) => ({ 
-        onboardingState: state.onboardingState,
+        vendor: state.vendor,
         vendorCache: state.vendorCache,
+        onboardingState: state.onboardingState,
         lastVendorPath: state.lastVendorPath
       }),
     }

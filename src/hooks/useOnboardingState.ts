@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { OnboardingFormValues, PayoutFormData } from '@/types';
+import { useVendorStore } from '@/stores/vendorStore';
 
 interface OnboardingState {
   step: number;
@@ -25,8 +26,6 @@ interface OnboardingState {
   errors: Record<string, string>;
 }
 
-const STORAGE_KEY = 'vendor_onboarding_state';
-
 const defaultState: OnboardingState = {
   step: 1,
   formData: {
@@ -51,40 +50,38 @@ const defaultState: OnboardingState = {
 
 export function useOnboardingState() {
   const [state, setState] = useState<OnboardingState>(defaultState);
+  const { 
+    onboardingState: vendorOnboardingState, 
+    setOnboardingStep, 
+    completeOnboardingStep,
+    getCurrentOnboardingStep 
+  } = useVendorStore();
 
-  // Load state from localStorage on mount
+  // Load state from vendorStore on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsedState = JSON.parse(saved);
-        setState(prev => ({ ...prev, ...parsedState, isSubmitting: false }));
-      } catch (error) {
-        console.error('Failed to load onboarding state:', error);
-      }
+    const currentStep = getCurrentOnboardingStep();
+    if (currentStep) {
+      setState(prev => ({ 
+        ...prev, 
+        step: currentStep.order,
+        isSubmitting: false 
+      }));
     }
-  }, []);
+  }, [getCurrentOnboardingStep]);
 
-  // Save state to localStorage whenever it changes
+  // Save state to vendorStore whenever it changes
   const saveState = useCallback((newState: Partial<OnboardingState>) => {
     setState(prev => {
       const updated = { ...prev, ...newState };
-      // Don't save file objects or large base64 images to localStorage
-      const stateToSave = {
-        ...updated,
-        formData: {
-          ...updated.formData,
-          details: {
-            ...updated.formData.details,
-            uploadedImageFile: undefined, // Don't serialize File objects
-            uploadedImage: undefined, // Don't serialize base64 image
-          },
-        },
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+      
+      // Update vendorStore onboarding state
+      if (updated.step) {
+        setOnboardingStep(updated.step);
+      }
+      
       return updated;
     });
-  }, []);
+  }, [setOnboardingStep]);
 
   const updateBasics = useCallback((basics: Partial<OnboardingState['formData']['basics']>) => {
     saveState({
@@ -143,7 +140,6 @@ export function useOnboardingState() {
   }, [state.errors, saveState]);
 
   const clearState = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
     setState(defaultState);
   }, []);
 
