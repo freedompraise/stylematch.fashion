@@ -10,16 +10,11 @@ export interface SignUpParams {
 }
 
 interface AuthState {
-  // State
   user: User | null;
   session: Session | null;
   loading: boolean;
   isVendorSignup: boolean;
-  
-  // Computed
   isAuthenticated: boolean;
-  
-  // Actions
   setVendorSignup: (isVendor: boolean) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (params: SignUpParams) => Promise<void>;
@@ -33,24 +28,26 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // Initial state
       user: null,
       session: null,
       loading: true,
       isVendorSignup: false,
       
-      // Computed values
       get isAuthenticated() {
-        return !!get().session;
+        const state = get();
+        return !state.loading && !!state.session;
       },
       
-      // Actions
       setVendorSignup: (isVendor: boolean) => {
         set({ isVendorSignup: isVendor });
       },
       
       setSession: (session: Session | null) => {
-        set({ session, user: session?.user ?? null });
+        set({ 
+          session, 
+          user: session?.user ?? null,
+          loading: false 
+        });
       },
       
       setUser: (user: User | null) => {
@@ -70,63 +67,47 @@ export const useAuthStore = create<AuthState>()(
             loading: false 
           });
         } catch (error) {
-          console.error('Error initializing auth:', error);
           set({ loading: false });
         }
       },
       
       signIn: async (email: string, password: string) => {
         try {
+          set({ loading: true });
           await authService.signIn(email, password);
         } catch (error) {
-          console.error('Error signing in:', error);
+          set({ loading: false });
           throw error;
         }
       },
       
       signUp: async (params: SignUpParams) => {
-        try {
-          set({ isVendorSignup: true });
-          await authService.signUp(params);
-        } catch (error) {
-          console.error('Error signing up:', error);
-          throw error;
-        }
+        set({ isVendorSignup: true });
+        await authService.signUp(params);
       },
       
       signOut: async () => {
-        try {
-          await authService.signOut();
-          set({ 
-            user: null, 
-            session: null, 
-            isVendorSignup: false 
-          });
-        } catch (error) {
-          console.error('Error signing out:', error);
-          throw error;
-        }
+        await authService.signOut();
+        set({ user: null, session: null, isVendorSignup: false });
       },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({ 
+        user: state.user,
+        session: state.session,
         isVendorSignup: state.isVendorSignup 
       }),
     }
   )
 );
 
-// Initialize auth state on app start
 export const initializeAuth = () => {
-  const { initializeAuth } = useAuthStore.getState();
-  initializeAuth();
+  useAuthStore.getState().initializeAuth();
   
-  // Listen for auth changes
   const { data: { subscription } } = authService.onAuthStateChange(
-    async (event, newSession) => {
-      useAuthStore.getState().setSession(newSession);
-      useAuthStore.getState().setLoading(false);
+    (_event, session) => {
+      useAuthStore.getState().setSession(session);
     }
   );
   

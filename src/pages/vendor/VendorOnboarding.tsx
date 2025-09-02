@@ -204,7 +204,7 @@ const { createVendorProfile} = useVendorStore();
       };
       console.log('[Onboarding] Submitting vendor profile with payout_info:', payout_info_payload);
 
-      await createVendorProfile({
+      await createVendorProfile(user.id, {
         store_name: state.formData.basics.store_name,
         name: state.formData.basics.name,
         phone: state.formData.basics.phone,

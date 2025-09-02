@@ -62,7 +62,7 @@ interface VendorState {
   setError: (error: Error | null) => void;
   loadVendorForRoute: (userId: string, route: string) => Promise<VendorProfile | null>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
-  createVendorProfile: (profile: CreateVendorProfileInput, imageFile?: File) => Promise<void>;
+  createVendorProfile: (userId: string, profile: CreateVendorProfileInput, imageFile?: File) => Promise<void>;
   clearVendorData: () => void;
   signOut: () => Promise<void>;
   storeLastVendorPath: (path: string) => void;
@@ -242,19 +242,14 @@ export const useVendorStore = create<VendorState>()(
         console.log('[VendorStore] Vendor updated:', updated);
       },
       
-      createVendorProfile: async (profile: CreateVendorProfileInput, imageFile?: File) => {
-        const { vendorCache } = get();
-        const userId = vendorCache?.profile.user_id;
-        if (!userId) throw new Error('No user ID');
-        
+      createVendorProfile: async (userId: string, profile: CreateVendorProfileInput, imageFile?: File) => {
         const created = await createVendorProfileService(userId, profile, imageFile);
         set({ vendor: created, error: null });
         
-        // Cache with current route
         const cacheData: VendorCache = {
           profile: created,
           timestamp: Date.now(),
-          routeAccessed: get().vendorCache?.routeAccessed || 'onboarding'
+          routeAccessed: 'onboarding'
         };
         set({ vendorCache: cacheData });
         console.log('[VendorStore] Vendor created:', created);
