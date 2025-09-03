@@ -72,13 +72,19 @@ export function useOnboardingState() {
 
 
   const updateBasics = useCallback((basics: Partial<OnboardingState['formData']['basics']>) => {
-    setState(prev => ({
-      ...prev,
-      formData: {
-        ...prev.formData,
-        basics: { ...prev.formData.basics, ...basics },
-      },
-    }));
+    console.log('updateBasics called with:', basics);
+    setState(prev => {
+      console.log('Previous state in updateBasics:', prev);
+      const newState = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          basics: { ...prev.formData.basics, ...basics },
+        },
+      };
+      console.log('New state in updateBasics:', newState);
+      return newState;
+    });
   }, []);
 
   const updateDetails = useCallback((details: Partial<OnboardingState['formData']['details']>) => {
@@ -98,13 +104,19 @@ export function useOnboardingState() {
   }, []);
 
   const updateSocial = useCallback((social: Partial<OnboardingState['formData']['social']>) => {
-    setState(prev => ({
-      ...prev,
-      formData: {
-        ...prev.formData,
-        social: { ...prev.formData.social, ...social },
-      },
-    }));
+    console.log('updateSocial called with:', social);
+    setState(prev => {
+      console.log('Previous state in updateSocial:', prev);
+      const newState = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          social: { ...prev.formData.social, ...social },
+        },
+      };
+      console.log('New state in updateSocial:', newState);
+      return newState;
+    });
   }, []);
 
   const updatePayout = useCallback((payout: PayoutFormData) => {
