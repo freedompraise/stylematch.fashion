@@ -14,7 +14,6 @@ import { ProductList } from '@/components/vendor/products/ProductList';
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
   const {
-    vendor,
     products,
     addProduct,
     updateProduct,
@@ -27,12 +26,11 @@ const ProductManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load products only once on mount or when vendor changes
+  // Load products only once on mount
   useEffect(() => {
     let mounted = true;
 
     const loadProducts = async () => {
-      if (!vendor?.user_id) return;
       try {
         setLoading(true);
         await fetchProducts(true); // use cache
@@ -56,7 +54,7 @@ const ProductManagement: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [vendor?.user_id, fetchProducts, toast]);
+  }, [fetchProducts, toast]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -81,7 +79,7 @@ const ProductManagement: React.FC = () => {
 
   const handleUpdateStock = async (productId: string, quantity: number) => {
     try {
-      updateProduct(productId, { stock_quantity: quantity });
+      await updateProduct(productId, { stock_quantity: quantity });
       toast({
         title: 'Stock updated',
         description: 'Product stock has been updated successfully.',

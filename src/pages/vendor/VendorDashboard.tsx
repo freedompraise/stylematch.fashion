@@ -20,14 +20,8 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { vendor, products, orders, calculateVendorStats, getTopProducts } = useVendorStore()
-  const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState<DashboardStats>({
-    totalSales: 0,
-    totalOrders: 0,
-    averageOrderValue: 0,
-    lowStockProducts: 0
-  })
+  const { products, orders, calculateVendorStats, getTopProducts } = useVendorStore()
+  const [loading, setLoading] = useState(true)
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<ProductWithSales[]>([])
   const [salesData, setSalesData] = useState<{ name: string; sales: number }[]>([])
@@ -35,35 +29,33 @@ const VendorDashboard: React.FC = () => {
   const [hasOrders, setHasOrders] = useState(false)
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!vendor?.user_id) return
-      setIsLoading(true)
+    const loadDashboardData = async () => {
       try {
+        setLoading(true)
         const vendorStats = calculateVendorStats(products, orders)
-        setStats({
-          totalSales: vendorStats.totalRevenue,
-          totalOrders: vendorStats.totalOrders,
-          averageOrderValue: vendorStats.totalOrders > 0 ? vendorStats.totalRevenue / vendorStats.totalOrders : 0,
-          lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
-        })
+        
         setRecentOrders(vendorStats.recentOrders as Order[])
-        setHasProducts(products.length > 0)
-        setHasOrders(vendorStats.totalOrders > 0)
         setTopProducts(getTopProducts(products, orders))
-        setSalesData([])
+        setHasOrders(vendorStats.totalOrders > 0)
+        setHasProducts(products.length > 0)
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch dashboard data.',
-          variant: 'destructive'  
-        })
+        console.error('Error loading dashboard data:', error)
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
-    fetchData()
-  }, [vendor?.user_id, products, orders, calculateVendorStats, getTopProducts])
+
+    loadDashboardData()
+  }, [products, orders, calculateVendorStats, getTopProducts])
+
+  // Calculate stats for display
+  const vendorStats = calculateVendorStats(products, orders)
+  const stats: DashboardStats = {
+    totalSales: vendorStats.totalRevenue,
+    totalOrders: vendorStats.totalOrders,
+    averageOrderValue: vendorStats.totalOrders > 0 ? vendorStats.totalRevenue / vendorStats.totalOrders : 0,
+    lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
+  }
  
   const navigateToProducts = () => {
     navigate('/vendor/products')
@@ -73,7 +65,7 @@ const VendorDashboard: React.FC = () => {
     navigate('/vendor/settings')
   }
 
-  if (isLoading) {
+  if (loading) {
     return <DashboardLoadingState />
   }
 
@@ -110,3 +102,4 @@ const VendorDashboard: React.FC = () => {
 }
 
 export default VendorDashboard
+

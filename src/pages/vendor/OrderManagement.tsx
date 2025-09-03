@@ -11,7 +11,7 @@ import { Search, Filter, Download } from 'lucide-react';
 import { Order, OrderStatus } from '@/types/OrderSchema';
 
 const OrderManagement: React.FC = () => {
-  const { vendor, orders, setOrders, updateOrder: updateOrderInStore, removeOrder, fetchOrders, deleteOrder: deleteOrderFromStore } = useVendorStore();
+  const { orders, setOrders, updateOrder: updateOrderInStore, removeOrder, fetchOrders, deleteOrder: deleteOrderFromStore } = useVendorStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,7 +19,6 @@ const OrderManagement: React.FC = () => {
 
   useEffect(() => {
     const loadOrders = async () => {
-      if (!vendor?.user_id) return;
       try {
         setLoading(true);
         await fetchOrders(true); // use cache
@@ -35,11 +34,11 @@ const OrderManagement: React.FC = () => {
     };
 
     loadOrders();
-  }, [vendor?.user_id, fetchOrders, toast]);
+  }, [fetchOrders, toast]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      updateOrderInStore(orderId, { status: newStatus });
+      await updateOrderInStore(orderId, { status: newStatus });
       toast({
         title: 'Order updated',
         description: 'Order status has been updated successfully.',

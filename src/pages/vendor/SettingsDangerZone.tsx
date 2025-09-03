@@ -6,12 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
 const SettingsDangerZone: React.FC = () => {
-  const { vendor, signOut, removeProduct, fetchProducts, deleteProduct } = useVendorStore();
+  const { signOut, removeProduct, fetchProducts, deleteProduct } = useVendorStore();
   const { toast } = useToast();
 
   const handleDeleteAllProducts = async () => {
-    if (!vendor?.user_id) return;
-    
     if (!confirm('Are you sure you want to delete all products? This action cannot be undone.')) {
       return;
     }
@@ -34,8 +32,6 @@ const SettingsDangerZone: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!vendor?.user_id) return;
-    
     if (!confirm('Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.')) {
       return;
     }

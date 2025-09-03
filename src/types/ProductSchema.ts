@@ -22,18 +22,17 @@ export const productSchema = z.object({
 export type Product = z.infer<typeof productSchema>;
 
 export const createProductSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  price: z.number().positive(),
-  stock_quantity: z.number().int().min(0),
-  category: z.string(),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(1, "Description is required"),
+  price: z.number().min(0, "Price must be positive"),
+  stock_quantity: z.number().min(0, "Stock must be positive"),
+  category: z.string().min(1, "Category is required"),
   color: z.string(),
   size: z.string(),
   discount_price: z.number().positive().optional(),
   discount_start: z.string().optional(),
   discount_end: z.string().optional(),
   images: z.array(z.string()).optional(),
-  vendor_id: z.string().uuid(),
   is_hottest_offer: z.boolean().optional(),
 });
 
