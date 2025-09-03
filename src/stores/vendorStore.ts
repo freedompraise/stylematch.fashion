@@ -71,7 +71,7 @@ interface VendorState {
   // Product actions
   setProducts: (products: Product[]) => void;
   addProduct: (product: Product) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   removeProduct: (id: string) => void;
   setProductsLoaded: (loaded: boolean) => void;
   fetchProducts: (useCache?: boolean) => Promise<Product[]>;
@@ -81,7 +81,7 @@ interface VendorState {
   // Order actions
   setOrders: (orders: Order[]) => void;
   addOrder: (order: Order) => void;
-  updateOrder: (id: string, updates: Partial<Order>) => void;
+  updateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   removeOrder: (id: string) => void;
   setOrdersLoaded: (loaded: boolean) => void;
   fetchOrders: (useCache?: boolean) => Promise<Order[]>;
@@ -298,9 +298,13 @@ export const useVendorStore = create<VendorState>()(
         set((state) => ({ products: [product, ...state.products] }));
       },
       
-      updateProduct: (id: string, updates: Partial<Product>) => {
+      updateProduct: async (id: string, updates: Partial<Product>) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        const updatedProduct = await vendorDataService.updateProduct(id, updates, vendor.user_id);
         set((state) => ({
-          products: state.products.map(p => (p.id === id ? { ...p, ...updates } : p))
+          products: state.products.map(p => (p.id === id ? updatedProduct : p))
         }));
       },
       
@@ -366,9 +370,13 @@ export const useVendorStore = create<VendorState>()(
         set((state) => ({ orders: [order, ...state.orders] }));
       },
       
-      updateOrder: (id: string, updates: Partial<Order>) => {
+      updateOrder: async (id: string, updates: Partial<Order>) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        const updatedOrder = await vendorDataService.updateOrder(id, updates, vendor.user_id);
         set((state) => ({
-          orders: state.orders.map(o => (o.id === id ? { ...o, ...updates } : o))
+          orders: state.orders.map(o => (o.id === id ? updatedOrder : o))
         }));
       },
       

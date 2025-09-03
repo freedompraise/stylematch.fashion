@@ -26,13 +26,15 @@ import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 
 const basicsSchema = z.object({
-  store_name: z.string().min(2, { message: 'Store name is required' }),
+  store_name: z.string().min(2, { message: 'Store name is required' }).max(50, { message: 'Store name should be less than 50 characters' }),
   name: z.string().min(2, { message: 'Your name is required' }),
-  phone: z.string().optional(),
+  phone: z.string()
+    .regex(/^[\+]?[0-9\s\-\(\)]{7,15}$/, { message: 'Please enter a valid phone number' })
+    .optional(),
 });
 
 const detailsSchema = z.object({
-  bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
+  bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }).max(500, { message: 'Bio should be less than 500 characters' }),
 });
 
 const socialSchema = z.object({
@@ -97,13 +99,31 @@ const { createVendorProfile} = useVendorStore();
   }, [toast]);
 
   const handleImageFileChange = (file: File | null) => {
+    console.log('handleImageFileChange called with:', file);
     setImageFile(file);
-      updateDetails({ uploadedImageFile: file });
+    updateDetails({ uploadedImageFile: file });
+    console.log('updateDetails called for uploadedImageFile');
   };
   
   const handlePreviewUrlChange = (url: string | null) => {
+    console.log('handlePreviewUrlChange called with:', url);
     setPreviewUrl(url);
     updateDetails({ uploadedImage: url });
+    console.log('updateDetails called for uploadedImage');
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Remove all non-phone characters except digits, spaces, dashes, parentheses, and plus
+    const sanitized = value.replace(/[^\d\s\-\(\)\+]/g, '');
+    
+    // Limit length to 15 characters
+    const truncated = sanitized.slice(0, 15);
+    
+    // Update form value
+    form.setValue('phone', truncated);
+    
+    // Update local state
+    updateBasics({ phone: truncated });
   };
 
   const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
@@ -335,8 +355,12 @@ const { createVendorProfile} = useVendorStore();
                           <FormLabel>Phone (optional)</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder="Phone Number" 
-                              {...field} 
+                              placeholder="Phone Number (e.g., +234 123 456 7890)"
+                              type="tel"
+                              value={field.value || ''}
+                              onChange={(e) => handlePhoneChange(e.target.value)}
+                              pattern="[\+]?[0-9\s\-\(\)]{7,15}"
+                              maxLength={15}
                             />
                           </FormControl>
                           <FormMessage />
