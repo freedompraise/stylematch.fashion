@@ -1,4 +1,3 @@
-import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
@@ -19,9 +18,8 @@ export function FormActions({
   cancelText = 'Cancel',
   disabled = false
 }: FormActionsProps) {
-  const { formState: { isValid } } = useFormContext();
-
-  return (    <div className="flex justify-end space-x-4">
+  return (
+    <div className="flex justify-end space-x-4">
       {onCancel && (
         <Button
           type="button"
@@ -31,9 +29,10 @@ export function FormActions({
         >
           {cancelText}
         </Button>
-      )}      <Button
+      )}
+      <Button
         type="submit"
-        disabled={disabled || !isValid || isSubmitting}
+        disabled={isSubmitting || disabled}
       >
         {isSubmitting ? (
           <>

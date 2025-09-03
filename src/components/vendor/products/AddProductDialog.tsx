@@ -44,7 +44,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
   const { toast } = useToast();
-  const { vendor, createProduct } = useVendorStore();
+  const { createProduct } = useVendorStore();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
 
@@ -59,7 +59,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         category: '',
         color: '',
         size: '',
-        vendor_id: vendor?.user_id || '',
       }]
     }
   });
@@ -86,18 +85,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     }
   }, [fields.length, productImages.length, previewUrls.length]);
 
-  // Update vendor_id when vendor changes
-  useEffect(() => {
-    if (vendor?.user_id) {
-      const currentProducts = form.getValues('products');
-      const updatedProducts = currentProducts.map(product => ({
-        ...product,
-        vendor_id: vendor.user_id
-      }));
-      form.setValue('products', updatedProducts);
-    }
-  }, [vendor?.user_id, form]);
-
   const addProduct = () => {
     append({
       name: '',
@@ -107,7 +94,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       category: '',
       color: '',
       size: '',
-      vendor_id: vendor?.user_id || '',
     });
   };
 
@@ -132,22 +118,10 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   };
 
   const onSubmit = async (data: { products: ProductFormValues[] }) => {
-    if (!vendor?.user_id) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to create products.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       const createdProducts: Product[] = [];
       for (let i = 0; i < data.products.length; i++) {
-        const productData = {
-          ...data.products[i],
-          vendor_id: vendor.user_id,
-        };
+        const productData = data.products[i];
         
         const createdProduct = await createProduct(productData);
         createdProducts.push(createdProduct);
@@ -177,10 +151,6 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     setProductImages([]);
     setPreviewUrls([]);
     setOpen(false);
-  };
-
-  const isFormValid = () => {
-    return form.formState.isValid;
   };
 
   return (
@@ -394,7 +364,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     onCancel={handleCancel}
                     submitText="Create Products"
                     submittingText="Creating..."
-                    disabled={!isFormValid()}
+                    isSubmitting={form.formState.isSubmitting}
                   />
                 </div>
               </form>
