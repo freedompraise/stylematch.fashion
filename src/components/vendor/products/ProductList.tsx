@@ -19,7 +19,7 @@ import CloudinaryImage from '@/components/CloudinaryImage';
 
 interface ProductListProps {
   products: Product[];
-  onDeleteProduct: (productId: string) => void;
+  onDeleteProduct: (product: Product) => void;
   loading?: boolean;
 }
 
@@ -109,7 +109,7 @@ export function ProductList({ products, onDeleteProduct, loading }: ProductListP
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600"
-                        onClick={() => onDeleteProduct(product.id)}
+                        onClick={() => onDeleteProduct(product)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete

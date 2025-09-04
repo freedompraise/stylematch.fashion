@@ -136,7 +136,7 @@ const { createVendorProfile} = useVendorStore();
   const handleImageFileChange = (file: File | null) => {
     console.log('handleImageFileChange called with:', file);
     setImageFile(file);
-    updateDetails({ uploadedImageFile: file });
+      updateDetails({ uploadedImageFile: file });
     console.log('updateDetails called for uploadedImageFile');
   };
   
@@ -210,7 +210,7 @@ const { createVendorProfile} = useVendorStore();
       // Wait a bit for state to update before moving to next step
       setTimeout(() => {
         console.log('Moving to step:', state.step + 1);
-        setStep(state.step + 1);
+      setStep(state.step + 1);
       }, 100);
     } else {
       console.log('Validation failed');

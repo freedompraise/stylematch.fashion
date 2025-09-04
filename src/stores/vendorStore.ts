@@ -75,8 +75,11 @@ interface VendorState {
   removeProduct: (id: string) => void;
   setProductsLoaded: (loaded: boolean) => void;
   fetchProducts: (useCache?: boolean) => Promise<Product[]>;
-  createProduct: (productData: CreateProductInput) => Promise<Product>;
-  deleteProduct: (productId: string) => Promise<void>;
+  createProduct: (
+    productData: CreateProductInput,
+    imageFile?: File
+  ) => Promise<Product>;
+  deleteProduct: (product: Product) => Promise<void>;
   
   // Order actions
   setOrders: (orders: Order[]) => void;
@@ -334,12 +337,19 @@ export const useVendorStore = create<VendorState>()(
         }
       },
 
-      createProduct: async (productData: CreateProductInput) => {
+      createProduct: async (
+        productData: CreateProductInput,
+        imageFile?: File
+      ) => {
         const { vendor } = get();
         if (!vendor?.user_id) throw new Error('No vendor profile');
         
         try {
-          const createdProduct = await vendorDataService.createProduct(productData, vendor.user_id);
+          const createdProduct = await vendorDataService.createProduct(
+            productData,
+            vendor.user_id,
+            imageFile
+          );
           set((state) => ({ products: [createdProduct, ...state.products] }));
           return createdProduct;
         } catch (error) {
@@ -348,13 +358,13 @@ export const useVendorStore = create<VendorState>()(
         }
       },
 
-      deleteProduct: async (productId: string) => {
+      deleteProduct: async (product: Product) => {
         const { vendor } = get();
         if (!vendor?.user_id) throw new Error('No vendor profile');
         
         try {
-          await vendorDataService.deleteProduct(productId, vendor.user_id);
-          set((state) => ({ products: state.products.filter(p => p.id !== productId) }));
+          await vendorDataService.deleteProduct(product, vendor.user_id);
+          // The local state update is now handled optimistically in the component
         } catch (error) {
           console.error('[VendorStore] Error deleting product:', error);
           throw error;

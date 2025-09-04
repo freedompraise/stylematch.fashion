@@ -2,6 +2,11 @@
 import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+  getPublicIdFromUrl,
+} from '@/lib/cloudinary';
 
 export interface VendorStats {
   totalRevenue: number;
@@ -48,11 +53,26 @@ class VendorDataService {
     }
   }
 
-  async createProduct(productData: CreateProductInput, vendorId: string): Promise<Product> {
+  async createProduct(
+    productData: CreateProductInput,
+    vendorId: string,
+    imageFile?: File
+  ): Promise<Product> {
     try {
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadToCloudinary(imageFile);
+      }
+
+      const productToCreate = {
+        ...productData,
+        vendor_id: vendorId,
+        images: imageUrl ? [imageUrl] : [],
+      };
+
       const { data, error } = await supabase
         .from('products')
-        .insert([{ ...productData, vendor_id: vendorId }])
+        .insert([productToCreate])
         .select()
         .single();
 
@@ -82,17 +102,37 @@ class VendorDataService {
     }
   }
 
-  async deleteProduct(productId: string, vendorId: string): Promise<void> {
+  async deleteProduct(product: Product, vendorId: string): Promise<void> {
+    console.log('[VendorDataService] Starting deletion for product:', product.id);
     try {
+      // If the product has images, delete them from Cloudinary
+      if (product.images && product.images.length > 0) {
+        console.log('[VendorDataService] Deleting images from Cloudinary...');
+        const deletePromises = product.images.map((imageUrl) => {
+          if (imageUrl) {
+            const publicId = getPublicIdFromUrl(imageUrl);
+            if (publicId) {
+              return deleteFromCloudinary(publicId);
+            }
+          }
+          return Promise.resolve();
+        });
+
+        await Promise.all(deletePromises);
+        console.log('[VendorDataService] Cloudinary images deleted.');
+      }
+
+      // After deleting images, delete the product from the database
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', productId)
+        .eq('id', product.id)
         .eq('vendor_id', vendorId);
 
       if (error) throw error;
+      console.log('[VendorDataService] Product deleted from database:', product.id);
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error('[VendorDataService] Error deleting product:', error);
       throw error;
     }
   }

@@ -61,19 +61,36 @@ const ProductManagement: React.FC = () => {
     setSearchQuery(query);
   };
 
-  const handleDeleteProduct = async (productId: string) => {
+  const handleDeleteProduct = async (product: Product) => {
+    console.log(`[ProductManagement] Initiating deletion for product: ${product.id}`);
+    
+    // Store the product in case we need to revert
+    const productToDelete = { ...product };
+    
+    // Optimistically remove the product from the UI
+    removeProduct(product.id);
+    console.log(`[ProductManagement] Optimistically removed product from UI: ${product.id}`);
+    
+    toast({
+      title: 'Product deleted',
+      description: 'Your product is being deleted.',
+    });
+
     try {
-      await deleteProductFromStore(productId);
-      toast({
-        title: 'Product deleted',
-        description: 'Your product has been deleted successfully.',
-      });
-    } catch {
+      console.log(`[ProductManagement] Starting background deletion for product: ${product.id}`);
+      await deleteProductFromStore(productToDelete);
+      console.log(`[ProductManagement] Background deletion successful for product: ${product.id}`);
+    } catch (error) {
+      console.error(`[ProductManagement] Background deletion failed for product: ${product.id}`, error);
       toast({
         title: 'Error deleting product',
-        description: 'Could not delete your product. Please try again.',
+        description: 'Could not delete your product. The item has been restored.',
         variant: 'destructive',
       });
+      
+      // Revert the change by adding the product back to the store
+      addProduct(productToDelete);
+      console.log(`[ProductManagement] Reverted optimistic deletion for product: ${product.id}`);
     }
   };
 

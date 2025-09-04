@@ -49,7 +49,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
 
   const form = useForm<{ products: ProductFormValues[] }>({
-    resolver: zodResolver(z.object({ products: z.array(productsSchema) })),
+    resolver: zodResolver(z.object({ products: productsSchema })),
     defaultValues: {
       products: [{
         name: '',
@@ -84,6 +84,18 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       setPreviewUrls(prev => prev.slice(0, currentLength));
     }
   }, [fields.length, productImages.length, previewUrls.length]);
+
+  // Debug form validation state
+  useEffect(() => {
+    console.log('Form validation state:', {
+      isValid: form.formState.isValid,
+      errors: form.formState.errors,
+      isDirty: form.formState.isDirty,
+      isSubmitting: form.formState.isSubmitting
+    });
+  }, [form.formState.isValid, form.formState.errors, form.formState.isDirty, form.formState.isSubmitting]);
+
+ 
 
   const addProduct = () => {
     append({
@@ -122,8 +134,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       const createdProducts: Product[] = [];
       for (let i = 0; i < data.products.length; i++) {
         const productData = data.products[i];
+        const imageFile = productImages[i];
         
-        const createdProduct = await createProduct(productData);
+        const createdProduct = await createProduct(productData, imageFile || undefined);
         createdProducts.push(createdProduct);
       }
 
