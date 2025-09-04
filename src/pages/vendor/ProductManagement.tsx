@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
 import { Product } from '@/types/ProductSchema';
-import { useVendorData } from '@/services/vendorDataService';
 import { FilterBar } from '@/components/vendor/FilterBar';
 import { QuickActions, productsQuickActions } from '@/components/vendor/QuickActions';
 import { AddProductDialog } from '@/components/vendor/products/AddProductDialog';
@@ -14,26 +13,27 @@ import { ProductList } from '@/components/vendor/products/ProductList';
 
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useVendor();
   const {
     products,
-    fetchProducts,
-    deleteProduct,
+    addProduct,
     updateProduct,
-    createProduct,
-  } = useVendorData();
+    removeProduct,
+    setProducts,
+    setProductsLoaded,
+    fetchProducts,
+    deleteProduct: deleteProductFromStore,
+  } = useVendorStore();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load products only once on mount or when user changes
+  // Load products only once on mount
   useEffect(() => {
     let mounted = true;
 
     const loadProducts = async () => {
-      if (!user?.id) return;
       try {
         setLoading(true);
-        await fetchProducts(false); // Changed to false to use cache when available
+        await fetchProducts(true); // use cache
       } catch (error) {
         if (mounted) {
           toast({
@@ -54,7 +54,7 @@ const ProductManagement: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [user?.id]); // Removed toast and fetchProducts from deps
+  }, [fetchProducts, toast]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -63,7 +63,7 @@ const ProductManagement: React.FC = () => {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      await deleteProduct(productId);
+      await deleteProductFromStore(productId);
       toast({
         title: 'Product deleted',
         description: 'Your product has been deleted successfully.',
@@ -92,8 +92,9 @@ const ProductManagement: React.FC = () => {
       });
     }
   };
+
   const handleProductAdded = (product: Product) => {
-    // No need to refetch, the product is already added to state in vendorDataService
+    // Product is already added to store by AddProductDialog
     setLoading(false);
   };
 

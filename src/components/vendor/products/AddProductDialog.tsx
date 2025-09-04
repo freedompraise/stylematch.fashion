@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import{ useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,9 +30,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
 import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
-import { useVendorData } from '@/services/vendorDataService';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
@@ -42,33 +41,49 @@ interface AddProductDialogProps {
 }
 
 export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
-  const [open, setOpen] = useState(false);  const [activeTab, setActiveTab] = useState('manual');
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('manual');
   const { toast } = useToast();
-  const { user } = useVendor();
+  const { createProduct } = useVendorStore();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
-  const { createProducts } = useVendorData();
 
-  const form = useForm<{ root: ProductFormValues }>({
-    resolver: zodResolver(z.object({ root: productsSchema })),
+  const form = useForm<{ products: ProductFormValues[] }>({
+    resolver: zodResolver(z.object({ products: z.array(productsSchema) })),
     defaultValues: {
-      root: [{
+      products: [{
         name: '',
         description: '',
         price: 0,
         stock_quantity: 0,
         category: '',
-        color: [],
-        size: [],
-        vendor_id: user?.id || '',
+        color: '',
+        size: '',
       }]
     }
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "root" // Now this correctly references the array field
+    name: "products"
   });
+
+  // Sync arrays when fields change
+  useEffect(() => {
+    const currentLength = fields.length;
+    const imagesLength = productImages.length;
+    const urlsLength = previewUrls.length;
+
+    if (currentLength > imagesLength) {
+      // Add new entries
+      setProductImages(prev => [...prev, ...Array(currentLength - imagesLength).fill(null)]);
+      setPreviewUrls(prev => [...prev, ...Array(currentLength - urlsLength).fill(null)]);
+    } else if (currentLength < imagesLength) {
+      // Remove extra entries
+      setProductImages(prev => prev.slice(0, currentLength));
+      setPreviewUrls(prev => prev.slice(0, currentLength));
+    }
+  }, [fields.length, productImages.length, previewUrls.length]);
 
   const addProduct = () => {
     append({
@@ -77,73 +92,65 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       price: 0,
       stock_quantity: 0,
       category: '',
-      color: [],
-      size: [],
-      vendor_id: user?.id || '',
+      color: '',
+      size: '',
     });
-    setProductImages([...productImages, null]);
-    setPreviewUrls([...previewUrls, null]);
   };
 
   const removeProduct = (index: number) => {
     remove(index);
-    const newImages = productImages.filter((_, i) => i !== index);
-    const newPreviewUrls = previewUrls.filter((_, i) => i !== index);
-    setProductImages(newImages);
-    setPreviewUrls(newPreviewUrls);
   };
 
   const handleImageChange = (index: number, file: File | null) => {
-    const newImages = [...productImages];
+    setProductImages(prev => {
+      const newImages = [...prev];
     newImages[index] = file;
-    setProductImages(newImages);
+      return newImages;
+    });
   };
 
   const handlePreviewUrlChange = (index: number, url: string | null) => {
-    const newUrls = [...previewUrls];
+    setPreviewUrls(prev => {
+      const newUrls = [...prev];
     newUrls[index] = url;
-    setPreviewUrls(newUrls);
+      return newUrls;
+    });
   };
 
-  const onSubmit = async (data: { root: ProductFormValues }) => {
-    if (!user?.id) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to create products.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const onSubmit = async (data: { products: ProductFormValues[] }) => {
     try {
-      // Use the new context service for image upload and creation
-      const createdProducts = await createProducts(
-        data.root.map((product, index) => ({
-          ...product,
-          vendor_id: user.id,
-          image: productImages[index]!,
-        }))
-      );
+      const createdProducts: Product[] = [];
+      for (let i = 0; i < data.products.length; i++) {
+        const productData = data.products[i];
+        
+        const createdProduct = await createProduct(productData);
+        createdProducts.push(createdProduct);
+      }
 
       onProductsAdded(createdProducts);
       toast({
         title: "Products created",
-        description: "Your products have been created successfully.",
-        variant: "default"
+        description: `${createdProducts.length} product(s) have been created successfully.`,
       });
-
+      setOpen(false);
       form.reset();
       setProductImages([]);
       setPreviewUrls([]);
-      setOpen(false);
     } catch (error) {
+      console.error('Error creating products:', error);
       toast({
-        title: "Error creating products",
-        description: "Could not create your products. Please try again.",
+        title: "Error",
+        description: "Failed to create products. Please try again.",
         variant: "destructive"
       });
-      console.error("Error during product creation process:", error);
     }
+  };
+
+  const handleCancel = () => {
+    form.reset();
+    setProductImages([]);
+    setPreviewUrls([]);
+    setOpen(false);
   };
 
   return (
@@ -184,7 +191,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`root.${index}.name`}
+                      name={`products.${index}.name`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Name</FormLabel>
@@ -198,7 +205,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`root.${index}.description`}
+                      name={`products.${index}.description`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Description</FormLabel>
@@ -213,7 +220,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name={`root.${index}.price`}
+                        name={`products.${index}.price`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Price</FormLabel>
@@ -221,7 +228,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                               <Input 
                                 type="number" 
                                 {...field} 
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                value={field.value || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? 0 : Number(value));
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -231,7 +242,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                       
                       <FormField
                         control={form.control}
-                        name={`root.${index}.stock_quantity`}
+                        name={`products.${index}.stock_quantity`}
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Stock</FormLabel>
@@ -239,7 +250,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                               <Input 
                                 type="number" 
                                 {...field} 
-                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                value={field.value || ''}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  field.onChange(value === '' ? 0 : Number(value));
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -250,13 +265,13 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <FormField
                       control={form.control}
-                      name={`root.${index}.category`}
+                      name={`products.${index}.category`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            value={field.value}
+                            value={field.value || ''}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -281,13 +296,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={size}
                             type="button"
-                            variant={((form.getValues(`root.${index}.size`) as string[]) || []).includes(size) ? 'default' : 'outline'}
+                            variant={form.watch(`products.${index}.size`) === size ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentSizes = (form.getValues(`root.${index}.size`) as string[]) || [];
-                              const newSizes = currentSizes.includes(size)
-                                ? currentSizes.filter(s => s !== size)
-                                : [...currentSizes, size];
-                              form.setValue(`root.${index}.size`, newSizes);
+                              const currentSize = form.watch(`products.${index}.size`) || '';
+                              const newSize = currentSize === size ? '' : size;
+                              form.setValue(`products.${index}.size`, newSize);
                             }}
                             className="h-8"
                           >
@@ -296,7 +309,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                         ))}
                       </div>
                       <FormMessage>
-                        {form.formState.errors?.root?.[index]?.['size']?.message}
+                        {form.formState.errors?.products?.[index]?.['size']?.message}
                       </FormMessage>
                     </div>
                     
@@ -307,13 +320,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           <Button
                             key={color}
                             type="button"
-                            variant={((form.getValues(`root.${index}.color`) as string[]) || []).includes(color) ? 'default' : 'outline'}
+                            variant={form.watch(`products.${index}.color`) === color ? 'default' : 'outline'}
                             onClick={() => {
-                              const currentColors = (form.getValues(`root.${index}.color`) as string[]) || [];
-                              const newColors = currentColors.includes(color)
-                                ? currentColors.filter(c => c !== color)
-                                : [...currentColors, color];
-                              form.setValue(`root.${index}.color`, newColors);
+                              const currentColor = form.watch(`products.${index}.color`) || '';
+                              const newColor = currentColor === color ? '' : color;
+                              form.setValue(`products.${index}.color`, newColor);
                             }}
                             className="h-8"
                           >
@@ -322,7 +333,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                         ))}
                       </div>
                       <FormMessage>
-                        {form.formState.errors?.root?.[index]?.['color']?.message}
+                        {form.formState.errors?.products?.[index]?.['color']?.message}
                       </FormMessage>
                     </div>
                     
@@ -350,16 +361,10 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                   </Button>
                   
                   <FormActions
-                  
-                    onCancel={() => {
-                      form.reset();
-                      setProductImages([]);
-                      setPreviewUrls([]);
-                      
-                      setOpen(false);
-
-                      
-                    }}
+                    onCancel={handleCancel}
+                    submitText="Create Products"
+                    submittingText="Creating..."
+                    isSubmitting={form.formState.isSubmitting}
                   />
                 </div>
               </form>

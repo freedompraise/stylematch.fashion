@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Heart, 
@@ -30,89 +31,9 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import Logo from '@/components/Logo';
-
-const sampleProducts = [
-  {
-    id: 1,
-    name: 'Floral Summer Dress',
-    category: 'Dresses',
-    price: 15000,
-    image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGZsb3JhbCUyMGRyZXNzfGVufDB8fDB8fHww',
-    description: 'A beautiful floral summer dress perfect for warm weather outings. Made with lightweight, breathable fabric.',
-    sizes: ['S', 'M', 'L'],
-    colors: ['Blue', 'Pink', 'White']
-  },
-  {
-    id: 2,
-    name: 'Premium Denim Jeans',
-    category: 'Bottoms',
-    price: 12500,
-    image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8ZGVuaW0lMjBqZWFuc3xlbnwwfHwwfHx8MA%3D%3D',
-    description: 'High-quality denim jeans with a modern fit. Durable yet comfortable for everyday wear.',
-    sizes: ['28', '30', '32', '34'],
-    colors: ['Dark Blue', 'Black']
-  },
-  {
-    id: 3,
-    name: 'Leather Crossbody Bag',
-    category: 'Accessories',
-    price: 18900,
-    image: 'https://images.unsplash.com/photo-1597633244018-0201d0158aab?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGxlYXRoZXIlMjBiYWd8ZW58MHx8MHx8fDA%3D',
-    description: 'Elegant leather crossbody bag with multiple compartments. Perfect for both casual and formal occasions.',
-    sizes: ['One Size'],
-    colors: ['Brown', 'Black', 'Tan']
-  },
-  {
-    id: 4,
-    name: 'Cotton Graphic Tee',
-    category: 'Tops',
-    price: 5500,
-    image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fHQlMjBzaGlydHxlbnwwfHwwfHx8MA%3D%3D',
-    description: "100% cotton graphic tee with a unique design. Soft and comfortable fabric that's perfect for everyday wear.",
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: ['White', 'Black', 'Gray']
-  },
-  {
-    id: 5,
-    name: 'Embroidered Silk Blouse',
-    category: 'Tops',
-    price: 13500,
-    image: 'https://images.unsplash.com/photo-1516726817505-f5ed825624d8?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8YmxvdXNlfGVufDB8fDB8fHww',
-    description: 'Elegant silk blouse with detailed embroidery. Perfect for formal occasions or business attire.',
-    sizes: ['S', 'M', 'L'],
-    colors: ['Cream', 'Light Blue', 'Black']
-  },
-  {
-    id: 6,
-    name: 'Vintage Sunglasses',
-    category: 'Accessories',
-    price: 7500,
-    image: 'https://images.unsplash.com/photo-1564869733874-7c357f7957c4?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTl8fHN1bmdsYXNzZXN8ZW58MHx8MHx8fDA%3D',
-    description: 'Classic vintage-style sunglasses with UV protection. Adds a timeless look to any outfit.',
-    sizes: ['One Size'],
-    colors: ['Black', 'Tortoise', 'Gold']
-  },
-  {
-    id: 7,
-    name: 'Summer Sandals',
-    category: 'Shoes',
-    price: 9500,
-    image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fHNhbmRhbHN8ZW58MHx8MHx8fDA%3D',
-    description: 'Comfortable and stylish sandals perfect for summer. Features a cushioned footbed and adjustable straps.',
-    sizes: ['36', '37', '38', '39', '40'],
-    colors: ['Tan', 'Black', 'White']
-  },
-  {
-    id: 8,
-    name: 'Lightweight Scarf',
-    category: 'Accessories',
-    price: 4500,
-    image: 'https://images.unsplash.com/photo-1599391398131-cd12dfc6c24e?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fHNjYXJmfGVufDB8fDB8fHww',
-    description: 'Versatile lightweight scarf that complements any outfit. Made from soft, breathable fabric.',
-    sizes: ['One Size'],
-    colors: ['Blue Pattern', 'Red Pattern', 'Neutral Pattern']
-  }
-];
+import { useMarketplaceStore, useBuyerStore } from '@/stores';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const categories = [
   'All Categories', 
@@ -125,7 +46,7 @@ const categories = [
 ];
 
 interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   image: string;
@@ -134,15 +55,22 @@ interface CartItem {
   color?: string;
 }
 
-const Storefront: React.FC = () => {
+const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => {
+  const { currentVendor: vendor, listings: products, loading, error, fetchVendorData } = useMarketplaceStore();
+  const { cart: cartItems, addToCart, removeFromCart, updateQuantity, getTotal, clearCart } = useBuyerStore();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  useEffect(() => {
+    fetchVendorData(vendorSlug);
+  }, [vendorSlug, fetchVendorData]);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
-  const filteredProducts = sampleProducts.filter(product => {
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          product.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All Categories' || product.category === selectedCategory;
@@ -151,55 +79,67 @@ const Storefront: React.FC = () => {
 
   const handleProductSelect = (product: any) => {
     setSelectedProduct(product);
-    setSelectedSize(product.sizes[0]);
-    setSelectedColor(product.colors[0]);
+    setSelectedSize(Array.isArray(product.size) ? product.size[0] : '');
+    setSelectedColor(Array.isArray(product.color) ? product.color[0] : '');
   };
   
-  const addToCart = () => {
+  const addToCartHandler = () => {
     if (!selectedProduct) return;
-    
-    const newItem: CartItem = {
+    addToCart({
       id: selectedProduct.id,
       name: selectedProduct.name,
       price: selectedProduct.price,
-      image: selectedProduct.image,
+      image: Array.isArray(selectedProduct.images) ? selectedProduct.images[0] : '',
       quantity: 1,
       size: selectedSize,
-      color: selectedColor
-    };
-    
-    const existingItemIndex = cartItems.findIndex(item => (
-      item.id === newItem.id && item.size === newItem.size && item.color === newItem.color
-    ));
-    
-    if (existingItemIndex !== -1) {
-      const updatedItems = [...cartItems];
-      updatedItems[existingItemIndex].quantity += 1;
-      setCartItems(updatedItems);
-    } else {
-      setCartItems([...cartItems, newItem]);
-    }
-    
+      color: selectedColor,
+      vendor_slug: vendorSlug,
+    });
+    toast({ title: 'Added to Cart', description: `${selectedProduct.name} added to your cart.` });
     setSelectedProduct(null);
   };
   
   const updateCartItemQuantity = (index: number, change: number) => {
-    const updatedItems = [...cartItems];
-    
-    if (updatedItems[index].quantity + change < 1) {
-      return;
-    }
-    
-    updatedItems[index].quantity += change;
-    setCartItems(updatedItems);
+    const item = cartItems[index];
+    if (!item) return;
+    const newQty = item.quantity + change;
+    if (newQty < 1) return;
+    updateQuantity(item.id, newQty, item.size, item.color);
+    toast({ title: 'Cart Updated', description: `${item.name} quantity updated.` });
   };
   
   const removeCartItem = (index: number) => {
-    const updatedItems = cartItems.filter((_, i) => i !== index);
-    setCartItems(updatedItems);
+    const item = cartItems[index];
+    if (!item) return;
+    removeFromCart(item.id, item.size, item.color);
+    toast({ title: 'Removed from Cart', description: `${item.name} removed from your cart.` });
   };
   
-  const cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const cartTotal = getTotal();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-lg">Loading store...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-lg text-red-500">{error}</span>
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-lg text-red-500">Vendor not found.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -306,7 +246,7 @@ const Storefront: React.FC = () => {
                         <p className="text-sm text-baseContent-secondary mb-6">
                           Shipping and taxes calculated at checkout.
                         </p>
-                        <Button className="w-full">Proceed to Checkout</Button>
+                        <Button className="w-full" onClick={() => navigate(`/store/${vendorSlug}/checkout`)}>Proceed to Checkout</Button>
                         <div className="mt-3 flex justify-center text-center text-sm text-baseContent-secondary">
                         
                         </div>
@@ -344,22 +284,33 @@ const Storefront: React.FC = () => {
       </header>
       
       <main className="container mx-auto py-8 px-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-bold text-baseContent">All Products</h1>
-          <div className="flex gap-2">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon">
-              <Filter size={18} />
-            </Button>
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-baseContent">{vendor.store_name}</h1>
+              <p className="text-baseContent-secondary mt-1">{vendor.bio}</p>
+            </div>
+            <div className="flex gap-2">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon">
+                <Filter size={18} />
+              </Button>
+            </div>
+          </div>
+          {/* Vendor social links */}
+          <div className="flex gap-4 items-center mb-4">
+            {vendor.instagram_url && <a href={vendor.instagram_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Instagram</a>}
+            {vendor.facebook_url && <a href={vendor.facebook_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Facebook</a>}
+            {vendor.wabusiness_url && <a href={vendor.wabusiness_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">WhatsApp</a>}
           </div>
         </div>
         
@@ -372,7 +323,7 @@ const Storefront: React.FC = () => {
             >
               <div className="relative h-64 md:h-72">
                 <img 
-                  src={product.image} 
+                  src={product.images?.[0] || ''} 
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -423,7 +374,7 @@ const Storefront: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 pt-0">
               <div className="aspect-square overflow-hidden rounded-lg">
                 <img 
-                  src={selectedProduct.image} 
+                  src={selectedProduct.images?.[0] || ''} 
                   alt={selectedProduct.name}
                   className="w-full h-full object-cover"
                 />
@@ -438,11 +389,11 @@ const Storefront: React.FC = () => {
                   <p className="text-baseContent-secondary">{selectedProduct.description}</p>
                 </div>
                 
-                {selectedProduct.sizes.length > 0 && selectedProduct.sizes[0] !== 'One Size' && (
+                {Array.isArray(selectedProduct.size) && selectedProduct.size.length > 0 && (
                   <div className="mb-4">
                     <h4 className="font-semibold mb-2">Size</h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedProduct.sizes.map((size: string) => (
+                      {selectedProduct.size.map((size: string) => (
                         <button
                           key={size}
                           className={`border rounded-md px-4 py-2 text-sm transition-colors ${
@@ -459,11 +410,11 @@ const Storefront: React.FC = () => {
                   </div>
                 )}
                 
-                {selectedProduct.colors.length > 0 && (
+                {Array.isArray(selectedProduct.color) && selectedProduct.color.length > 0 && (
                   <div className="mb-6">
                     <h4 className="font-semibold mb-2">Color</h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedProduct.colors.map((color: string) => (
+                      {selectedProduct.color.map((color: string) => (
                         <button
                           key={color}
                           className={`border rounded-md px-4 py-2 text-sm transition-colors ${
@@ -481,7 +432,7 @@ const Storefront: React.FC = () => {
                 )}
                 
                 <div className="flex gap-4">
-                  <Button className="flex-1" onClick={addToCart}>
+                  <Button className="flex-1" onClick={addToCartHandler}>
                     Add to Cart
                   </Button>
                   <Button variant="outline" size="icon">
@@ -544,6 +495,12 @@ const Storefront: React.FC = () => {
       </footer>
     </div>
   );
+};
+
+const Storefront: React.FC = () => {
+  const { vendorSlug } = useParams();
+  if (!vendorSlug) return <div>Invalid store URL</div>;
+  return <StorefrontContent vendorSlug={vendorSlug} />;
 };
 
 export default Storefront;

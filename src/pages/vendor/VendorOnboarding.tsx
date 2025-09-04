@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowRight, Instagram, Facebook, MessageCircle, AlertCircle } from 'lucide-react';
 import { paystackClient } from '@/lib/paystackClient';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore, useAuthStore } from '@/stores';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -26,13 +26,15 @@ import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 
 const basicsSchema = z.object({
-  store_name: z.string().min(2, { message: 'Store name is required' }),
+  store_name: z.string().min(2, { message: 'Store name is required' }).max(50, { message: 'Store name should be less than 50 characters' }),
   name: z.string().min(2, { message: 'Your name is required' }),
-  phone: z.string().optional(),
+  phone: z.string()
+    .regex(/^[\+]?[0-9\s\-\(\)]{7,15}$/, { message: 'Please enter a valid phone number' })
+    .optional(),
 });
 
 const detailsSchema = z.object({
-  bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }),
+  bio: z.string().min(10, { message: 'Bio should be at least 10 characters' }).max(500, { message: 'Bio should be less than 500 characters' }),
 });
 
 const socialSchema = z.object({
@@ -44,7 +46,8 @@ const socialSchema = z.object({
 const VendorOnboarding: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, createVendorProfile} = useVendor();
+  const { user } = useAuthStore();
+const { createVendorProfile} = useVendorStore();
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
   
   const {
@@ -69,15 +72,50 @@ const VendorOnboarding: React.FC = () => {
       socialSchema
     ),
     defaultValues: {
-      store_name: state.formData.basics.store_name,
-      name: state.formData.basics.name,
-      phone: state.formData.basics.phone,
-      bio: state.formData.details.bio,
-      instagram_link: state.formData.social.instagram_link,
-      facebook_link: state.formData.social.facebook_link,
-      wabusiness_link: state.formData.social.wabusiness_link,
+      store_name: '',
+      name: '',
+      phone: '',
+      bio: '',
+      instagram_link: '',
+      facebook_link: '',
+      wabusiness_link: '',
     },
   });
+
+  // Debug: Log current state and form values
+  useEffect(() => {
+    console.log('=== COMPONENT STATE DEBUG ===');
+    console.log('Current state:', state);
+    console.log('Form default values:', form.getValues());
+    console.log('Form state:', form.formState);
+  }, [state, form]);
+
+  // Sync form values with state when state changes
+  useEffect(() => {
+    console.log('=== SYNCING FORM VALUES ===');
+    console.log('Syncing form with state:', state.formData);
+    console.log('Current step:', state.step);
+    
+    if (state.step === 1) {
+      const basics = state.formData.basics;
+      console.log('Setting basics form values:', basics);
+      form.setValue('store_name', basics.store_name || '');
+      form.setValue('name', basics.name || '');
+      form.setValue('phone', basics.phone || '');
+    } else if (state.step === 2) {
+      const details = state.formData.details;
+      console.log('Setting details form values:', details);
+      form.setValue('bio', details.bio || '');
+    } else if (state.step === 3) {
+      const social = state.formData.social;
+      console.log('Setting social form values:', social);
+      form.setValue('instagram_link', social.instagram_link || '');
+      form.setValue('facebook_link', social.facebook_link || '');
+      form.setValue('wabusiness_link', social.wabusiness_link || '');
+    }
+    
+    console.log('Form values after sync:', form.getValues());
+  }, [state.formData, state.step, form]);
 
   useEffect(() => {
     const loadBanks = async () => {
@@ -96,13 +134,31 @@ const VendorOnboarding: React.FC = () => {
   }, [toast]);
 
   const handleImageFileChange = (file: File | null) => {
+    console.log('handleImageFileChange called with:', file);
     setImageFile(file);
-      updateDetails({ uploadedImageFile: file });
+    updateDetails({ uploadedImageFile: file });
+    console.log('updateDetails called for uploadedImageFile');
   };
   
   const handlePreviewUrlChange = (url: string | null) => {
+    console.log('handlePreviewUrlChange called with:', url);
     setPreviewUrl(url);
     updateDetails({ uploadedImage: url });
+    console.log('updateDetails called for uploadedImage');
+  };
+
+  const handlePhoneChange = (value: string) => {
+    // Remove all non-phone characters except digits, spaces, dashes, parentheses, and plus
+    const sanitized = value.replace(/[^\d\s\-\(\)\+]/g, '');
+    
+    // Limit length to 15 characters
+    const truncated = sanitized.slice(0, 15);
+    
+    // Update form value
+    form.setValue('phone', truncated);
+    
+    // Update local state
+    updateBasics({ phone: truncated });
   };
 
   const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
@@ -121,26 +177,43 @@ const VendorOnboarding: React.FC = () => {
   };
 
   const handleNextStep = async () => {
+    console.log('=== NEXT STEP DEBUG ===');
+    console.log('Current step:', state.step);
+    console.log('Form values:', form.getValues());
+    
     const isValid = await validateStep();
+    console.log('Form validation result:', isValid);
+    
     if (isValid) {
       const formValues = form.getValues();
+      console.log('Form is valid, saving values:', formValues);
+      
       if (state.step === 1) {
+        console.log('Updating basics with:', formValues);
         updateBasics({
           store_name: formValues.store_name,
           name: formValues.name,
           phone: formValues.phone,
         });
       } else if (state.step === 2) {
+        console.log('Updating details with:', formValues);
         updateDetails({ bio: formValues.bio });
       } else if (state.step === 3) {
+        console.log('Updating social with:', formValues);
         updateSocial({
           instagram_link: formValues.instagram_link,
           facebook_link: formValues.facebook_link,
           wabusiness_link: formValues.wabusiness_link,
         });
       }
-      setStep(state.step + 1);
+      
+      // Wait a bit for state to update before moving to next step
+      setTimeout(() => {
+        console.log('Moving to step:', state.step + 1);
+        setStep(state.step + 1);
+      }, 100);
     } else {
+      console.log('Validation failed');
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields correctly.',
@@ -158,12 +231,21 @@ const VendorOnboarding: React.FC = () => {
   };
 
   const handleCompleteOnboarding = async () => {
+    console.log('=== ONBOARDING SUBMISSION DEBUG ===');
+    console.log('User:', user);
+    console.log('Form state:', state);
+    console.log('Form data basics:', state.formData.basics);
+    console.log('Form data details:', state.formData.details);
+    console.log('Form data payout:', state.formData.payout);
+    
     if (!user) {
+      console.log('ERROR: User not found');
       toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
       return;
     }
 
     if (!state.formData.payout) {
+      console.log('ERROR: Payout data missing');
       toast({
         title: 'Error',
         description: 'Please complete the payout information.',
@@ -176,7 +258,57 @@ const VendorOnboarding: React.FC = () => {
       setSubmitting(true);
       clearError('submission');
 
+      console.log('Checking required fields:');
+      console.log('- store_name:', state.formData.basics.store_name, 'valid:', !!state.formData.basics.store_name);
+      console.log('- name:', state.formData.basics.name, 'valid:', !!state.formData.basics.name);
+      console.log('- bio:', state.formData.details.bio, 'valid:', !!state.formData.details.bio);
+
+      // Also check current form values
+      const currentFormValues = form.getValues();
+      console.log('Current form values:', currentFormValues);
+      console.log('- form store_name:', currentFormValues.store_name, 'valid:', !!currentFormValues.store_name);
+      console.log('- form name:', currentFormValues.name, 'valid:', !!currentFormValues.name);
+      console.log('- form bio:', currentFormValues.bio, 'valid:', !!currentFormValues.bio);
+
       if (!state.formData.basics.store_name || !state.formData.basics.name || !state.formData.details.bio) {
+        console.log('ERROR: Missing required form data in state');
+        console.log('Attempting to get data from current form values...');
+        
+        // Try to get data from current form values as fallback
+        const fallbackData = {
+          store_name: currentFormValues.store_name || state.formData.basics.store_name,
+          name: currentFormValues.name || state.formData.basics.name,
+          bio: currentFormValues.bio || state.formData.details.bio,
+        };
+        
+        console.log('Fallback data:', fallbackData);
+        
+        if (!fallbackData.store_name || !fallbackData.name || !fallbackData.bio) {
+          console.log('ERROR: Still missing required form data after fallback');
+          setError('submission', 'Missing required form data');
+          return;
+        }
+        
+        // Use fallback data
+        console.log('Using fallback data for submission');
+      }
+      
+      // Prepare final submission data
+      const finalSubmissionData = {
+        store_name: state.formData.basics.store_name || currentFormValues.store_name,
+        name: state.formData.basics.name || currentFormValues.name,
+        phone: state.formData.basics.phone || currentFormValues.phone,
+        bio: state.formData.details.bio || currentFormValues.bio,
+        instagram_url: state.formData.social.instagram_link || currentFormValues.instagram_link,
+        facebook_url: state.formData.social.facebook_link || currentFormValues.facebook_link,
+        wabusiness_url: state.formData.social.wabusiness_link || currentFormValues.wabusiness_link,
+      };
+      
+      console.log('Final submission data prepared:', finalSubmissionData);
+      
+      // Validate final data
+      if (!finalSubmissionData.store_name || !finalSubmissionData.name || !finalSubmissionData.bio) {
+        console.log('ERROR: Final validation failed');
         setError('submission', 'Missing required form data');
         return;
       }
@@ -184,13 +316,13 @@ const VendorOnboarding: React.FC = () => {
       const payoutInfo = state.formData.payout;
 
       console.log('[Onboarding] Creating Paystack subaccount with:', {
-        business_name: state.formData.basics.store_name,
+        business_name: finalSubmissionData.store_name,
         bank_code: payoutInfo.bank_code,
         account_number: payoutInfo.account_number,
         percentage_charge: 2
       });
       const subaccountResult = await paystackClient.createSubaccount({
-        business_name: state.formData.basics.store_name,
+        business_name: finalSubmissionData.store_name,
         bank_code: payoutInfo.bank_code,
         account_number: payoutInfo.account_number,
         percentage_charge: 2 // 2% to platform
@@ -202,8 +334,7 @@ const VendorOnboarding: React.FC = () => {
         subaccount_code: subaccountResult.subaccount_code
       };
       console.log('[Onboarding] Submitting vendor profile with payout_info:', payout_info_payload);
-
-      await createVendorProfile({
+      console.log('[Onboarding] Final submission data:', {
         store_name: state.formData.basics.store_name,
         name: state.formData.basics.name,
         phone: state.formData.basics.phone,
@@ -212,7 +343,17 @@ const VendorOnboarding: React.FC = () => {
         facebook_url: state.formData.social.facebook_link,
         wabusiness_url: state.formData.social.wabusiness_link,
         payout_info: payout_info_payload,
-        verification_status: 'verified', // TODO: change to pending after testing
+      });
+
+      await createVendorProfile(user.id, {
+        store_name: finalSubmissionData.store_name,
+        name: finalSubmissionData.name,
+        phone: finalSubmissionData.phone,
+        bio: finalSubmissionData.bio,
+        instagram_url: finalSubmissionData.instagram_url,
+        facebook_url: finalSubmissionData.facebook_url,
+        wabusiness_url: finalSubmissionData.wabusiness_url,
+        payout_info: payout_info_payload,
       }, imageFile || undefined);
 
       clearState();
@@ -335,8 +476,12 @@ const VendorOnboarding: React.FC = () => {
                           <FormLabel>Phone (optional)</FormLabel>
                           <FormControl>
                             <Input 
-                              placeholder="Phone Number" 
-                              {...field} 
+                              placeholder="Phone Number (e.g., +234 123 456 7890)"
+                              type="tel"
+                              value={field.value || ''}
+                              onChange={(e) => handlePhoneChange(e.target.value)}
+                              pattern="[\+]?[0-9\s\-\(\)]{7,15}"
+                              maxLength={15}
                             />
                           </FormControl>
                           <FormMessage />

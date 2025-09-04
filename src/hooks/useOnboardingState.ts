@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { OnboardingFormValues, PayoutFormData } from '@/types';
+import { useVendorStore } from '@/stores/vendorStore';
 
 interface OnboardingState {
   step: number;
@@ -25,8 +26,6 @@ interface OnboardingState {
   errors: Record<string, string>;
 }
 
-const STORAGE_KEY = 'vendor_onboarding_state';
-
 const defaultState: OnboardingState = {
   step: 1,
   formData: {
@@ -51,99 +50,110 @@ const defaultState: OnboardingState = {
 
 export function useOnboardingState() {
   const [state, setState] = useState<OnboardingState>(defaultState);
+  const { 
+    onboardingState: vendorOnboardingState, 
+    setOnboardingStep, 
+    completeOnboardingStep,
+    getCurrentOnboardingStep 
+  } = useVendorStore();
 
-  // Load state from localStorage on mount
+  // Load state from vendorStore on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsedState = JSON.parse(saved);
-        setState(prev => ({ ...prev, ...parsedState, isSubmitting: false }));
-      } catch (error) {
-        console.error('Failed to load onboarding state:', error);
-      }
+    const currentStep = getCurrentOnboardingStep();
+    if (currentStep) {
+      setState(prev => ({ 
+        ...prev, 
+        step: currentStep.order,
+        isSubmitting: false 
+      }));
     }
-  }, []);
+  }, [getCurrentOnboardingStep]);
 
-  // Save state to localStorage whenever it changes
-  const saveState = useCallback((newState: Partial<OnboardingState>) => {
-    setState(prev => {
-      const updated = { ...prev, ...newState };
-      // Don't save file objects or large base64 images to localStorage
-      const stateToSave = {
-        ...updated,
-        formData: {
-          ...updated.formData,
-          details: {
-            ...updated.formData.details,
-            uploadedImageFile: undefined, // Don't serialize File objects
-            uploadedImage: undefined, // Don't serialize base64 image
-          },
-        },
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-      return updated;
-    });
-  }, []);
+
 
   const updateBasics = useCallback((basics: Partial<OnboardingState['formData']['basics']>) => {
-    saveState({
-      formData: {
-        ...state.formData,
-        basics: { ...state.formData.basics, ...basics },
-      },
+    console.log('updateBasics called with:', basics);
+    setState(prev => {
+      console.log('Previous state in updateBasics:', prev);
+      const newState = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          basics: { ...prev.formData.basics, ...basics },
+        },
+      };
+      console.log('New state in updateBasics:', newState);
+      return newState;
     });
-  }, [state.formData, saveState]);
+  }, []);
 
   const updateDetails = useCallback((details: Partial<OnboardingState['formData']['details']>) => {
-    saveState({
-      formData: {
-        ...state.formData,
-        details: { ...state.formData.details, ...details },
-      },
+    console.log('updateDetails called with:', details);
+    setState(prev => {
+      console.log('Previous state:', prev);
+      const newState = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          details: { ...prev.formData.details, ...details },
+        },
+      };
+      console.log('New state:', newState);
+      return newState;
     });
-  }, [state.formData, saveState]);
+  }, []);
 
   const updateSocial = useCallback((social: Partial<OnboardingState['formData']['social']>) => {
-    saveState({
-      formData: {
-        ...state.formData,
-        social: { ...state.formData.social, ...social },
-      },
+    console.log('updateSocial called with:', social);
+    setState(prev => {
+      console.log('Previous state in updateSocial:', prev);
+      const newState = {
+        ...prev,
+        formData: {
+          ...prev.formData,
+          social: { ...prev.formData.social, ...social },
+        },
+      };
+      console.log('New state in updateSocial:', newState);
+      return newState;
     });
-  }, [state.formData, saveState]);
+  }, []);
 
   const updatePayout = useCallback((payout: PayoutFormData) => {
-    saveState({
+    setState(prev => ({
+      ...prev,
       formData: {
-        ...state.formData,
+        ...prev.formData,
         payout,
       },
-    });
-  }, [state.formData, saveState]);
+    }));
+  }, []);
 
   const setStep = useCallback((step: number) => {
-    saveState({ step });
-  }, [saveState]);
+    setState(prev => ({ ...prev, step }));
+    setOnboardingStep(step);
+  }, [setOnboardingStep]);
 
   const setSubmitting = useCallback((isSubmitting: boolean) => {
-    saveState({ isSubmitting });
-  }, [saveState]);
+    setState(prev => ({ ...prev, isSubmitting }));
+  }, []);
 
   const setError = useCallback((field: string, error: string) => {
-    saveState({
-      errors: { ...state.errors, [field]: error },
-    });
-  }, [state.errors, saveState]);
+    setState(prev => ({
+      ...prev,
+      errors: { ...prev.errors, [field]: error },
+    }));
+  }, []);
 
   const clearError = useCallback((field: string) => {
-    const newErrors = { ...state.errors };
-    delete newErrors[field];
-    saveState({ errors: newErrors });
-  }, [state.errors, saveState]);
+    setState(prev => {
+      const newErrors = { ...prev.errors };
+      delete newErrors[field];
+      return { ...prev, errors: newErrors };
+    });
+  }, []);
 
   const clearState = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
     setState(defaultState);
   }, []);
 

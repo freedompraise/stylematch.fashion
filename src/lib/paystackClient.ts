@@ -1,3 +1,4 @@
+//src/lib/paystackClient.ts
 const PAYSTACK_EDGE_URL = import.meta.env.VITE_PAYSTACK_EDGE_URL
 const AUTH_HEADER = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
 

@@ -15,7 +15,7 @@ const DashboardEmptyState: React.FC<DashboardEmptyStateProps> = ({
     <div className="text-center py-12">
       <div className="max-w-md mx-auto">
         <Package size={64} className="mx-auto text-gray-400 mb-6" />
-        <h3 className="text-xl font-medium text-gray-900 mb-3">Welcome to Your Dashboard!</h3>
+        <h3 className="text-xl font-medium mb-3">Welcome to Your Dashboard!</h3>
         <p className="text-gray-500 mb-8">
           Get started by adding your first product. Once you have products in your store,
           you'll be able to track sales, manage orders, and grow your business.

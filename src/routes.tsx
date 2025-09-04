@@ -1,53 +1,62 @@
 // routes.tsx
 
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import RequireVendor from '@/components/vendor/RequireVendor';
+import { useAuthStore } from '@/stores/authStore';
+import { useVendorStore } from '@/stores/vendorStore';
+import VendorRouteGuard from '@/components/vendor/VendorRouteGuard';
+
 import Index from '@/pages/Index';
-import Auth from '@/pages/Auth';
+import Auth from '@/pages/auth/Index';
 import AuthCallback from '@/pages/auth/callback';
 import VerificationComplete from '@/pages/auth/verification-complete';
 import ForgotPassword from '@/pages/auth/forgot-password';
 import ResetPassword from '@/pages/auth/reset-password';
-import VendorOnboarding from '@/pages/VendorOnboarding';
-import VendorDashboard from '@/pages/VendorDashboard';
-import ProductManagement from '@/pages/ProductManagement';
-import OrderManagement from '@/pages/OrderManagement';
+import VendorOnboarding from '@/pages/vendor/VendorOnboarding';
+import VendorDashboard from '@/pages/vendor/VendorDashboard';
+import ProductManagement from '@/pages/vendor/ProductManagement';
+import OrderManagement from '@/pages/vendor/OrderManagement';
 import NotFound from '@/pages/NotFound';
 import VendorLayout from '@/components/vendor/VendorLayout';
-import SettingsProfile from '@/pages/SettingsProfile';
-import SettingsStore from '@/pages/SettingsStore';
-import SettingsPayout from '@/pages/SettingsPayout';
-import SettingsDangerZone from '@/pages/SettingsDangerZone';
+import SettingsProfile from '@/pages/vendor/SettingsProfile';
+import SettingsStore from '@/pages/vendor/SettingsStore';
+import SettingsPayout from '@/pages/vendor/SettingsPayout';
+import SettingsDangerZone from '@/pages/vendor/SettingsDangerZone';
 import React, { lazy } from 'react';
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, session, loading } = useAuthStore();
+
+  // Debug logging
+  console.log('[AuthRoute] State:', {
+    loading,
+    hasUser: !!user?.id,
+    hasSession: !!session,
+    pathname: window.location.pathname
+  });
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-lg">
     <Loader2 className="animate-spin" size={24} />
     <span className="ml-2">Loading Auth...</span>
   </div>;
   
-  if (isAuthenticated) {
+  // Only redirect if not loading and we have a session/user
+  if (!loading && session && user) {
+    console.log('[AuthRoute] User authenticated, redirecting to dashboard');
     return <Navigate to="/vendor/dashboard" replace />;
   }
 
+  console.log('[AuthRoute] Showing auth page');
   return <>{children}</>;
 };
 
-const VendorRoutes = () => (
-  <VendorLayout>
-    <Outlet />
-  </VendorLayout>
-);
+
 
 // Lazy load buyer storefront pages
-const Storefront = lazy(() => import('./pages/Storefront'));
-const ProductDetail = lazy(() => import('./pages/ProductDetail'));
-const StoreCheckout = lazy(() => import('./pages/StoreCheckout'));
-const StoreConfirmation = lazy(() => import('./pages/StoreConfirmation'));
+const Storefront = lazy(() => import('./pages/buyer/Storefront'));
+const ProductDetail = lazy(() => import('./pages/buyer/ProductDetail'));
+const StoreCheckout = lazy(() => import('./pages/buyer/StoreCheckout'));
+const StoreConfirmation = lazy(() => import('./pages/buyer/StoreConfirmation'));
 
 export default function AppRoutes() {
   return (
@@ -58,55 +67,94 @@ export default function AppRoutes() {
       <Route path="/auth/verification-complete" element={<VerificationComplete />} />
       <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
-      <Route path="/store/:name" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
       
       {/* Vendor onboarding route - requires auth but not vendor profile */}
       <Route
         path="/vendor/onboarding"
         element={
-          <RequireAuth>
+          <OnboardingRouteGuard>
             <VendorOnboarding />
-          </RequireAuth>
+          </OnboardingRouteGuard>
         }
       />
 
       {/* Vendor routes - requires both auth and vendor profile */}
-      <Route
-        element={
-          <RequireVendor>
-            <VendorRoutes />
-          </RequireVendor>
-        }
-      >
-        <Route path="vendor/dashboard" element={<VendorDashboard />} />
-        <Route path="vendor/products" element={<ProductManagement />} />
-        <Route path="vendor/products/:category" element={<ProductManagement />} />
-        <Route path="vendor/orders" element={<OrderManagement />} />
-        <Route 
-          path="customers" 
-          element={
+      <Route path="/vendor/dashboard" element={
+        <VendorRouteGuard route="dashboard">
+          <VendorLayout>
+            <VendorDashboard />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/products" element={
+        <VendorRouteGuard route="products">
+          <VendorLayout>
+            <ProductManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/products/:category" element={
+        <VendorRouteGuard route="products">
+          <VendorLayout>
+            <ProductManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/orders" element={
+        <VendorRouteGuard route="orders">
+          <VendorLayout>
+            <OrderManagement />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/customers" element={
+        <VendorRouteGuard route="customers">
+          <VendorLayout>
             <div className="p-6">
               <h1 className="text-3xl font-bold">Customers</h1>
               <p className="mt-4">Customer management page coming soon.</p>
             </div>
-          } 
-        />
-        <Route 
-          path="payments" 
-          element={
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/payments" element={
+        <VendorRouteGuard route="payments">
+          <VendorLayout>
             <div className="p-6">
               <h1 className="text-3xl font-bold">Payments</h1>
               <p className="mt-4">Payment management page coming soon.</p>
             </div>
-          } 
-        />
-        <Route path="vendor/settings">
-          <Route index element={<SettingsProfile />} />
-          <Route path="store" element={<SettingsStore />} />
-          <Route path="payout" element={<SettingsPayout />} />
-          <Route path="danger" element={<SettingsDangerZone />} />
-        </Route>
-      </Route>
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/settings" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsProfile />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/settings/store" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsStore />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/settings/payout" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsPayout />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
+      <Route path="/vendor/settings/danger" element={
+        <VendorRouteGuard route="settings">
+          <VendorLayout>
+            <SettingsDangerZone />
+          </VendorLayout>
+        </VendorRouteGuard>
+      } />
 
       {/* Buyer Storefront Public Routes */}
       <Route path="/store/:vendorSlug" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
@@ -118,22 +166,43 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+// Onboarding route guard - requires auth but not vendor profile
+const OnboardingRouteGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, session, loading: authLoading } = useAuthStore();
+  const { vendor, loading: vendorLoading } = useVendorStore();
 
-// New auth guard component
-const RequireAuth = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen text-lg">
-      <Loader2 className="animate-spin" size={24} />
-      <span className="ml-2">Loading Auth...</span>
-    </div>;
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-lg">
+        <Loader2 className="animate-spin" size={24} />
+        <span className="ml-2">Initializing...</span>
+      </div>
+    );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+  // Debug logging
+  console.log('[OnboardingRouteGuard] State:', {
+    authLoading,
+    vendorLoading,
+    hasUser: !!user?.id,
+    hasSession: !!session,
+    hasVendor: !!vendor
+  });
+
+  // Redirect to auth if not authenticated
+  if (!authLoading && !session && !user) {
+    console.log('[OnboardingRouteGuard] Not authenticated, redirecting to /auth');
+    return <Navigate to="/auth" replace />;
   }
 
+  // If user already has a verified vendor profile, redirect to dashboard
+  if (vendor && vendor.verification_status === 'verified') {
+    console.log('[OnboardingRouteGuard] User already verified, redirecting to dashboard');
+    return <Navigate to="/vendor/dashboard" replace />;
+  }
+
+  console.log('[OnboardingRouteGuard] Auth check passed, showing onboarding');
   return <>{children}</>;
 };
+

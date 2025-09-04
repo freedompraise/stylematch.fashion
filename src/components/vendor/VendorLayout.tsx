@@ -13,7 +13,7 @@ import {
   Menu,
   LogOut
 } from 'lucide-react';
-import { useVendor } from '@/contexts/VendorContext';
+import { useVendorStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,7 +65,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const { vendor, signOut } = useVendor();
+  const { vendor, signOut } = useVendorStore();
 
   const {
     searchQuery,
