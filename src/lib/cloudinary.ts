@@ -1,10 +1,26 @@
-// cloudinary.ts
+// src/lib/cloudinary.ts
 import crypto from 'crypto';
-export async function uploadToCloudinary(file: File): Promise<string> {
+
+export interface CloudinaryUploadOptions {
+  folder?: string;
+  quality?: string;
+  format?: string;
+  transformation?: string;
+}
+
+export async function uploadToCloudinary(
+  file: File, 
+  options: CloudinaryUploadOptions = {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('upload_preset', "stylematch");
+    
+    // Add folder organization
+    if (options.folder) {
+      formData.append('folder', options.folder);
+    }
 
     fetch(
       `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
@@ -13,9 +29,17 @@ export async function uploadToCloudinary(file: File): Promise<string> {
         body: formData,
       }
     )
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`HTTP ${response.status}: ${text}`);
+          });
+        }
+        return response.json();
+      })
       .then((data) => {
         if (!data.secure_url) {
+          console.error('Cloudinary response:', data);
           reject('Image upload failed: no URL returned');
         }
         resolve(data.secure_url)
@@ -24,6 +48,19 @@ export async function uploadToCloudinary(file: File): Promise<string> {
         console.error("Error during Cloudinary upload:", error);
         reject(error);
       });
+  });
+}
+
+// Optimized upload functions for different use cases - Conservative
+export async function uploadProductImage(file: File): Promise<string> {
+  return uploadToCloudinary(file, {
+    folder: 'products'
+  });
+}
+
+export async function uploadStoreBanner(file: File): Promise<string> {
+  return uploadToCloudinary(file, {
+    folder: 'store-banners'
   });
 }
 

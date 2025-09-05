@@ -2,7 +2,7 @@ import supabase from '@/lib/supabaseClient';
 import { VendorProfile, CreateVendorProfileInput } from '@/types';
 import { z } from 'zod';
 import { VendorServiceError, NotFoundError, ValidationError, DatabaseError } from './errors/VendorServiceError';
-import { getPublicIdFromUrl, deleteFromCloudinary, uploadToCloudinary } from '@/lib/cloudinary';
+import { getPublicIdFromUrl, deleteFromCloudinary, uploadStoreBanner } from '@/lib/cloudinary';
 import { generateUniqueSlug } from '@/lib/utils';
 
 const createVendorProfileSchema = z.object({
@@ -52,7 +52,7 @@ export async function createVendorProfile(userId: string, profile: CreateVendorP
   let imageUrl: string | undefined;
   try {
     if (imageFile) {
-      imageUrl = await uploadToCloudinary(imageFile);
+      imageUrl = await uploadStoreBanner(imageFile);
     }
     
     const { data: existingVendor } = await supabase
@@ -168,7 +168,7 @@ export async function updateVendorProfile(userId: string, updates: Partial<Vendo
   let oldImagePublicId: string | undefined;
   try {
     if (imageFile) {
-      imageUrl = await uploadToCloudinary(imageFile);
+      imageUrl = await uploadStoreBanner(imageFile);
       uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
       const currentProfile = await getVendorProfile(userId);
       if (currentProfile?.banner_image_url) {

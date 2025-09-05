@@ -3,7 +3,7 @@ import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
 import {
-  uploadToCloudinary,
+  uploadProductImage,
   deleteFromCloudinary,
   getPublicIdFromUrl,
 } from '@/lib/cloudinary';
@@ -61,7 +61,7 @@ class VendorDataService {
     try {
       let imageUrl: string | null = null;
       if (imageFile) {
-        imageUrl = await uploadToCloudinary(imageFile);
+        imageUrl = await uploadProductImage(imageFile);
       }
 
       const productToCreate = {
