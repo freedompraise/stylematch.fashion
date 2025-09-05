@@ -1,9 +1,16 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, Zap, Globe, BadgePercent } from 'lucide-react';
 import Button from './Button';
 
 const Benefits: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate('/auth');
+  };
+
   return (
     <section id="benefits" className="section bg-gray-50">
       <div className="container">
@@ -58,7 +65,7 @@ const Benefits: React.FC = () => {
             </div>
             
             <div className="mt-10">
-              <Button size="lg">Start Your Fashion Journey</Button>
+              <Button size="lg" onClick={handleGetStarted}>Start Your Fashion Journey</Button>
             </div>
           </div>
           

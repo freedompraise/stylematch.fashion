@@ -1,9 +1,16 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from './Button';
 import { ArrowRight, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 
 const Hero: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    navigate('/auth');
+  };
+
   return (
     <section className="pt-24 pb-12 md:pt-32 md:pb-20 overflow-hidden bg-gradient-to-br from-white to-blue-50">
       <div className="container">
@@ -17,11 +24,11 @@ const Hero: React.FC = () => {
             </p>
             
             <div className="flex flex-wrap gap-4 mb-12">
-              <Button size="lg" className="rounded-lg group">
+              <Button size="lg" className="rounded-lg group" onClick={handleGetStarted}>
                 Start Selling Online
                 <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="outline" size="lg" className="rounded-lg">
+              <Button variant="outline" size="lg" className="rounded-lg" onClick={handleGetStarted}>
                 Explore Features
               </Button>
             </div>
@@ -61,6 +68,7 @@ const Hero: React.FC = () => {
                 <Button 
                   variant="primary" 
                   className="bg-white text-primary hover:bg-white/90 w-full md:w-auto text-center"
+                  onClick={handleGetStarted}
                 >
                   Start Your Journey
                 </Button>
@@ -82,7 +90,7 @@ const Hero: React.FC = () => {
         </div>
       </div>
       
-      <div className="container mt-20">
+      {/* <div className="container mt-20">
         <div className="text-center">
           <p className="text-baseContent-secondary font-medium mb-4">TRUSTED BY FASHION ENTREPRENEURS NATIONWIDE</p>
           <div className="flex justify-center gap-8 md:gap-16 flex-wrap opacity-70">
@@ -93,7 +101,7 @@ const Hero: React.FC = () => {
             <img src="https://tailwindui.com/img/logos/workcation-logo-gray-900.svg" alt="Company" className="h-8" />
           </div>
         </div>
-      </div>
+      </div> */}
     </section>
   );
 };

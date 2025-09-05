@@ -16,7 +16,7 @@ const features = [
   {
     icon: <CreditCard className="h-8 w-8 text-primary" />,
     title: "Secure Payments",
-    description: "Accept payments safely with Paystack integration, eliminating the need for manual verification."
+    description: "Accept payments safely with Paystack integration, eliminating the need for manual verification (coming soon)."
   },
   {
     icon: <Upload className="h-8 w-8 text-primary" />,

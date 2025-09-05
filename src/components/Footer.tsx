@@ -51,7 +51,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-3">
               <li className="flex items-center">
                 <Mail size={18} className="mr-3 text-secondary" />
-                <a href="mailto:info@stylematch.com" className="text-white/80 hover:text-white transition-colors">info@stylematch.com</a>
+                <a href="mailto:info@stylematch.com" className="text-white/80 hover:text-white transition-colors">marketmatchofficial@gmail.com</a>
               </li>
               <li className="flex items-center">
                 <MapPin size={18} className="mr-3 text-secondary" />
@@ -59,7 +59,7 @@ const Footer: React.FC = () => {
               </li>
               <li className="flex items-center">
                 <Phone size={18} className="mr-3 text-secondary" />
-                <a href="tel:+2348123456789" className="text-white/80 hover:text-white transition-colors">+234 812 345 6789</a>
+                <a href="tel:+2349074577147" className="text-white/80 hover:text-white transition-colors">+234 907 457 7147</a>
               </li>
             </ul>
           </div>

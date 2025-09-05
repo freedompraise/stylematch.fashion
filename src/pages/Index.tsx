@@ -15,7 +15,7 @@ const Index: React.FC = () => {
       <Hero />
       <Features />
       <Benefits />
-      <Testimonials />
+      {/* <Testimonials /> */}
       <CallToAction />
       <Footer />
     </div>
