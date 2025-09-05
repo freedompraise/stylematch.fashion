@@ -34,15 +34,11 @@ import Logo from '@/components/Logo';
 import { useMarketplaceStore, useBuyerStore } from '@/stores';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { getAllCategoryNames, getCategoryName } from '@/constants/categories';
 
 const categories = [
   'All Categories', 
-  'Dresses', 
-  'Tops', 
-  'Bottoms', 
-  'Accessories', 
-  'Shoes', 
-  'Outerwear'
+  ...getAllCategoryNames()
 ];
 
 interface CartItem {
@@ -72,8 +68,11 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
   
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         product.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All Categories' || product.category === selectedCategory;
+                         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         getCategoryName(product.category).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All Categories' || 
+                           product.category === selectedCategory ||
+                           getCategoryName(product.category) === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 

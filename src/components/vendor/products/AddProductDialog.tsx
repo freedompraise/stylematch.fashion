@@ -2,6 +2,7 @@ import{ useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { getCategoryOptions } from '@/constants/categories';
 import {
   Dialog,
   DialogContent,
@@ -292,9 +293,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="clothing">Clothing</SelectItem>
-                              <SelectItem value="shoes">Shoes</SelectItem>
-                              <SelectItem value="accessories">Accessories</SelectItem>
+                              {getCategoryOptions().map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />

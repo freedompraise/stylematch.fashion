@@ -8,23 +8,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { getCategoryOptions } from '@/constants/categories';
 import { Search, Filter } from 'lucide-react';
+import { ProductFilters as FilterType } from '@/utils/productFiltering';
 
 interface ProductFiltersProps {
-  onFilterChange: (filters: {
-    search: string;
-    category: string;
-    priceRange: string;
-    stockStatus: string;
-  }) => void;
+  onFilterChange: (filters: FilterType) => void;
 }
 
 export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
-  const [filters, setFilters] = React.useState({
+  const [filters, setFilters] = React.useState<FilterType>({
     search: '',
-    category: '',
-    priceRange: '',
-    stockStatus: '',
+    category: 'all',
+    priceRange: 'all',
+    stockStatus: 'all',
   });
 
   const handleFilterChange = (
@@ -37,18 +34,14 @@ export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
   };
 
   const handleReset = () => {
-    setFilters({
+    const resetFilters: FilterType = {
       search: '',
-      category: '',
-      priceRange: '',
-      stockStatus: '',
-    });
-    onFilterChange({
-      search: '',
-      category: '',
-      priceRange: '',
-      stockStatus: '',
-    });
+      category: 'all',
+      priceRange: 'all',
+      stockStatus: 'all',
+    };
+    setFilters(resetFilters);
+    onFilterChange(resetFilters);
   };
 
   return (
@@ -72,11 +65,12 @@ export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
-            <SelectItem value="tops">Tops</SelectItem>
-            <SelectItem value="bottoms">Bottoms</SelectItem>
-            <SelectItem value="dresses">Dresses</SelectItem>
-            <SelectItem value="accessories">Accessories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
+            {getCategoryOptions().map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -88,11 +82,12 @@ export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
             <SelectValue placeholder="Price Range" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Prices</SelectItem>
-            <SelectItem value="0-50">₦0 - ₦50</SelectItem>
-            <SelectItem value="51-100">₦51 - ₦100</SelectItem>
-            <SelectItem value="101-200">₦101 - ₦200</SelectItem>
-            <SelectItem value="201+">₦201+</SelectItem>
+            <SelectItem value="all">All Prices</SelectItem>
+            <SelectItem value="0-5000">₦0 - ₦5,000</SelectItem>
+            <SelectItem value="5001-15000">₦5,001 - ₦15,000</SelectItem>
+            <SelectItem value="15001-30000">₦15,001 - ₦30,000</SelectItem>
+            <SelectItem value="30001-50000">₦30,001 - ₦50,000</SelectItem>
+            <SelectItem value="50001+">₦50,001+</SelectItem>
           </SelectContent>
         </Select>
 
@@ -104,7 +99,7 @@ export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
             <SelectValue placeholder="Stock Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Status</SelectItem>
+            <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="in-stock">In Stock</SelectItem>
             <SelectItem value="low-stock">Low Stock</SelectItem>
             <SelectItem value="out-of-stock">Out of Stock</SelectItem>

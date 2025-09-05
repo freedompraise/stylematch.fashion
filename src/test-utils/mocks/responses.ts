@@ -5,7 +5,7 @@ export const mockProducts = [
     name: "Test Product 1",
     price: 29.99,
     description: "Test description 1",
-    category: "clothing",
+    category: "tops",
     color: "Black",
     size: "M",
     stock_quantity: 10,

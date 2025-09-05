@@ -20,7 +20,16 @@ interface DashboardStats {
 
 const VendorDashboard: React.FC = () => {
   const navigate = useNavigate()
-  const { products, orders, calculateVendorStats, getTopProducts } = useVendorStore()
+  const { 
+    products, 
+    orders, 
+    calculateVendorStats, 
+    getTopProducts,
+    fetchProducts,
+    fetchOrders,
+    productsLoaded,
+    ordersLoaded
+  } = useVendorStore()
   const [loading, setLoading] = useState(true)
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<ProductWithSales[]>([])
@@ -32,29 +41,49 @@ const VendorDashboard: React.FC = () => {
     const loadDashboardData = async () => {
       try {
         setLoading(true)
-        const vendorStats = calculateVendorStats(products, orders)
+        
+        // Load products if not already loaded
+        if (!productsLoaded) {
+          await fetchProducts(true) // use cache
+        }
+        
+        // Load orders if not already loaded
+        if (!ordersLoaded) {
+          await fetchOrders(true) // use cache
+        }
+        
+        // Get fresh data from store after loading
+        const currentProducts = products
+        const currentOrders = orders
+        
+        const vendorStats = calculateVendorStats(currentProducts, currentOrders)
         
         setRecentOrders(vendorStats.recentOrders as Order[])
-        setTopProducts(getTopProducts(products, orders))
+        setTopProducts(getTopProducts(currentProducts, currentOrders))
         setHasOrders(vendorStats.totalOrders > 0)
-        setHasProducts(products.length > 0)
+        setHasProducts(currentProducts.length > 0)
       } catch (error) {
         console.error('Error loading dashboard data:', error)
+        toast({
+          title: 'Error loading dashboard',
+          description: 'Could not load dashboard data. Please try again later.',
+          variant: 'destructive',
+        })
       } finally {
         setLoading(false)
       }
     }
 
     loadDashboardData()
-  }, [products, orders, calculateVendorStats, getTopProducts])
+  }, [fetchProducts, fetchOrders, productsLoaded, ordersLoaded, calculateVendorStats, getTopProducts, toast])
 
-  // Calculate stats for display
+  // Calculate stats for display using fresh data
   const vendorStats = calculateVendorStats(products, orders)
   const stats: DashboardStats = {
     totalSales: vendorStats.totalRevenue,
     totalOrders: vendorStats.totalOrders,
-    averageOrderValue: vendorStats.totalOrders > 0 ? vendorStats.totalRevenue / vendorStats.totalOrders : 0,
-    lowStockProducts: products.filter(p => p.stock_quantity <= 5).length
+    averageOrderValue: vendorStats.averageOrderValue,
+    lowStockProducts: vendorStats.lowStockProducts
   }
  
   const navigateToProducts = () => {

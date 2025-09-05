@@ -25,10 +25,10 @@ export const orderSchema = z.object({
   vendor_id: z.string().uuid(),
   status: orderStatusSchema,
   delivery_location: z.string(),
-  delivery_date: z.string(), // ISO date string
+  delivery_date: z.string(), // Date string from database
   total_amount: z.number().int().min(0),
-  created_at: z.string().datetime().nullable(),
-  updated_at: z.string().datetime().nullable(),
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
   customer_info: customerInfoSchema,
 });
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getAllCategoryIds } from '@/constants/categories';
 
 export const productSchema = z.object({
   id: z.string().uuid(),
@@ -6,7 +7,7 @@ export const productSchema = z.object({
   description: z.string(),
   price: z.number().positive(),
   stock_quantity: z.number().int().min(0),
-  category: z.string(),
+  category: z.enum(getAllCategoryIds() as [string, ...string[]]),
   color: z.string(),
   size: z.string(),
   discount_price: z.number().positive().nullable(),

@@ -10,6 +10,9 @@ import { FilterBar } from '@/components/vendor/FilterBar';
 import { QuickActions, productsQuickActions } from '@/components/vendor/QuickActions';
 import { AddProductDialog } from '@/components/vendor/products/AddProductDialog';
 import { ProductList } from '@/components/vendor/products/ProductList';
+import { ProductFilters } from '@/components/vendor/products/ProductFilters';
+import { FilterSummary } from '@/components/vendor/products/FilterSummary';
+import { filterProducts, ProductFilters as FilterType } from '@/utils/productFiltering';
 
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
@@ -25,6 +28,12 @@ const ProductManagement: React.FC = () => {
   } = useVendorStore();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<FilterType>({
+    search: '',
+    category: 'all',
+    priceRange: 'all',
+    stockStatus: 'all',
+  });
 
   // Load products only once on mount
   useEffect(() => {
@@ -60,6 +69,22 @@ const ProductManagement: React.FC = () => {
     const query = e.target.value;
     setSearchQuery(query);
   };
+
+  const handleFilterChange = (newFilters: FilterType) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      category: 'all',
+      priceRange: 'all',
+      stockStatus: 'all',
+    });
+  };
+
+  // Get filtered products
+  const { filteredProducts, totalCount, hasResults } = filterProducts(products, filters);
 
   const handleDeleteProduct = async (product: Product) => {
     console.log(`[ProductManagement] Initiating deletion for product: ${product.id}`);
@@ -123,26 +148,22 @@ const ProductManagement: React.FC = () => {
       </div>
 
       {products.length > 0 && <QuickActions actions={productsQuickActions} />}
-{/* 
-      {products.length > 0 && (
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search products..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-          </div>
 
-          <FilterBar />
-        </div>
-      )} */}
+      {products.length > 0 && (
+        <ProductFilters onFilterChange={handleFilterChange} />
+      )}
+
+      {products.length > 0 && (
+        <FilterSummary
+          filters={filters}
+          totalProducts={products.length}
+          filteredCount={filteredProducts.length}
+          onClearFilters={handleClearFilters}
+        />
+      )}
 
       <ProductList
-        products={products}
+        products={filteredProducts}
         onDeleteProduct={handleDeleteProduct}
         loading={loading}
       />
@@ -150,6 +171,12 @@ const ProductManagement: React.FC = () => {
       {products.length === 0 && !loading && (
         <div className="text-center text-muted-foreground">
           No products in the database. You can add one by clicking the button above.
+        </div>
+      )}
+
+      {products.length > 0 && !hasResults && !loading && (
+        <div className="text-center text-muted-foreground">
+          No products match your current filters. Try adjusting your search criteria.
         </div>
       )}
     </div>
