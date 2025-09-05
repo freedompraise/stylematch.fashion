@@ -194,7 +194,7 @@ const OrderManagement: React.FC = () => {
                     <TableCell className="font-mono text-sm">{order.id}</TableCell>
                     <TableCell>{order.customer_info?.name}</TableCell>
                     <TableCell>{order.product_id}</TableCell>
-                    <TableCell>${order.total_amount?.toFixed(2)}</TableCell>
+                    <TableCell>₦{order.total_amount?.toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(order.status)}>
                           {order.status}

@@ -71,7 +71,7 @@ export function ProductList({ products, onDeleteProduct, loading }: ProductListP
                   </div>
                 </TableCell>
                 <TableCell>{product.category}</TableCell>
-                <TableCell>${product.price.toLocaleString()}</TableCell>
+                <TableCell>₦{product.price.toLocaleString()}</TableCell>
                 <TableCell>{product.stock_quantity}</TableCell>
                 <TableCell>
                   <span

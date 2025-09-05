@@ -125,7 +125,7 @@ const StoreCheckoutContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) 
               <div key={idx} className="flex items-center justify-between py-2">
                 <div>
                   <div className="font-semibold">{item.name}</div>
-                  <div className="text-sm text-baseContent-secondary">
+                  <div className="text-sm text-baseContent">
                     {item.size && <>Size: {item.size} </>}
                     {item.color && <>Color: {item.color}</>}
                   </div>

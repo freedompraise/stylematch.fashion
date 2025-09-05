@@ -56,7 +56,7 @@ const RecentOrders: React.FC<RecentOrdersProps> = ({ orders }) => {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-medium">${order.total_amount.toFixed(2)}</p>
+                <p className="font-medium">₦{order.total_amount.toFixed(2)}</p>
                 <p className={`text-sm ${getStatusColor(order.status)}`}>
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </p>

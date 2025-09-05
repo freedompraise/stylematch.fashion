@@ -89,10 +89,10 @@ export function ProductFilters({ onFilterChange }: ProductFiltersProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All Prices</SelectItem>
-            <SelectItem value="0-50">$0 - $50</SelectItem>
-            <SelectItem value="51-100">$51 - $100</SelectItem>
-            <SelectItem value="101-200">$101 - $200</SelectItem>
-            <SelectItem value="201+">$201+</SelectItem>
+            <SelectItem value="0-50">₦0 - ₦50</SelectItem>
+            <SelectItem value="51-100">₦51 - ₦100</SelectItem>
+            <SelectItem value="101-200">₦101 - ₦200</SelectItem>
+            <SelectItem value="201+">₦201+</SelectItem>
           </SelectContent>
         </Select>
 

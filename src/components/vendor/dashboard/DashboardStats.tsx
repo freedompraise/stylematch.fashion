@@ -19,7 +19,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <StatsCard
         title="Total Sales"
-        value={`$${totalSales.toFixed(2)}`}
+        value={`₦${totalSales.toFixed(2)}`}
         description="Lifetime sales"
         icon={DollarSign}
       />

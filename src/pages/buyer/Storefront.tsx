@@ -283,6 +283,8 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
         </div>
       </header>
       
+
+      
       <main className="container mx-auto py-8 px-4">
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -313,6 +315,16 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
             {vendor.wabusiness_url && <a href={vendor.wabusiness_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">WhatsApp</a>}
           </div>
         </div>
+
+        {vendor.banner_image_url && (
+        <div className="w-full h-48 md:h-64 lg:h-80 mb-16">
+          <img
+            src={vendor.banner_image_url}
+            alt={`${vendor.store_name} banner`}
+            className="w-full h-full object-contain"
+          />
+        </div>
+      )}
         
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (

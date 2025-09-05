@@ -252,7 +252,7 @@ describe('Product Behavior Patterns', () => {
       
   //     const priceRangeSelect = screen.getByLabelText(/price range/i)
   //     fireEvent.click(priceRangeSelect)
-  //     const priceOption = screen.getByText(/\$0 - \$50/i)
+  //     const priceOption = screen.getByText(/₦0 - ₦50/i)
   //     fireEvent.click(priceOption)
       
   //     await waitFor(() => {

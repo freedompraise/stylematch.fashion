@@ -144,7 +144,7 @@ describe('Dashboard Behavior Patterns', () => {
 
       await waitFor(() => {
         // Check currency formatting in stats - there are multiple price elements
-        const priceElements = screen.getAllByText(/\$\d+\.\d{2}/)
+        const priceElements = screen.getAllByText(/₦\d+\.\d{2}/)
         expect(priceElements.length).toBeGreaterThan(0)
       })
     })
