@@ -400,7 +400,16 @@ export const useVendorStore = create<VendorState>()(
 
       fetchOrders: async (useCache: boolean = true) => {
         const { vendor, orders } = get();
-        if (!vendor?.user_id) throw new Error('No vendor profile');
+        console.log('[VendorStore] fetchOrders called', { 
+          vendorId: vendor?.user_id, 
+          useCache, 
+          cachedOrdersCount: orders.length 
+        });
+        
+        if (!vendor?.user_id) {
+          console.error('[VendorStore] No vendor profile available');
+          throw new Error('No vendor profile');
+        }
         
         try {
           const fetchedOrders = await vendorDataService.fetchOrders(
@@ -408,6 +417,7 @@ export const useVendorStore = create<VendorState>()(
             useCache, 
             orders
           );
+          console.log('[VendorStore] Orders fetched from service:', fetchedOrders.length);
           set({ orders: fetchedOrders, ordersLoaded: true });
           return fetchedOrders;
         } catch (error) {

@@ -139,21 +139,30 @@ class VendorDataService {
 
   // Order operations
   async fetchOrders(vendorId: string, useCache: boolean = true, cachedOrders: Order[] = []): Promise<Order[]> {
+    console.log('[VendorDataService] fetchOrders called', { vendorId, useCache, cachedOrdersCount: cachedOrders.length });
+    
     if (useCache && cachedOrders.length > 0) {
+      console.log('[VendorDataService] Returning cached orders');
       return cachedOrders;
     }
 
     try {
+      console.log('[VendorDataService] Fetching orders from database for vendor:', vendorId);
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('vendor_id', vendorId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[VendorDataService] Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('[VendorDataService] Orders fetched from database:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('[VendorDataService] Error fetching orders:', error);
       throw error;
     }
   }

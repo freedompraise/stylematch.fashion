@@ -52,7 +52,7 @@ const RecentOrders: React.FC<RecentOrdersProps> = ({ orders }) => {
               <div>
                 <p className="font-medium">{order.customer_info.name}</p>
                 <p className="text-sm text-gray-500">
-                  {new Date(order.created_at).toLocaleDateString()}
+                  {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
               <div className="text-right">

@@ -11,7 +11,16 @@ import { Search, Filter, Download } from 'lucide-react';
 import { Order, OrderStatus } from '@/types/OrderSchema';
 
 const OrderManagement: React.FC = () => {
-  const { orders, setOrders, updateOrder: updateOrderInStore, removeOrder, fetchOrders, deleteOrder: deleteOrderFromStore } = useVendorStore();
+  const { 
+    orders, 
+    setOrders, 
+    updateOrder: updateOrderInStore, 
+    removeOrder, 
+    fetchOrders, 
+    deleteOrder: deleteOrderFromStore,
+    vendor,
+    ordersLoaded
+  } = useVendorStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,8 +30,26 @@ const OrderManagement: React.FC = () => {
     const loadOrders = async () => {
       try {
         setLoading(true);
+        console.log('[OrderManagement] Loading orders...', { 
+          vendorId: vendor?.user_id, 
+          ordersLoaded, 
+          currentOrdersCount: orders.length 
+        });
+        
+        if (!vendor?.user_id) {
+          console.error('[OrderManagement] No vendor ID available');
+          toast({
+            title: 'Error loading orders',
+            description: 'Vendor profile not loaded. Please refresh the page.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
         await fetchOrders(true); // use cache
+        console.log('[OrderManagement] Orders loaded successfully');
       } catch (error) {
+        console.error('[OrderManagement] Error loading orders:', error);
         toast({
           title: 'Error loading orders',
           description: 'Could not load your orders. Please try again later.',
@@ -34,7 +61,7 @@ const OrderManagement: React.FC = () => {
     };
 
     loadOrders();
-  }, [fetchOrders, toast]);
+  }, [fetchOrders, toast, vendor?.user_id, ordersLoaded]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
