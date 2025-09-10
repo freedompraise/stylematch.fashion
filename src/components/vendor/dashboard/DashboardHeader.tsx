@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LogOut, Plus } from 'lucide-react';
 import { useAuthStore, useVendorStore } from '@/stores';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 
 interface DashboardHeaderProps {
@@ -13,16 +13,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onAddProduct }) => {
   const { signOut } = useAuthStore();
   const { clearVendorData } = useVendorStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      clearVendorData(); // Clear vendor data
+      clearVendorData();
       toast({
         title: 'Signed out',
         description: 'You have successfully signed out.',
       });
-      return <Navigate to="/" replace />;
+      navigate('/');
     } catch (error) {
       toast({
         title: 'Error',

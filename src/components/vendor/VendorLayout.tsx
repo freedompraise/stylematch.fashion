@@ -1,7 +1,7 @@
 // VendorLayout.tsx
 
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -13,7 +13,7 @@ import {
   Menu,
   LogOut
 } from 'lucide-react';
-import { useVendorStore } from '@/stores';
+import { useVendorStore, useAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +32,8 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { useVendorSearch } from '@/hooks/use-vendor-search';
+import { useToast } from '@/components/ui/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 const navigationItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/vendor/dashboard' },
@@ -65,7 +67,9 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
-  const { vendor, signOut } = useVendorStore();
+  const { vendor, clearVendorData } = useVendorStore();
+  const { signOut } = useAuthStore();
+  const { toast } = useToast();
 
   const {
     searchQuery,
@@ -80,6 +84,24 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     setSearchOpen(open);
     if (!open) {
       setSearchQuery('');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      clearVendorData();
+      toast({
+        title: 'Signed out',
+        description: 'You have successfully signed out.',
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -159,7 +181,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={signOut}
+                    onClick={handleSignOut}
                     className="hover:bg-destructive/10"
                   >
                     <LogOut className="h-5 w-5 text-destructive" />
