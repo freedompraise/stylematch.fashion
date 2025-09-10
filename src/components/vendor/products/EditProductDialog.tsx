@@ -67,7 +67,21 @@ export function EditProductDialog({
       category: z.string().min(1, "Category is required"),
       color: z.string(),
       size: z.string(),
-    })),
+    }).refine(
+      () => {
+        // Check if product has existing image OR new image uploaded OR image removal is not requested
+        const hasExistingImage = product?.images && product.images.length > 0;
+        const hasNewImage = productImage !== null;
+        const isRemovingImage = shouldRemoveImage;
+        
+        // Valid if: (has existing image AND not removing) OR (has new image) OR (removing image is intentional)
+        return (hasExistingImage && !isRemovingImage) || hasNewImage;
+      },
+      {
+        message: "Product image is required for better visibility and sales",
+        path: ["name"] // Use name field to show error at form level
+      }
+    )),
     defaultValues: {
       name: '',
       description: '',
@@ -102,6 +116,11 @@ export function EditProductDialog({
       setShouldRemoveImage(false);
     }
   }, [product, open, form]);
+
+  // Revalidate form when image state changes
+  useEffect(() => {
+    form.trigger();
+  }, [productImage, shouldRemoveImage, form]);
 
   const onSubmit = async (data: EditProductFormValues) => {
     if (!product) return;

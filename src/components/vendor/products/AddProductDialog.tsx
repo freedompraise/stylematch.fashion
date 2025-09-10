@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useVendorStore } from '@/stores';
-import { Product, productsSchema, ProductFormValues } from '@/types/ProductSchema';
+import { Product, productsSchema, ProductFormValues, createProductSchema } from '@/types/ProductSchema';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
@@ -50,7 +50,9 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
 
   const form = useForm<{ products: ProductFormValues[] }>({
-    resolver: zodResolver(z.object({ products: productsSchema })),
+    resolver: zodResolver(z.object({ 
+      products: z.array(createProductSchema)
+    })),
     defaultValues: {
       products: [{
         name: '',
@@ -60,6 +62,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
         category: '',
         color: '',
         size: '',
+        images: [], // Will be populated when image is uploaded
       }]
     }
   });
@@ -85,6 +88,11 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       setPreviewUrls(prev => prev.slice(0, currentLength));
     }
   }, [fields.length, productImages.length, previewUrls.length]);
+
+  // Revalidate form when images change
+  useEffect(() => {
+    form.trigger('products');
+  }, [productImages, form]);
 
   // Debug form validation state
   useEffect(() => {
@@ -131,6 +139,18 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   };
 
   const onSubmit = async (data: { products: ProductFormValues[] }) => {
+    // Validate that all products have images
+    const missingImages = data.products.map((_, index) => index).filter(index => productImages[index] === null);
+    
+    if (missingImages.length > 0) {
+      toast({
+        title: "Image Required",
+        description: "Product image is required for better visibility and sales",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const createdProducts: Product[] = [];
       for (let i = 0; i < data.products.length; i++) {

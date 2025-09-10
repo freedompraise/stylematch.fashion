@@ -29,3 +29,4 @@ package-lock.json
 src/integrations/
 docs/
 stylematch-nextjs/
+/test-image.jpg

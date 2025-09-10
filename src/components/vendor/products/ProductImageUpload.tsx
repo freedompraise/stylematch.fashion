@@ -139,6 +139,7 @@ export function ProductImageUpload({
             }
           </p>
           <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-primary">Required:</span> Product image increases sales by 5x • 
             Max size: {formatFileSize(PRODUCT_IMAGE_CONFIG.maxFileSize)} • 
             Max dimensions: {PRODUCT_IMAGE_CONFIG.maxWidth}x{PRODUCT_IMAGE_CONFIG.maxHeight}
           </p>
@@ -149,6 +150,15 @@ export function ProductImageUpload({
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertCircle className="h-4 w-4 text-destructive" />
           <p className="text-sm text-destructive">{validationError}</p>
+        </div>
+      )}
+
+      {!previewUrl && !validationError && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <p className="text-sm text-amber-800">
+            <span className="font-medium">Image required:</span> Products with images get 5x more views and sales
+          </p>
         </div>
       )}
 
