@@ -71,7 +71,7 @@ interface VendorState {
   // Product actions
   setProducts: (products: Product[]) => void;
   addProduct: (product: Product) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product) => Promise<Product>;
   removeProduct: (id: string) => void;
   setProductsLoaded: (loaded: boolean) => void;
   fetchProducts: (useCache?: boolean) => Promise<Product[]>;
@@ -80,6 +80,7 @@ interface VendorState {
     imageFile?: File
   ) => Promise<Product>;
   deleteProduct: (product: Product) => Promise<void>;
+  softDeleteProduct: (productId: string, reason?: string, product?: Product) => Promise<void>;
   
   // Order actions
   setOrders: (orders: Order[]) => void;
@@ -301,14 +302,15 @@ export const useVendorStore = create<VendorState>()(
         set((state) => ({ products: [product, ...state.products] }));
       },
       
-      updateProduct: async (id: string, updates: Partial<Product>) => {
+      updateProduct: async (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product) => {
         const { vendor } = get();
         if (!vendor?.user_id) throw new Error('No vendor profile');
         
-        const updatedProduct = await vendorDataService.updateProduct(id, updates, vendor.user_id);
+        const updatedProduct = await vendorDataService.updateProduct(id, updates, vendor.user_id, imageFile, currentProduct);
         set((state) => ({
           products: state.products.map(p => (p.id === id ? updatedProduct : p))
         }));
+        return updatedProduct;
       },
       
       removeProduct: (id: string) => {
@@ -367,6 +369,21 @@ export const useVendorStore = create<VendorState>()(
           // The local state update is now handled optimistically in the component
         } catch (error) {
           console.error('[VendorStore] Error deleting product:', error);
+          throw error;
+        }
+      },
+
+      softDeleteProduct: async (productId: string, reason?: string, product?: Product) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          await vendorDataService.softDeleteProduct({ productId, reason }, vendor.user_id, product);
+          set((state) => ({
+            products: state.products.filter((p) => p.id !== productId),
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error soft deleting product:', error);
           throw error;
         }
       },

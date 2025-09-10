@@ -26,4 +26,11 @@ export class DatabaseError extends VendorServiceError {
     super(message, 'DATABASE_ERROR');
     this.name = 'DatabaseError';
   }
+}
+
+export class ProductDeletionError extends VendorServiceError {
+  constructor(message: string, originalError?: any) {
+    super(message, 'PRODUCT_DELETION_ERROR');
+    this.name = 'ProductDeletionError';
+  }
 } 

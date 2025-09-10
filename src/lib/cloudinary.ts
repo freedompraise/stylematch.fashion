@@ -1,5 +1,4 @@
 // src/lib/cloudinary.ts
-import crypto from 'crypto';
 
 export interface CloudinaryUploadOptions {
   folder?: string;
@@ -65,9 +64,15 @@ export async function uploadStoreBanner(file: File): Promise<string> {
 }
 
 export async function deleteFromCloudinary(publicId: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  console.log("[Cloudinary] Starting deletion for public ID:", publicId);
+  
+  try {
     const timestamp = Math.round(new Date().getTime() / 1000);
-    const signature = generateSignature(publicId, timestamp);
+    const signature = await generateSignature(publicId, timestamp);
+    
+    console.log("[Cloudinary] Generated signature for deletion");
+    console.log("[Cloudinary] Cloud name:", import.meta.env.VITE_CLOUDINARY_CLOUD_NAME);
+    console.log("[Cloudinary] API key present:", !!import.meta.env.VITE_CLOUDINARY_API_KEY);
 
     const formData = new FormData();
     formData.append('public_id', publicId);
@@ -75,40 +80,82 @@ export async function deleteFromCloudinary(publicId: string): Promise<void> {
     formData.append('api_key', import.meta.env.VITE_CLOUDINARY_API_KEY || '');
     formData.append('timestamp', timestamp.toString());
 
-    fetch(
-      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/destroy`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          reject(data.error);
-        }else {
-          resolve();
-        }
-      })
-      .catch((error) => {
-        console.error("Error during Cloudinary delete:", error);
-        reject(error);
-      });
-  });
+    const deleteUrl = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/destroy`;
+    console.log("[Cloudinary] Sending delete request to:", deleteUrl);
+
+    const response = await fetch(deleteUrl, {
+      method: 'POST',
+      body: formData,
+    });
+
+    console.log("[Cloudinary] Delete response status:", response.status);
+    console.log("[Cloudinary] Delete response ok:", response.ok);
+
+    const data = await response.json();
+    console.log("[Cloudinary] Delete response data:", data);
+    
+    if (data.error) {
+      console.error("[Cloudinary] Delete error from API:", data.error);
+      throw new Error(data.error.message || 'Cloudinary deletion failed');
+    }
+    
+    if (data.result === 'ok') {
+      console.log("[Cloudinary] Successfully deleted image:", publicId);
+    } else {
+      console.warn("[Cloudinary] Unexpected result from delete API:", data.result);
+    }
+    
+  } catch (error) {
+    console.error("[Cloudinary] Error during deletion for public ID:", publicId, error);
+    throw error;
+  }
 }
 
 export const getPublicIdFromUrl = (url: string) => {
   if (!url) {
-    console.error("Image URL is missing!");
+    console.error("[Cloudinary] Image URL is missing!");
     return "";
   }
-  const publicId = url.match(/(?:\/v\d+\/)?([^/.]+)(?:\.[a-z]+)?$/)?.[1] || "";
+  
+  console.log("[Cloudinary] Extracting public ID from URL:", url);
+  
+  // Handle different Cloudinary URL formats
+  // Format 1: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename.jpg
+  // Format 2: https://res.cloudinary.com/cloud_name/image/upload/folder/filename.jpg
+  // Format 3: Just the public ID itself
+  
+  let publicId = "";
+  
+  // If it's already just a public ID (no http/https), return as is
+  if (!url.startsWith('http')) {
+    publicId = url;
+    console.log("[Cloudinary] URL appears to be a public ID already:", publicId);
+  } else {
+    // Extract from full Cloudinary URL
+    // Cloudinary URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename.jpg
+    // We want to extract: folder/filename (without extension)
+    const match = url.match(/\/upload(?:\/v\d+)?\/(.+?)(?:\.[a-z]+)?$/);
+    if (match) {
+      publicId = match[1];
+      console.log("[Cloudinary] Extracted public ID from full URL:", publicId);
+    } else {
+      console.error("[Cloudinary] Could not extract public ID from URL:", url);
+    }
+  }
+  
   return publicId;
 };
 
-function generateSignature(publicId: string, timestamp: number): string {
+async function generateSignature(publicId: string, timestamp: number): Promise<string> {
   const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}${import.meta.env.VITE_CLOUDINARY_API_SECRET}`;
-  const hash = crypto.createHash('sha1').update(paramsToSign).digest('hex');
-  return hash;
+  
+  // Use Web Crypto API instead of Node.js crypto module
+  const encoder = new TextEncoder();
+  const data = encoder.encode(paramsToSign);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
 }
 

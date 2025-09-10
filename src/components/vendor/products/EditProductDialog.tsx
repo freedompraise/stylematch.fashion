@@ -1,0 +1,331 @@
+// src/components/vendor/products/EditProductDialog.tsx
+// Updated to align with AddProductDialog patterns
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { getCategoryOptions } from '@/constants/categories';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
+import { useVendorStore } from '@/stores';
+import { Product, ProductFormValues } from '@/types/ProductSchema';
+import { ProductImageUpload } from './ProductImageUpload';
+import { FormActions } from '@/components/ui/form-actions';
+
+interface EditProductDialogProps {
+  product: Product | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onProductUpdated: (updatedProduct: Product) => void;
+}
+
+// Use the same form values as AddProductDialog for consistency
+type EditProductFormValues = ProductFormValues;
+
+export function EditProductDialog({ 
+  product, 
+  open, 
+  onOpenChange, 
+  onProductUpdated 
+}: EditProductDialogProps) {
+  const { toast } = useToast();
+  const { updateProduct } = useVendorStore();
+  const [productImage, setProductImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<EditProductFormValues>({
+    resolver: zodResolver(z.object({
+      name: z.string().min(1, "Name is required"),
+      description: z.string().min(1, "Description is required"),
+      price: z.number().min(0, "Price must be positive"),
+      stock_quantity: z.number().min(0, "Stock must be positive"),
+      category: z.string().min(1, "Category is required"),
+      color: z.string(),
+      size: z.string(),
+    })),
+    defaultValues: {
+      name: '',
+      description: '',
+      price: 0,
+      stock_quantity: 0,
+      category: '',
+      color: '',
+      size: '',
+    }
+  });
+
+  // Reset form when product changes
+  useEffect(() => {
+    if (product && open) {
+      form.reset({
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        stock_quantity: product.stock_quantity,
+        category: product.category,
+        color: product.color || '',
+        size: product.size || '',
+      });
+      
+      // Set preview URL from existing images
+      if (product.images && product.images.length > 0) {
+        setPreviewUrl(product.images[0]);
+      } else {
+        setPreviewUrl(null);
+      }
+      setProductImage(null);
+    }
+  }, [product, open, form]);
+
+  const onSubmit = async (data: EditProductFormValues) => {
+    if (!product) return;
+
+    try {
+      setIsSubmitting(true);
+      
+      // Update the product with image file if provided
+      const updatedProduct = await updateProduct(product.id, data, productImage || undefined, product);
+      
+      toast({
+        title: 'Product updated',
+        description: `${updatedProduct.name} has been updated successfully.`,
+      });
+
+      onProductUpdated(updatedProduct);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error updating product:', error);
+      toast({
+        title: 'Error updating product',
+        description: 'Could not update the product. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    form.reset();
+    setProductImage(null);
+    setPreviewUrl(null);
+    onOpenChange(false);
+  };
+
+  if (!product) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Product</DialogTitle>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Product Image */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product Image</label>
+              <ProductImageUpload
+                image={productImage}
+                previewUrl={previewUrl}
+                onImageChange={setProductImage}
+                onPreviewUrlChange={setPreviewUrl}
+                productIndex={0}
+              />
+            </div>
+
+            {/* Product Name */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Product Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter product name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Enter product description"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Price and Stock */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price (₦)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? 0 : Number(value));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="stock_quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stock Quantity</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? 0 : Number(value));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Category */}
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {getCategoryOptions().map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Size Selection */}
+            <div className="space-y-2">
+              <FormLabel>Size</FormLabel>
+              <div className="flex flex-wrap gap-2">
+                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                  <Button
+                    key={size}
+                    type="button"
+                    variant={form.watch('size') === size ? 'default' : 'outline'}
+                    onClick={() => {
+                      const currentSize = form.watch('size') || '';
+                      const newSize = currentSize === size ? '' : size;
+                      form.setValue('size', newSize);
+                    }}
+                    className="h-8"
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+              <FormMessage>
+                {form.formState.errors?.size?.message}
+              </FormMessage>
+            </div>
+
+            {/* Color Selection */}
+            <div className="space-y-2">
+              <FormLabel>Color</FormLabel>
+              <div className="flex flex-wrap gap-2">
+                {['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink'].map((color) => (
+                  <Button
+                    key={color}
+                    type="button"
+                    variant={form.watch('color') === color ? 'default' : 'outline'}
+                    onClick={() => {
+                      const currentColor = form.watch('color') || '';
+                      const newColor = currentColor === color ? '' : color;
+                      form.setValue('color', newColor);
+                    }}
+                    className="h-8"
+                  >
+                    {color}
+                  </Button>
+                ))}
+              </div>
+              <FormMessage>
+                {form.formState.errors?.color?.message}
+              </FormMessage>
+            </div>
+
+            {/* Form Actions */}
+            <FormActions
+              onCancel={handleCancel}
+              submitText="Update Product"
+              isSubmitting={isSubmitting}
+            />
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

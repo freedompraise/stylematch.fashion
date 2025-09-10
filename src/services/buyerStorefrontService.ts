@@ -24,6 +24,7 @@ export async function getProductsByVendorSlug(slug: string): Promise<Product[]> 
     .from('products')
     .select('*')
     .eq('vendor_id', vendor.user_id)
+    .eq('is_deleted', false)
     .order('created_at', { ascending: false });
   if (error) return [];
   return data as Product[];

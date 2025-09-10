@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, Trash2 } from 'lucide-react';
 
 const SettingsDangerZone: React.FC = () => {
-  const { signOut, removeProduct, fetchProducts, deleteProduct } = useVendorStore();
+  const { signOut, removeProduct, fetchProducts, softDeleteProduct } = useVendorStore();
   const { toast } = useToast();
 
   const handleDeleteAllProducts = async () => {
@@ -16,7 +16,7 @@ const SettingsDangerZone: React.FC = () => {
 
     try {
       const products = await fetchProducts(false);
-      await Promise.all(products.map(product => deleteProduct(product.id)));
+      await Promise.all(products.map(product => softDeleteProduct(product.id, 'Bulk deletion from settings', product)));
       
       toast({
         title: 'All products deleted',
@@ -39,7 +39,7 @@ const SettingsDangerZone: React.FC = () => {
     try {
       // Delete all products first
       const products = await fetchProducts(false);
-      await Promise.all(products.map(product => deleteProduct(product.id)));
+      await Promise.all(products.map(product => softDeleteProduct(product.id, 'Account deletion', product)));
       
       // Sign out and redirect
       await signOut();

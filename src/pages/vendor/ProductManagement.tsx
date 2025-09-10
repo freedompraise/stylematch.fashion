@@ -13,6 +13,16 @@ import { ProductList } from '@/components/vendor/products/ProductList';
 import { ProductFilters } from '@/components/vendor/products/ProductFilters';
 import { FilterSummary } from '@/components/vendor/products/FilterSummary';
 import { filterProducts, ProductFilters as FilterType } from '@/utils/productFiltering';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ProductManagement: React.FC = () => {
   const { toast } = useToast();
@@ -25,6 +35,7 @@ const ProductManagement: React.FC = () => {
     setProductsLoaded,
     fetchProducts,
     deleteProduct: deleteProductFromStore,
+    softDeleteProduct,
   } = useVendorStore();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +45,8 @@ const ProductManagement: React.FC = () => {
     priceRange: 'all',
     stockStatus: 'all',
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Load products only once on mount
   useEffect(() => {
@@ -86,36 +99,30 @@ const ProductManagement: React.FC = () => {
   // Get filtered products
   const { filteredProducts, totalCount, hasResults } = filterProducts(products, filters);
 
-  const handleDeleteProduct = async (product: Product) => {
-    console.log(`[ProductManagement] Initiating deletion for product: ${product.id}`);
-    
-    // Store the product in case we need to revert
-    const productToDelete = { ...product };
-    
-    // Optimistically remove the product from the UI
-    removeProduct(product.id);
-    console.log(`[ProductManagement] Optimistically removed product from UI: ${product.id}`);
-    
-    toast({
-      title: 'Product deleted',
-      description: 'Your product is being deleted.',
-    });
+  const handleDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
 
     try {
-      console.log(`[ProductManagement] Starting background deletion for product: ${product.id}`);
-      await deleteProductFromStore(productToDelete);
-      console.log(`[ProductManagement] Background deletion successful for product: ${product.id}`);
+      await softDeleteProduct(productToDelete.id, 'User requested deletion', productToDelete);
+      toast({
+        title: 'Product deleted',
+        description: 'Product has been successfully deleted.',
+      });
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     } catch (error) {
-      console.error(`[ProductManagement] Background deletion failed for product: ${product.id}`, error);
       toast({
         title: 'Error deleting product',
-        description: 'Could not delete your product. The item has been restored.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
-      
-      // Revert the change by adding the product back to the store
-      addProduct(productToDelete);
-      console.log(`[ProductManagement] Reverted optimistic deletion for product: ${product.id}`);
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
   };
 
@@ -140,6 +147,11 @@ const ProductManagement: React.FC = () => {
     setLoading(false);
   };
 
+  const handleProductUpdated = (updatedProduct: Product) => {
+    // Product is already updated in store by EditProductDialog
+    // No additional action needed here
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -147,7 +159,7 @@ const ProductManagement: React.FC = () => {
         <AddProductDialog onProductsAdded={products => handleProductAdded(products[0])} />
       </div>
 
-      {products.length > 0 && <QuickActions actions={productsQuickActions} />}
+     {/* {products.length > 0 && <QuickActions actions={productsQuickActions} />} */}
 
       {products.length > 0 && (
         <ProductFilters onFilterChange={handleFilterChange} />
@@ -165,6 +177,7 @@ const ProductManagement: React.FC = () => {
       <ProductList
         products={filteredProducts}
         onDeleteProduct={handleDeleteProduct}
+        onProductUpdated={handleProductUpdated}
         loading={loading}
       />
 
@@ -179,6 +192,24 @@ const ProductManagement: React.FC = () => {
           No products match your current filters. Try adjusting your search criteria.
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{productToDelete?.name}"?
+              This action cannot be undone and will remove all associated images.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              Delete Product
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

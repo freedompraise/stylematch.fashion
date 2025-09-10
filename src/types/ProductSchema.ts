@@ -16,6 +16,9 @@ export const productSchema = z.object({
   images: z.array(z.string()).nullable(),
   vendor_id: z.string().uuid(),
   is_hottest_offer: z.boolean().default(false),
+  is_deleted: z.boolean().default(false),
+  deleted_at: z.string().datetime().nullable(),
+  deleted_by: z.string().uuid().nullable(),
   created_at: z.string().datetime().nullable(),
   updated_at: z.string().datetime().nullable(),
 });
@@ -45,4 +48,9 @@ export type ProductFormValues = z.infer<typeof createProductSchema>;
 export interface ProductWithSales extends Product {
   sales: number;
   sales_count?: number;
+}
+
+export interface SoftDeleteProductInput {
+  productId: string;
+  reason?: string;
 }
