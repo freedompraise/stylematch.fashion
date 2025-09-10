@@ -1,5 +1,5 @@
 // src/components/vendor/VendorRouteGuard.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -14,13 +14,16 @@ const VendorRouteGuard: React.FC<VendorRouteGuardProps> = ({ children, route }) 
   const { user, session, isAuthenticated, loading: authLoading } = useAuthStore();
   const { vendor, loading, error, loadVendorForRoute } = useVendorStore();
   const location = useLocation();
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
 
   useEffect(() => {
     // Only load vendor if we have a user and auth is not loading
-    if (user?.id && !vendor && !loading && !authLoading && session) {
+    // Remove vendor from dependencies to prevent the effect from not running when vendor changes
+    if (user?.id && !vendor && !loading && !authLoading && session && !hasAttemptedLoad) {
+      setHasAttemptedLoad(true);
       loadVendorForRoute(user.id, route);
     }
-  }, [user?.id, route, vendor, loading, authLoading, session, loadVendorForRoute]);
+  }, [user?.id, route, loading, authLoading, session, loadVendorForRoute, hasAttemptedLoad]);
 
   // Show loading while auth is initializing
   if (authLoading) {
@@ -69,8 +72,9 @@ const VendorRouteGuard: React.FC<VendorRouteGuardProps> = ({ children, route }) 
     );
   }
 
-  // Redirect to onboarding if no vendor profile exists (but user is authenticated)
-  if (session && user && !vendor && !error) {
+  // Only redirect to onboarding if we've confirmed there's no vendor profile after loading
+  // This prevents the race condition where we redirect before the async load completes
+  if (session && user && !vendor && !error && !loading && hasAttemptedLoad) {
     console.log('[VendorRouteGuard] No vendor profile, redirecting to /vendor/onboarding');
     return <Navigate to="/vendor/onboarding" state={{ from: location }} replace />;
   }
