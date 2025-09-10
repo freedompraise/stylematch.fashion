@@ -34,10 +34,10 @@ const VendorDashboard: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [topProducts, setTopProducts] = useState<ProductWithSales[]>([])
   const [salesData, setSalesData] = useState<{ name: string; sales: number }[]>([])
-  const [hasProducts, setHasProducts] = useState(false)
-  const [hasOrders, setHasOrders] = useState(false)
 
   useEffect(() => {
+    let mounted = true;
+
     const loadDashboardData = async () => {
       try {
         setLoading(true)
@@ -52,30 +52,38 @@ const VendorDashboard: React.FC = () => {
           await fetchOrders(true) // use cache
         }
         
-        // Get fresh data from store after loading
-        const currentProducts = products
-        const currentOrders = orders
-        
-        const vendorStats = calculateVendorStats(currentProducts, currentOrders)
-        
-        setRecentOrders(vendorStats.recentOrders as Order[])
-        setTopProducts(getTopProducts(currentProducts, currentOrders))
-        setHasOrders(vendorStats.totalOrders > 0)
-        setHasProducts(currentProducts.length > 0)
+        if (mounted) {
+          // Get fresh data from store after loading
+          const currentProducts = products
+          const currentOrders = orders
+          
+          const vendorStats = calculateVendorStats(currentProducts, currentOrders)
+          
+          setRecentOrders(vendorStats.recentOrders as Order[])
+          setTopProducts(getTopProducts(currentProducts, currentOrders))
+        }
       } catch (error) {
-        console.error('Error loading dashboard data:', error)
-        toast({
-          title: 'Error loading dashboard',
-          description: 'Could not load dashboard data. Please try again later.',
-          variant: 'destructive',
-        })
+        if (mounted) {
+          console.error('Error loading dashboard data:', error)
+          toast({
+            title: 'Error loading dashboard',
+            description: 'Could not load dashboard data. Please try again later.',
+            variant: 'destructive',
+          })
+        }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     loadDashboardData()
-  }, [fetchProducts, fetchOrders, productsLoaded, ordersLoaded, calculateVendorStats, getTopProducts, toast])
+
+    return () => {
+      mounted = false;
+    };
+  }, [fetchProducts, fetchOrders, calculateVendorStats, getTopProducts, toast])
 
   // Calculate stats for display using fresh data
   const vendorStats = calculateVendorStats(products, orders)
@@ -97,6 +105,10 @@ const VendorDashboard: React.FC = () => {
   if (loading) {
     return <DashboardLoadingState />
   }
+
+  // Use store data directly instead of local state
+  const hasProducts = products.length > 0
+  const hasOrders = orders.length > 0
 
   if (!hasProducts) {
     return (

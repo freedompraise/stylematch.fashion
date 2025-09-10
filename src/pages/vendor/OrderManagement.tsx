@@ -18,7 +18,6 @@ const OrderManagement: React.FC = () => {
     removeOrder, 
     fetchOrders, 
     deleteOrder: deleteOrderFromStore,
-    vendor,
     ordersLoaded
   } = useVendorStore();
   const { toast } = useToast();
@@ -27,41 +26,40 @@ const OrderManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
 
   useEffect(() => {
+    let mounted = true;
+
     const loadOrders = async () => {
       try {
         setLoading(true);
         console.log('[OrderManagement] Loading orders...', { 
-          vendorId: vendor?.user_id, 
           ordersLoaded, 
           currentOrdersCount: orders.length 
         });
         
-        if (!vendor?.user_id) {
-          console.error('[OrderManagement] No vendor ID available');
-          toast({
-            title: 'Error loading orders',
-            description: 'Vendor profile not loaded. Please refresh the page.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        
         await fetchOrders(true); // use cache
         console.log('[OrderManagement] Orders loaded successfully');
       } catch (error) {
-        console.error('[OrderManagement] Error loading orders:', error);
-        toast({
-          title: 'Error loading orders',
-          description: 'Could not load your orders. Please try again later.',
-          variant: 'destructive',
-        });
+        if (mounted) {
+          console.error('[OrderManagement] Error loading orders:', error);
+          toast({
+            title: 'Error loading orders',
+            description: 'Could not load your orders. Please try again later.',
+            variant: 'destructive',
+          });
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadOrders();
-  }, [fetchOrders, toast, vendor?.user_id, ordersLoaded]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [fetchOrders, toast]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -129,17 +127,6 @@ const OrderManagement: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading orders...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
