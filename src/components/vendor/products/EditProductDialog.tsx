@@ -56,6 +56,7 @@ export function EditProductDialog({
   const [productImage, setProductImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shouldRemoveImage, setShouldRemoveImage] = useState(false);
 
   const form = useForm<EditProductFormValues>({
     resolver: zodResolver(z.object({
@@ -98,6 +99,7 @@ export function EditProductDialog({
         setPreviewUrl(null);
       }
       setProductImage(null);
+      setShouldRemoveImage(false);
     }
   }, [product, open, form]);
 
@@ -107,8 +109,14 @@ export function EditProductDialog({
     try {
       setIsSubmitting(true);
       
-      // Update the product with image file if provided
-      const updatedProduct = await updateProduct(product.id, data, productImage || undefined, product);
+      // Update the product with image file if provided, or remove image if requested
+      const updatedProduct = await (updateProduct as any)(
+        product.id, 
+        data, 
+        productImage || undefined, 
+        product, 
+        shouldRemoveImage
+      );
       
       toast({
         title: 'Product updated',
@@ -133,6 +141,7 @@ export function EditProductDialog({
     form.reset();
     setProductImage(null);
     setPreviewUrl(null);
+    setShouldRemoveImage(false);
     onOpenChange(false);
   };
 
@@ -155,6 +164,7 @@ export function EditProductDialog({
                 previewUrl={previewUrl}
                 onImageChange={setProductImage}
                 onPreviewUrlChange={setPreviewUrl}
+                onImageRemoved={() => setShouldRemoveImage(true)}
                 productIndex={0}
               />
             </div>

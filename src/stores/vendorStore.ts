@@ -71,7 +71,7 @@ interface VendorState {
   // Product actions
   setProducts: (products: Product[]) => void;
   addProduct: (product: Product) => void;
-  updateProduct: (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product) => Promise<Product>;
+  updateProduct: (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product, removeImage?: boolean) => Promise<Product>;
   removeProduct: (id: string) => void;
   setProductsLoaded: (loaded: boolean) => void;
   fetchProducts: (useCache?: boolean) => Promise<Product[]>;
@@ -302,11 +302,11 @@ export const useVendorStore = create<VendorState>()(
         set((state) => ({ products: [product, ...state.products] }));
       },
       
-      updateProduct: async (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product) => {
+      updateProduct: async (id: string, updates: Partial<Product>, imageFile?: File, currentProduct?: Product, removeImage?: boolean) => {
         const { vendor } = get();
         if (!vendor?.user_id) throw new Error('No vendor profile');
         
-        const updatedProduct = await vendorDataService.updateProduct(id, updates, vendor.user_id, imageFile, currentProduct);
+        const updatedProduct = await vendorDataService.updateProduct(id, updates, vendor.user_id, imageFile, currentProduct, removeImage);
         set((state) => ({
           products: state.products.map(p => (p.id === id ? updatedProduct : p))
         }));

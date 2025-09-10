@@ -11,6 +11,7 @@ interface ProductImageUploadProps {
   previewUrl: string | null;
   onImageChange: (file: File | null) => void;
   onPreviewUrlChange: (url: string | null) => void;
+  onImageRemoved?: () => void;
   productIndex: number;
 }
 
@@ -19,6 +20,7 @@ export function ProductImageUpload({
   previewUrl,
   onImageChange,
   onPreviewUrlChange,
+  onImageRemoved,
   productIndex
 }: ProductImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -108,6 +110,7 @@ export function ProductImageUpload({
     onImageChange(null);
     onPreviewUrlChange(null);
     setValidationError(null);
+    onImageRemoved?.(); // Notify parent component that image was removed
   };
 
   return (

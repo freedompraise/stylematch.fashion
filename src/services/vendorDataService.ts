@@ -86,13 +86,14 @@ class VendorDataService {
     }
   }
 
-  async updateProduct(productId: string, updates: Partial<Product>, vendorId: string, imageFile?: File, currentProduct?: Product): Promise<Product> {
+  async updateProduct(productId: string, updates: Partial<Product>, vendorId: string, imageFile?: File, currentProduct?: Product, removeImage?: boolean): Promise<Product> {
     try {
       let newImages: string[] | null = null;
       let uploadedImagePublicIds: string[] = [];
       let oldImagePublicIds: string[] = [];
 
       if (imageFile) {
+        // Handle new image upload
         try {
           const imageUrl = await uploadProductImage(imageFile);
           const uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
@@ -112,19 +113,32 @@ class VendorDataService {
           console.error('Error uploading image:', uploadError);
           throw new Error('Failed to upload image');
         }
+      } else if (removeImage) {
+        // Handle image removal without uploading new image
+        console.log('[VendorDataService] Removing image from product');
+        if (currentProduct?.images && currentProduct.images.length > 0) {
+          oldImagePublicIds = currentProduct.images
+            .map(img => getPublicIdFromUrl(img))
+            .filter(Boolean) as string[];
+        }
+        newImages = []; // Set to empty array to remove all images
       }
 
       const updateData = {
         ...updates,
-        ...(newImages && { images: newImages }),
+        ...(newImages !== null && { images: newImages }),
         updated_at: new Date().toISOString()
       };
 
+      // Handle Cloudinary image deletion with proper logging
       if (oldImagePublicIds.length > 0) {
+        console.log('[VendorDataService] Deleting old images from Cloudinary:', oldImagePublicIds);
         try {
           await Promise.all(oldImagePublicIds.map(publicId => deleteFromCloudinary(publicId)));
+          console.log('[VendorDataService] Successfully deleted old images from Cloudinary');
         } catch (deleteError) {
-          console.warn('Error deleting old images from Cloudinary:', deleteError);
+          console.error('[VendorDataService] Error deleting old images from Cloudinary:', deleteError);
+          // Don't throw here to avoid breaking the product update, but log the error properly
         }
       }
 
