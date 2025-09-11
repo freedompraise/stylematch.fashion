@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import Logo from '@/components/Logo';
 import { AuthError } from '@/services/errors/AuthError';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import SupportChat from '@/components/SupportChat';
 
 const authService = new AuthService();
 
@@ -27,7 +29,7 @@ const forgotSchema = z.object({
 
 type ForgotFormValues = z.infer<typeof forgotSchema>;
 
-export default function ForgotPassword() {
+const ForgotPassword = (): JSX.Element => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -68,6 +70,7 @@ export default function ForgotPassword() {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
@@ -128,5 +131,9 @@ export default function ForgotPassword() {
         </div>
       </div>
     </div>
+    <SupportChat isVendor={false} />
+    </>
   );
-}
+};
+
+export default ForgotPassword;

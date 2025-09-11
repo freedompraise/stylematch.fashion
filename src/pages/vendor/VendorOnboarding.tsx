@@ -24,6 +24,7 @@ import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
 import { PayoutFormData } from '@/types';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
+import SupportChat from '@/components/SupportChat';
 
 const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }).max(50, { message: 'Store name should be less than 50 characters' }),
@@ -678,7 +679,9 @@ const { createVendorProfile} = useVendorStore();
             </Form>
           </div>
         </div>
+        <SupportChat variant="inline" className="mt-8" />
       </div>
+      <SupportChat variant="floating" />
     </div>
   );
 };

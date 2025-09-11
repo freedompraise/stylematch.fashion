@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import Logo from '@/components/Logo';
 import { AuthError, AuthErrorType } from '@/services/errors/AuthError';
+import SupportChat from '@/components/SupportChat';
 
 const authService = new AuthService();
 
@@ -244,6 +245,7 @@ export default function ResetPassword() {
           </div>
         </div>
       </div>
+      <SupportChat isVendor={false} />
     </div>
   );
 }

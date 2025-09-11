@@ -20,6 +20,7 @@ import Logo from '@/components/Logo';
 import { toast } from '@/hooks/use-toast';
 import { AuthService } from '@/services/authService';
 import { useAuthStore } from '@/stores';
+import SupportChat from '@/components/SupportChat';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -129,6 +130,7 @@ const Auth = (): JSX.Element => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
@@ -337,6 +339,8 @@ const Auth = (): JSX.Element => {
         </div>
       </div>
     </div>
+    <SupportChat isVendor={false} />
+    </>
   );
 };
 

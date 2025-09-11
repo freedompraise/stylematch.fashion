@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Filter, Download } from 'lucide-react';
 import { Order, OrderStatus } from '@/types/OrderSchema';
+import PaymentVerification from '@/components/vendor/PaymentVerification';
 
 const OrderManagement: React.FC = () => {
   const { 
@@ -228,6 +229,9 @@ const OrderManagement: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                              <SelectItem value="payment_verified">Payment Verified</SelectItem>
+                              <SelectItem value="payment_rejected">Payment Rejected</SelectItem>
                               <SelectItem value="confirmed">Confirmed</SelectItem>
                               <SelectItem value="processing">Processing</SelectItem>
                               <SelectItem value="delivered">Delivered</SelectItem>
@@ -235,6 +239,18 @@ const OrderManagement: React.FC = () => {
                             <SelectItem value="completed">Completed</SelectItem>
                             </SelectContent>
                           </Select>
+                          
+                          {/* Show Payment Verification for orders with payment proof */}
+                          {order.payment_proof_urls && order.payment_proof_urls.length > 0 && (
+                            <PaymentVerification 
+                              order={order} 
+                              onVerificationComplete={() => {
+                                // Refresh orders after verification
+                                fetchOrders(false);
+                              }} 
+                            />
+                          )}
+                          
                           <Button
                             variant="outline"
                             size="sm"

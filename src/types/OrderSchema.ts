@@ -4,6 +4,9 @@ import { z } from 'zod';
 
 export const orderStatusSchema = z.enum([
   'pending',
+  'payment_pending',
+  'payment_verified',
+  'payment_rejected',
   'confirmed', 
   'processing',
   'delivered',
@@ -30,6 +33,21 @@ export const orderSchema = z.object({
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
   customer_info: customerInfoSchema,
+  // Manual payment fields
+  payment_proof_urls: z.array(z.string()).optional(),
+  transaction_reference: z.string().optional(),
+  payment_status: z.enum(['pending', 'verified', 'rejected']).optional(),
+  payment_verified_at: z.string().optional(),
+  payment_verified_by: z.string().uuid().optional(),
+  expires_at: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(z.object({
+    product_id: z.string().uuid(),
+    quantity: z.number().int().min(1),
+    price: z.number().int().min(0),
+    size: z.string().optional(),
+    color: z.string().optional(),
+  })).optional(),
 });
 
 export type Order = z.infer<typeof orderSchema>;
@@ -43,6 +61,19 @@ export const createOrderSchema = z.object({
   delivery_date: z.string(), // ISO date string
   total_amount: z.number().int().min(0),
   customer_info: customerInfoSchema,
+  // Manual payment fields
+  payment_proof_urls: z.array(z.string()).optional(),
+  transaction_reference: z.string().optional(),
+  payment_status: z.enum(['pending', 'verified', 'rejected']).optional(),
+  expires_at: z.string().optional(),
+  notes: z.string().optional(),
+  items: z.array(z.object({
+    product_id: z.string().uuid(),
+    quantity: z.number().int().min(1),
+    price: z.number().int().min(0),
+    size: z.string().optional(),
+    color: z.string().optional(),
+  })).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

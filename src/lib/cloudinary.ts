@@ -63,6 +63,12 @@ export async function uploadStoreBanner(file: File): Promise<string> {
   });
 }
 
+export async function uploadPaymentProof(file: File, orderId: string): Promise<string> {
+  return uploadToCloudinary(file, {
+    folder: `payment-proofs/${orderId}`
+  });
+}
+
 export async function deleteFromCloudinary(publicId: string): Promise<void> {
   console.log("[Cloudinary] Starting deletion for public ID:", publicId);
   

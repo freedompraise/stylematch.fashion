@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
+import SupportChat from '@/components/SupportChat';
 
 const VerificationComplete: React.FC = () => {
   const { isVendorSignup } = useAuthStore();
@@ -38,6 +39,7 @@ const VerificationComplete: React.FC = () => {
           </Button>
         </CardContent>
       </Card>
+      <SupportChat isVendor={isVendorSignup} />
     </div>
   );
 };

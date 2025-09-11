@@ -56,6 +56,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 const Storefront = lazy(() => import('./pages/buyer/Storefront'));
 const ProductDetail = lazy(() => import('./pages/buyer/ProductDetail'));
 const StoreCheckout = lazy(() => import('./pages/buyer/StoreCheckout'));
+const ManualCheckout = lazy(() => import('./pages/buyer/ManualCheckout'));
 const StoreConfirmation = lazy(() => import('./pages/buyer/StoreConfirmation'));
 
 export default function AppRoutes() {
@@ -159,7 +160,7 @@ export default function AppRoutes() {
       {/* Buyer Storefront Public Routes */}
       <Route path="/store/:vendorSlug" element={<React.Suspense fallback={<div>Loading...</div>}><Storefront /></React.Suspense>} />
       <Route path="/store/:vendorSlug/product/:productId" element={<React.Suspense fallback={<div>Loading...</div>}><ProductDetail /></React.Suspense>} />
-      <Route path="/store/:vendorSlug/checkout" element={<React.Suspense fallback={<div>Loading...</div>}><StoreCheckout /></React.Suspense>} />
+      <Route path="/store/:vendorSlug/checkout" element={<React.Suspense fallback={<div>Loading...</div>}><ManualCheckout /></React.Suspense>} />
       <Route path="/store/:vendorSlug/confirmation" element={<React.Suspense fallback={<div>Loading...</div>}><StoreConfirmation /></React.Suspense>} />
 
       <Route path="*" element={<NotFound />} />
