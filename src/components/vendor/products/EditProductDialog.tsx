@@ -373,7 +373,7 @@ export function EditProductDialog({
                       form.setValue('color', newColor);
                     }}
                     className={`h-8 transition-all duration-200 ${
-                      form.watch('color') === color.value 
+                      (form.watch('color') === color.value || product?.color === color.value) 
                         ? 'h-10 scale-110 shadow-lg ring-2 ring-offset-2' 
                         : 'hover:scale-105'
                     }`}
