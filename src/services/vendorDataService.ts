@@ -3,6 +3,21 @@ import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, SoftDeleteProductInput } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
 import {
+  ProductVariant,
+  ProductAttribute,
+  VariantImage,
+  AttributeConfiguration,
+  ColorPalette,
+  ExtendedCategory,
+  CreateProductVariantRequest,
+  UpdateProductVariantRequest,
+  CreateProductAttributeRequest,
+  BulkUpdateVariantsRequest,
+  ProductWithVariants,
+  SizeConfiguration,
+  ColorConfiguration,
+} from '@/types/VariantSchema';
+import {
   uploadProductImage,
   deleteFromCloudinary,
   getPublicIdFromUrl,
@@ -82,6 +97,51 @@ class VendorDataService {
       return data;
     } catch (error) {
       console.error('Error creating product:', error);
+      throw error;
+    }
+  }
+
+  async createProductWithVariants(
+    productData: CreateProductInput,
+    variantsData: CreateProductVariantRequest[],
+    vendorId: string,
+    imageFile?: File
+  ): Promise<{ product: Product; variants: ProductVariant[] }> {
+    try {
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        imageUrl = await uploadProductImage(imageFile);
+      }
+
+      const productToCreate = {
+        ...productData,
+        vendor_id: vendorId,
+        images: imageUrl ? [imageUrl] : [],
+      };
+
+      // Create product first
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .insert([productToCreate])
+        .select()
+        .single();
+
+      if (productError) throw productError;
+
+      // Create variants with the product ID
+      const variantsWithProductId = variantsData.map(variant => ({
+        ...variant,
+        product_id: product.id
+      }));
+
+      const variants = await this.createProductVariants(variantsWithProductId);
+
+      // Update product totals
+      await this.updateProductTotals(product.id);
+
+      return { product, variants };
+    } catch (error) {
+      console.error('Error creating product with variants:', error);
       throw error;
     }
   }
@@ -354,6 +414,317 @@ class VendorDataService {
       }))
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 5);
+  }
+
+  // ===== VARIANT MANAGEMENT METHODS =====
+
+  // Product Variants
+  async fetchProductVariants(productId: string, useCache: boolean = true, cachedVariants: ProductVariant[] = []): Promise<ProductVariant[]> {
+    if (useCache && cachedVariants.length > 0) {
+      return cachedVariants;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', productId)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching product variants:', error);
+      throw error;
+    }
+  }
+
+  async createProductVariant(variantData: CreateProductVariantRequest): Promise<ProductVariant> {
+    try {
+      const { data, error } = await supabase
+        .from('product_variants')
+        .insert([variantData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating product variant:', error);
+      throw error;
+    }
+  }
+
+  async createProductVariants(variantsData: CreateProductVariantRequest[]): Promise<ProductVariant[]> {
+    try {
+      const { data, error } = await supabase
+        .from('product_variants')
+        .insert(variantsData)
+        .select();
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error creating product variants:', error);
+      throw error;
+    }
+  }
+
+  async updateProductVariant(variantId: string, updates: UpdateProductVariantRequest): Promise<ProductVariant> {
+    try {
+      const { data, error } = await supabase
+        .from('product_variants')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', variantId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating product variant:', error);
+      throw error;
+    }
+  }
+
+  async deleteProductVariant(variantId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('id', variantId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting product variant:', error);
+      throw error;
+    }
+  }
+
+  async bulkUpdateVariants(updates: BulkUpdateVariantsRequest): Promise<ProductVariant[]> {
+    try {
+      const updatePromises = updates.variants.map(({ id, updates: variantUpdates }) =>
+        this.updateProductVariant(id, variantUpdates)
+      );
+
+      return await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error bulk updating variants:', error);
+      throw error;
+    }
+  }
+
+  // Product Attributes
+  async fetchProductAttributes(productId: string): Promise<ProductAttribute[]> {
+    try {
+      const { data, error } = await supabase
+        .from('product_attributes')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching product attributes:', error);
+      throw error;
+    }
+  }
+
+  async createProductAttribute(attributeData: CreateProductAttributeRequest): Promise<ProductAttribute> {
+    try {
+      const { data, error } = await supabase
+        .from('product_attributes')
+        .insert([attributeData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating product attribute:', error);
+      throw error;
+    }
+  }
+
+  async updateProductAttribute(attributeId: string, updates: Partial<ProductAttribute>): Promise<ProductAttribute> {
+    try {
+      const { data, error } = await supabase
+        .from('product_attributes')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', attributeId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating product attribute:', error);
+      throw error;
+    }
+  }
+
+  async deleteProductAttribute(attributeId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('product_attributes')
+        .delete()
+        .eq('id', attributeId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting product attribute:', error);
+      throw error;
+    }
+  }
+
+  // Attribute Configurations
+  async fetchAttributeConfigurations(category: string, vendorId?: string): Promise<AttributeConfiguration[]> {
+    try {
+      let query = supabase
+        .from('attribute_configurations')
+        .select('*')
+        .eq('category', category)
+        .eq('is_active', true);
+
+      if (vendorId) {
+        // Get vendor-specific configs first, then fallback to global
+        const { data: vendorConfigs, error: vendorError } = await query
+          .eq('vendor_id', vendorId)
+          .order('is_global', { ascending: true });
+
+        if (vendorError) throw vendorError;
+
+        if (vendorConfigs && vendorConfigs.length > 0) {
+          return vendorConfigs;
+        }
+      }
+
+      // Fallback to global configurations
+      const { data: globalConfigs, error: globalError } = await supabase
+        .from('attribute_configurations')
+        .select('*')
+        .eq('category', category)
+        .eq('is_global', true)
+        .eq('is_active', true);
+
+      if (globalError) throw globalError;
+      return globalConfigs || [];
+    } catch (error) {
+      console.error('Error fetching attribute configurations:', error);
+      throw error;
+    }
+  }
+
+  async fetchColorPalettes(vendorId?: string): Promise<ColorPalette[]> {
+    try {
+      let query = supabase
+        .from('color_palettes')
+        .select('*')
+        .eq('is_active', true)
+        .order('is_global', { ascending: false });
+
+      if (vendorId) {
+        query = query.or(`vendor_id.eq.${vendorId},is_global.eq.true`);
+      } else {
+        query = query.eq('is_global', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching color palettes:', error);
+      throw error;
+    }
+  }
+
+  // Extended Categories
+  async fetchExtendedCategories(vendorId?: string): Promise<ExtendedCategory[]> {
+    try {
+      let query = supabase
+        .from('extended_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (vendorId) {
+        query = query.or(`vendor_id.eq.${vendorId},is_global.eq.true`);
+      } else {
+        query = query.eq('is_global', true);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching extended categories:', error);
+      throw error;
+    }
+  }
+
+  // Enhanced Product Methods with Variants
+  async fetchProductsWithVariants(vendorId: string, useCache: boolean = true, cachedProducts: ProductWithVariants[] = []): Promise<ProductWithVariants[]> {
+    if (useCache && cachedProducts.length > 0) {
+      return cachedProducts;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          variants:product_variants(*),
+          attributes:product_attributes(*)
+        `)
+        .eq('vendor_id', vendorId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching products with variants:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to compute product totals from variants
+  async updateProductTotals(productId: string): Promise<void> {
+    try {
+      const variants = await this.fetchProductVariants(productId, false);
+      
+      if (variants.length === 0) return;
+
+      const totalStock = variants.reduce((sum, variant) => sum + variant.stock_quantity, 0);
+      const prices = variants.map(v => v.price).filter(Boolean) as number[];
+      const minPrice = prices.length > 0 ? Math.min(...prices) : undefined;
+      const maxPrice = prices.length > 0 ? Math.max(...prices) : undefined;
+
+      const { error } = await supabase
+        .from('products')
+        .update({
+          total_stock: totalStock,
+          min_variant_price: minPrice,
+          max_variant_price: maxPrice,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating product totals:', error);
+      throw error;
+    }
   }
 }
 

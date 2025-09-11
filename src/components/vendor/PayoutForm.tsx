@@ -97,7 +97,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
           <label className="block font-semibold mb-1 text-baseContent">Payout Mode</label>
           <select 
             {...form.register('payout_mode', { required: true })} 
-            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
             onChange={(e) => handleFieldChange('payout_mode', e.target.value)}
             disabled={disabled}
           >
@@ -111,7 +111,7 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
           <label className="block font-semibold mb-1 text-baseContent">Bank</label>
           <select
             {...form.register('bank_code', { required: true })}
-            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
             onChange={async e => {
               const code = e.target.value;
               const bank = banks.find(b => b.code === code);
@@ -163,12 +163,12 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
               {...form.register('account_name', { required: true })} 
               readOnly 
               value={resolvedAccountName}
-              className={isNameConfirmed ? 'bg-green-50 border-green-300' : 'cursor-pointer hover:bg-gray-50'}
+              className={isNameConfirmed ? 'bg-green-50 border-green-300' : 'cursor-pointer hover:bg-muted'}
               onClick={handleAccountNameClick}
               disabled={disabled}
             />
           </div>
-          {resolving && <div className="text-xs text-gray-500">Resolving account name...</div>}
+          {resolving && <div className="text-xs text-muted-foreground">Resolving account name...</div>}
           {!resolving && resolvedAccountName && (
             <div className="mt-1 text-green-700 text-sm">
               <div className="text-sm text-blue-600 mt-1">

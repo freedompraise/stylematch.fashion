@@ -18,7 +18,7 @@ const getStatusColor = (status: OrderStatus): string => {
     case 'cancelled':
       return 'text-red-600';
     default:
-      return 'text-gray-500';
+      return 'text-muted-foreground';
   }
 };
 
@@ -31,9 +31,9 @@ const RecentOrders: React.FC<RecentOrdersProps> = ({ orders }) => {
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <ShoppingCart size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
-            <p className="text-gray-500 mb-6">When customers place orders, they'll appear here</p>
+            <ShoppingCart size={48} className="mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No orders yet</h3>
+            <p className="text-muted-foreground mb-6">When customers place orders, they'll appear here</p>
           </div>
         </CardContent>
       </Card>
@@ -51,7 +51,7 @@ const RecentOrders: React.FC<RecentOrdersProps> = ({ orders }) => {
             <div key={order.id} className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{order.customer_info.name}</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>

@@ -129,13 +129,13 @@ const Auth = (): JSX.Element => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Logo />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-card rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-baseContent">
               {isLogin ? 'Welcome Back' : 'Create Your Fashion Store'}
@@ -159,10 +159,10 @@ const Auth = (): JSX.Element => {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              <span className="px-2 bg-card text-muted-foreground">Or continue with email</span>
             </div>
           </div>
 
@@ -178,7 +178,7 @@ const Auth = (): JSX.Element => {
                         <FormLabel>Email</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <Input placeholder="your@email.com" className="pl-10" {...field} />
                           </div>
                         </FormControl>
@@ -195,7 +195,7 @@ const Auth = (): JSX.Element => {
                         <FormLabel>Password</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <Input
                               type={showLoginPassword ? 'text' : 'password'}
                               placeholder="••••••••"
@@ -205,7 +205,7 @@ const Auth = (): JSX.Element => {
                             <button
                               type="button"
                               tabIndex={-1}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground focus:outline-none"
                               onClick={() => setShowLoginPassword((v) => !v)}
                               aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                             >
@@ -243,7 +243,7 @@ const Auth = (): JSX.Element => {
                         <FormLabel>Email</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <Input placeholder="your@email.com" className="pl-10" {...field} />
                           </div>
                         </FormControl>
@@ -260,7 +260,7 @@ const Auth = (): JSX.Element => {
                         <FormLabel>Password</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <Input
                               type={showRegisterPassword ? 'text' : 'password'}
                               placeholder="••••••••"
@@ -270,7 +270,7 @@ const Auth = (): JSX.Element => {
                             <button
                               type="button"
                               tabIndex={-1}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground focus:outline-none"
                               onClick={() => setShowRegisterPassword((v) => !v)}
                               aria-label={showRegisterPassword ? 'Hide password' : 'Show password'}
                             >
@@ -291,7 +291,7 @@ const Auth = (): JSX.Element => {
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                             <Input
                               type={showRegisterConfirmPassword ? 'text' : 'password'}
                               placeholder="••••••••"
@@ -301,7 +301,7 @@ const Auth = (): JSX.Element => {
                             <button
                               type="button"
                               tabIndex={-1}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground focus:outline-none"
                               onClick={() => setShowRegisterConfirmPassword((v) => !v)}
                               aria-label={showRegisterConfirmPassword ? 'Hide password' : 'Show password'}
                             >

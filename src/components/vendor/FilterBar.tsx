@@ -85,7 +85,7 @@ export function FilterBar({ className }: FilterBarProps) {
                     <input
                       type="checkbox"
                       id={`size-${size}`}
-                      className="mr-2 h-4 w-4 rounded border-gray-300"
+                      className="mr-2 h-4 w-4 rounded border-border"
                     />
                     <label htmlFor={`size-${size}`} className="text-sm">{size}</label>
                   </div>

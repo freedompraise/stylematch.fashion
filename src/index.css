@@ -1,5 +1,4 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&family=Open+Sans:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700&family=Open+Sans:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -16,11 +15,32 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary brand colors with proper contrast */
+    --primary: 210 100% 35%; /* #0055A4 equivalent */
+    --primary-foreground: 0 0% 100%; /* White for contrast */
+    --primary-hover: 210 100% 30%; /* Darker for hover states */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary colors */
+    --secondary: 195 100% 40%; /* #0099CC equivalent */
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 195 100% 35%;
+
+    /* Content colors */
+    --base-content: 222 100% 15%; /* #002244 equivalent */
+    --base-content-secondary: 210 50% 60%; /* #6699CC equivalent */
+
+    /* Semantic colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+
+    /* Interactive states */
+    --hover: 210 40% 96%;
+    --active: 210 40% 94%;
+    --focus: 210 100% 35%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -57,11 +77,32 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary colors - lighter for dark mode */
+    --primary: 210 100% 60%; /* Lighter blue for dark backgrounds */
+    --primary-foreground: 222 100% 15%; /* Dark text on light primary */
+    --primary-hover: 210 100% 65%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Secondary colors */
+    --secondary: 195 100% 65%;
+    --secondary-foreground: 222 100% 15%;
+    --secondary-hover: 195 100% 70%;
+
+    /* Content colors */
+    --base-content: 210 40% 98%; /* Light text for dark mode */
+    --base-content-secondary: 210 30% 75%;
+
+    /* Semantic colors */
+    --success: 142 76% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 0 0% 100%;
+    --error: 0 84% 70%;
+    --error-foreground: 0 0% 100%;
+
+    /* Interactive states */
+    --hover: 217 32% 17%;
+    --active: 217 32% 15%;
+    --focus: 210 100% 60%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -95,7 +136,12 @@
     @apply bg-background text-foreground font-opensans;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-bricolage font-semibold;
   }
 
@@ -116,7 +162,7 @@
   .btn {
     @apply px-6 py-3 rounded-md font-opensans font-semibold text-sm transition-all duration-300 inline-flex items-center justify-center;
   }
-  
+
   .btn-primary {
     @apply bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl;
   }

@@ -31,7 +31,7 @@ const SalesChart: React.FC<SalesChartProps> = ({ data }) => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="text-center w-full text-gray-500">
+            <div className="text-center w-full text-muted-foreground">
               You'll see your sales chart when you make a sale
             </div>
           )}

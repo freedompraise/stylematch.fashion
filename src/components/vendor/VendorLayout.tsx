@@ -31,6 +31,16 @@ import {
   CommandItem,
   CommandList
 } from '@/components/ui/command';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useVendorSearch } from '@/hooks/use-vendor-search';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -67,6 +77,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const { vendor, clearVendorData } = useVendorStore();
   const { signOut } = useAuthStore();
   const { toast } = useToast();
@@ -103,6 +114,15 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleLogoutClick = () => {
+    setLogoutDialogOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setLogoutDialogOpen(false);
+    await handleSignOut();
   };
 
   return (
@@ -158,7 +178,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
         </Sidebar>
 
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 items-center justify-between border-b px-4 bg-white">            <div className="flex items-center gap-2">
+          <header className="flex h-16 items-center justify-between border-b px-4 bg-background">            <div className="flex items-center gap-2">
               <SidebarTrigger>
                 <Menu className="h-5 w-5" />
               </SidebarTrigger>
@@ -181,7 +201,7 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={handleSignOut}
+                    onClick={handleLogoutClick}
                     className="hover:bg-destructive/10"
                   >
                     <LogOut className="h-5 w-5 text-destructive" />
@@ -226,6 +246,23 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
           ))}
         </CommandList>
       </CommandDialog>
+
+      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign Out</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out? You will need to sign in again to access your vendor dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLogout}>
+              Sign Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }

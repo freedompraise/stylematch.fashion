@@ -11,8 +11,20 @@ import { vendorDataService, VendorStats, ProductWithSales } from '@/services/ven
 import { VendorProfile, CreateVendorProfileInput } from '@/types';
 import { Product, CreateProductInput } from '@/types/ProductSchema';
 import { Order } from '@/types/OrderSchema';
+import {
+  ProductVariant,
+  ProductAttribute,
+  AttributeConfiguration,
+  ColorPalette,
+  ExtendedCategory,
+  CreateProductVariantRequest,
+  UpdateProductVariantRequest,
+  CreateProductAttributeRequest,
+  BulkUpdateVariantsRequest,
+  ProductWithVariants,
+} from '@/types/VariantSchema';
 
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
+const CACHE_TTL = 1000 * 60 * 500 //  5 hours
 
 interface OnboardingStep {
   id: string;
@@ -49,6 +61,20 @@ interface VendorState {
   productsLoaded: boolean;
   ordersLoaded: boolean;
   
+  // Variant system state
+  productVariants: Record<string, ProductVariant[]>; // productId -> variants
+  productAttributes: Record<string, ProductAttribute[]>; // productId -> attributes
+  attributeConfigurations: Record<string, AttributeConfiguration[]>; // category -> configs
+  colorPalettes: ColorPalette[];
+  extendedCategories: ExtendedCategory[];
+  variantsLoaded: boolean;
+  configurationsLoaded: boolean;
+  
+  // Configuration cache timestamps
+  configurationsCacheTimestamp: number;
+  colorPalettesCacheTimestamp: number;
+  extendedCategoriesCacheTimestamp: number;
+  
   // Onboarding state
   onboardingState: OnboardingState;
   
@@ -79,8 +105,32 @@ interface VendorState {
     productData: CreateProductInput,
     imageFile?: File
   ) => Promise<Product>;
+  createProductWithVariants: (
+    productData: CreateProductInput,
+    variantsData: CreateProductVariantRequest[],
+    imageFile?: File
+  ) => Promise<{ product: Product; variants: ProductVariant[] }>;
   deleteProduct: (product: Product) => Promise<void>;
   softDeleteProduct: (productId: string, reason?: string, product?: Product) => Promise<void>;
+  
+  // Variant management actions
+  fetchProductVariants: (productId: string, useCache?: boolean) => Promise<void>;
+  createProductVariant: (variantData: CreateProductVariantRequest) => Promise<void>;
+  createProductVariants: (variantsData: CreateProductVariantRequest[]) => Promise<void>;
+  updateProductVariant: (variantId: string, updates: UpdateProductVariantRequest) => Promise<void>;
+  deleteProductVariant: (variantId: string, productId: string) => Promise<void>;
+  bulkUpdateVariants: (updates: BulkUpdateVariantsRequest) => Promise<void>;
+  
+  // Attribute management actions
+  fetchProductAttributes: (productId: string) => Promise<void>;
+  createProductAttribute: (attributeData: CreateProductAttributeRequest) => Promise<void>;
+  updateProductAttribute: (attributeId: string, updates: Partial<ProductAttribute>) => Promise<void>;
+  deleteProductAttribute: (attributeId: string, productId: string) => Promise<void>;
+  
+  // Configuration actions
+  fetchAttributeConfigurations: (category: string, useCache?: boolean) => Promise<void>;
+  fetchColorPalettes: (useCache?: boolean) => Promise<void>;
+  fetchExtendedCategories: (useCache?: boolean) => Promise<void>;
   
   // Order actions
   setOrders: (orders: Order[]) => void;
@@ -162,6 +212,20 @@ export const useVendorStore = create<VendorState>()(
       orders: [],
       productsLoaded: false,
       ordersLoaded: false,
+      
+      // Variant system state
+      productVariants: {},
+      productAttributes: {},
+      attributeConfigurations: {},
+      colorPalettes: [],
+      extendedCategories: [],
+      variantsLoaded: false,
+      configurationsLoaded: false,
+      
+      // Configuration cache timestamps
+      configurationsCacheTimestamp: 0,
+      colorPalettesCacheTimestamp: 0,
+      extendedCategoriesCacheTimestamp: 0,
       onboardingState: {
         currentStep: 1,
         steps: defaultOnboardingSteps,
@@ -360,6 +424,37 @@ export const useVendorStore = create<VendorState>()(
         }
       },
 
+      createProductWithVariants: async (
+        productData: CreateProductInput,
+        variantsData: CreateProductVariantRequest[],
+        imageFile?: File
+      ) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const { product, variants } = await vendorDataService.createProductWithVariants(
+            productData,
+            variantsData,
+            vendor.user_id,
+            imageFile
+          );
+          
+          set((state) => ({
+            products: [product, ...state.products],
+            productVariants: {
+              ...state.productVariants,
+              [product.id]: variants
+            }
+          }));
+          
+          return { product, variants };
+        } catch (error) {
+          console.error('[VendorStore] Error creating product with variants:', error);
+          throw error;
+        }
+      },
+
       deleteProduct: async (product: Product) => {
         const { vendor } = get();
         if (!vendor?.user_id) throw new Error('No vendor profile');
@@ -384,6 +479,344 @@ export const useVendorStore = create<VendorState>()(
           }));
         } catch (error) {
           console.error('[VendorStore] Error soft deleting product:', error);
+          throw error;
+        }
+      },
+      
+      // Variant management actions
+      fetchProductVariants: async (productId: string, useCache: boolean = true) => {
+        const { vendor, productVariants } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const cachedVariants = productVariants[productId] || [];
+          const variants = await vendorDataService.fetchProductVariants(productId, useCache, cachedVariants);
+          set((state) => ({
+            productVariants: {
+              ...state.productVariants,
+              [productId]: variants
+            }
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error fetching product variants:', error);
+          throw error;
+        }
+      },
+      
+      createProductVariant: async (variantData: CreateProductVariantRequest) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const variant = await vendorDataService.createProductVariant(variantData);
+          set((state) => ({
+            productVariants: {
+              ...state.productVariants,
+              [variantData.product_id]: [
+                ...(state.productVariants[variantData.product_id] || []),
+                variant
+              ]
+            }
+          }));
+          
+          // Update product totals
+          await vendorDataService.updateProductTotals(variantData.product_id);
+        } catch (error) {
+          console.error('[VendorStore] Error creating product variant:', error);
+          throw error;
+        }
+      },
+
+      createProductVariants: async (variantsData: CreateProductVariantRequest[]) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const variants = await vendorDataService.createProductVariants(variantsData);
+          
+          // Group variants by product_id
+          const variantsByProduct = variants.reduce((acc, variant) => {
+            if (!acc[variant.product_id]) {
+              acc[variant.product_id] = [];
+            }
+            acc[variant.product_id].push(variant);
+            return acc;
+          }, {} as Record<string, ProductVariant[]>);
+          
+          set((state) => {
+            const newProductVariants = { ...state.productVariants };
+            
+            Object.entries(variantsByProduct).forEach(([productId, productVariants]) => {
+              newProductVariants[productId] = [
+                ...(newProductVariants[productId] || []),
+                ...productVariants
+              ];
+            });
+            
+            return { productVariants: newProductVariants };
+          });
+          
+          // Update product totals for all affected products
+          const productIds = new Set(variants.map(v => v.product_id));
+          await Promise.all(Array.from(productIds).map(id => vendorDataService.updateProductTotals(id)));
+        } catch (error) {
+          console.error('[VendorStore] Error creating product variants:', error);
+          throw error;
+        }
+      },
+      
+      updateProductVariant: async (variantId: string, updates: UpdateProductVariantRequest) => {
+        const { vendor, productVariants } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const updatedVariant = await vendorDataService.updateProductVariant(variantId, updates);
+          
+          // Find which product this variant belongs to
+          let productId: string | null = null;
+          for (const [pid, variants] of Object.entries(productVariants)) {
+            if (variants.some(v => v.id === variantId)) {
+              productId = pid;
+              break;
+            }
+          }
+          
+          if (productId) {
+            set((state) => ({
+              productVariants: {
+                ...state.productVariants,
+                [productId]: state.productVariants[productId].map(v => 
+                  v.id === variantId ? updatedVariant : v
+                )
+              }
+            }));
+            
+            // Update product totals
+            await vendorDataService.updateProductTotals(productId);
+          }
+        } catch (error) {
+          console.error('[VendorStore] Error updating product variant:', error);
+          throw error;
+        }
+      },
+      
+      deleteProductVariant: async (variantId: string, productId: string) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          await vendorDataService.deleteProductVariant(variantId);
+          set((state) => ({
+            productVariants: {
+              ...state.productVariants,
+              [productId]: state.productVariants[productId]?.filter(v => v.id !== variantId) || []
+            }
+          }));
+          
+          // Update product totals
+          await vendorDataService.updateProductTotals(productId);
+        } catch (error) {
+          console.error('[VendorStore] Error deleting product variant:', error);
+          throw error;
+        }
+      },
+      
+      bulkUpdateVariants: async (updates: BulkUpdateVariantsRequest) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const updatedVariants = await vendorDataService.bulkUpdateVariants(updates);
+          
+          // Update state with all updated variants
+          set((state) => {
+            const newProductVariants = { ...state.productVariants };
+            
+            updatedVariants.forEach(variant => {
+              // Find which product this variant belongs to
+              for (const [productId, variants] of Object.entries(newProductVariants)) {
+                const variantIndex = variants.findIndex(v => v.id === variant.id);
+                if (variantIndex !== -1) {
+                  newProductVariants[productId][variantIndex] = variant;
+                  break;
+                }
+              }
+            });
+            
+            return { productVariants: newProductVariants };
+          });
+          
+          // Update product totals for all affected products
+          const productIds = new Set(updatedVariants.map(v => v.product_id));
+          await Promise.all(Array.from(productIds).map(id => vendorDataService.updateProductTotals(id)));
+        } catch (error) {
+          console.error('[VendorStore] Error bulk updating variants:', error);
+          throw error;
+        }
+      },
+      
+      // Attribute management actions
+      fetchProductAttributes: async (productId: string) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const attributes = await vendorDataService.fetchProductAttributes(productId);
+          set((state) => ({
+            productAttributes: {
+              ...state.productAttributes,
+              [productId]: attributes
+            }
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error fetching product attributes:', error);
+          throw error;
+        }
+      },
+      
+      createProductAttribute: async (attributeData: CreateProductAttributeRequest) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const attribute = await vendorDataService.createProductAttribute(attributeData);
+          set((state) => ({
+            productAttributes: {
+              ...state.productAttributes,
+              [attributeData.product_id]: [
+                ...(state.productAttributes[attributeData.product_id] || []),
+                attribute
+              ]
+            }
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error creating product attribute:', error);
+          throw error;
+        }
+      },
+      
+      updateProductAttribute: async (attributeId: string, updates: Partial<ProductAttribute>) => {
+        const { vendor, productAttributes } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const updatedAttribute = await vendorDataService.updateProductAttribute(attributeId, updates);
+          
+          // Find which product this attribute belongs to
+          let productId: string | null = null;
+          for (const [pid, attributes] of Object.entries(productAttributes)) {
+            if (attributes.some(a => a.id === attributeId)) {
+              productId = pid;
+              break;
+            }
+          }
+          
+          if (productId) {
+            set((state) => ({
+              productAttributes: {
+                ...state.productAttributes,
+                [productId]: state.productAttributes[productId].map(a => 
+                  a.id === attributeId ? updatedAttribute : a
+                )
+              }
+            }));
+          }
+        } catch (error) {
+          console.error('[VendorStore] Error updating product attribute:', error);
+          throw error;
+        }
+      },
+      
+      deleteProductAttribute: async (attributeId: string, productId: string) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          await vendorDataService.deleteProductAttribute(attributeId);
+          set((state) => ({
+            productAttributes: {
+              ...state.productAttributes,
+              [productId]: state.productAttributes[productId]?.filter(a => a.id !== attributeId) || []
+            }
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error deleting product attribute:', error);
+          throw error;
+        }
+      },
+      
+      // Configuration actions
+      fetchAttributeConfigurations: async (category: string, useCache: boolean = true) => {
+        const { vendor, attributeConfigurations, configurationsCacheTimestamp } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        // Check cache first
+        if (useCache && 
+            attributeConfigurations[category] && 
+            Date.now() - configurationsCacheTimestamp < CACHE_TTL) {
+          console.log('[VendorStore] Using cached attribute configurations for category:', category);
+          return;
+        }
+        
+        try {
+          const configurations = await vendorDataService.fetchAttributeConfigurations(category, vendor.user_id);
+          set((state) => ({
+            attributeConfigurations: {
+              ...state.attributeConfigurations,
+              [category]: configurations
+            },
+            configurationsCacheTimestamp: Date.now()
+          }));
+        } catch (error) {
+          console.error('[VendorStore] Error fetching attribute configurations:', error);
+          throw error;
+        }
+      },
+      
+      fetchColorPalettes: async (useCache: boolean = true) => {
+        const { vendor, colorPalettes, colorPalettesCacheTimestamp } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        // Check cache first
+        if (useCache && 
+            colorPalettes.length > 0 && 
+            Date.now() - colorPalettesCacheTimestamp < CACHE_TTL) {
+          console.log('[VendorStore] Using cached color palettes');
+          return;
+        }
+        
+        try {
+          const palettes = await vendorDataService.fetchColorPalettes(vendor.user_id);
+          set({ 
+            colorPalettes: palettes,
+            colorPalettesCacheTimestamp: Date.now()
+          });
+        } catch (error) {
+          console.error('[VendorStore] Error fetching color palettes:', error);
+          throw error;
+        }
+      },
+      
+      fetchExtendedCategories: async (useCache: boolean = true) => {
+        const { vendor, extendedCategories, extendedCategoriesCacheTimestamp } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        // Check cache first
+        if (useCache && 
+            extendedCategories.length > 0 && 
+            Date.now() - extendedCategoriesCacheTimestamp < CACHE_TTL) {
+          console.log('[VendorStore] Using cached extended categories');
+          return;
+        }
+        
+        try {
+          const categories = await vendorDataService.fetchExtendedCategories(vendor.user_id);
+          set({ 
+            extendedCategories: categories,
+            extendedCategoriesCacheTimestamp: Date.now()
+          });
+        } catch (error) {
+          console.error('[VendorStore] Error fetching extended categories:', error);
           throw error;
         }
       },
@@ -574,7 +1007,14 @@ export const useVendorStore = create<VendorState>()(
         vendor: state.vendor,
         vendorCache: state.vendorCache,
         onboardingState: state.onboardingState,
-        lastVendorPath: state.lastVendorPath
+        lastVendorPath: state.lastVendorPath,
+        // Cache configurations for better performance
+        attributeConfigurations: state.attributeConfigurations,
+        colorPalettes: state.colorPalettes,
+        extendedCategories: state.extendedCategories,
+        configurationsCacheTimestamp: state.configurationsCacheTimestamp,
+        colorPalettesCacheTimestamp: state.colorPalettesCacheTimestamp,
+        extendedCategoriesCacheTimestamp: state.extendedCategoriesCacheTimestamp
       }),
     }
   )

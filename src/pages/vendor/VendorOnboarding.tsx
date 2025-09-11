@@ -379,8 +379,8 @@ const { createVendorProfile} = useVendorStore();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm p-4">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-sm p-4">
         <div className="container mx-auto flex justify-center">
           <Logo />
         </div>
@@ -395,29 +395,29 @@ const { createVendorProfile} = useVendorStore();
             </p>
           </div>
           
-          <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className="bg-card rounded-xl shadow-lg p-8">
             <div className="flex mb-8 justify-center">
               <div className="flex items-center">
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  state.step >= 1 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 1 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 }`}>
                   1
                 </div>
-                <div className={`w-16 h-1 ${state.step >= 2 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 2 ? 'bg-primary' : 'bg-muted'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  state.step >= 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 2 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 }`}>
                   2
                 </div>
-                <div className={`w-16 h-1 ${state.step >= 3 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 3 ? 'bg-primary' : 'bg-muted'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  state.step >= 3 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 3 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 }`}>
                   3
                 </div>
-                <div className={`w-16 h-1 ${state.step >= 4 ? 'bg-primary' : 'bg-gray-200'}`}></div>
+                <div className={`w-16 h-1 ${state.step >= 4 ? 'bg-primary' : 'bg-muted'}`}></div>
                 <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  state.step >= 4 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'
+                  state.step >= 4 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
                 }`}>
                   4
                 </div>
@@ -564,7 +564,7 @@ const { createVendorProfile} = useVendorStore();
                           <FormLabel>Instagram Profile</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                              <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                               <Input 
                                 placeholder="https://instagram.com/yourstorename" 
                                 className="pl-10" 
@@ -585,7 +585,7 @@ const { createVendorProfile} = useVendorStore();
                           <FormLabel>Facebook Page</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                              <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                               <Input 
                                 placeholder="https://facebook.com/yourstorepage" 
                                 className="pl-10" 
@@ -606,7 +606,7 @@ const { createVendorProfile} = useVendorStore();
                           <FormLabel>Whatsapp Business Link</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                              <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                               <Input 
                                 placeholder="https://wa.me/yourwhatsapplink"
                                 className="pl-10" 

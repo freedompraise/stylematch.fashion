@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getCategoryOptions } from '@/constants/categories';
+import { getSizeOptions, hasCustomSizes, getCustomSizePlaceholder } from '@/constants/sizes';
+import { getColorOptions, getContrastColor } from '@/constants/colors';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +59,7 @@ export function EditProductDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shouldRemoveImage, setShouldRemoveImage] = useState(false);
+  const [customSize, setCustomSize] = useState<string>('');
 
   const form = useForm<EditProductFormValues>({
     resolver: zodResolver(z.object({
@@ -114,6 +117,7 @@ export function EditProductDialog({
       }
       setProductImage(null);
       setShouldRemoveImage(false);
+      setCustomSize('');
     }
   }, [product, open, form]);
 
@@ -161,6 +165,7 @@ export function EditProductDialog({
     setProductImage(null);
     setPreviewUrl(null);
     setShouldRemoveImage(false);
+    setCustomSize('');
     onOpenChange(false);
   };
 
@@ -299,21 +304,54 @@ export function EditProductDialog({
             <div className="space-y-2">
               <FormLabel>Size</FormLabel>
               <div className="flex flex-wrap gap-2">
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
-                  <Button
-                    key={size}
-                    type="button"
-                    variant={form.watch('size') === size ? 'default' : 'outline'}
-                    onClick={() => {
-                      const currentSize = form.watch('size') || '';
-                      const newSize = currentSize === size ? '' : size;
-                      form.setValue('size', newSize);
-                    }}
-                    className="h-8"
-                  >
-                    {size}
-                  </Button>
-                ))}
+                {(() => {
+                  const selectedCategory = form.watch('category');
+                  const sizeOptions = selectedCategory ? getSizeOptions(selectedCategory) : [];
+                  const showCustomSize = selectedCategory && hasCustomSizes(selectedCategory);
+                  
+                  return (
+                    <>
+                      {sizeOptions.map((size) => (
+                        <Button
+                          key={size.value}
+                          type="button"
+                          variant={form.watch('size') === size.value ? 'default' : 'outline'}
+                          onClick={() => {
+                            const currentSize = form.watch('size') || '';
+                            const newSize = currentSize === size.value ? '' : size.value;
+                            form.setValue('size', newSize);
+                            // Clear custom size when selecting predefined size
+                            if (newSize) {
+                              setCustomSize('');
+                            }
+                          }}
+                          className="h-8"
+                          title={size.description}
+                        >
+                          {size.label}
+                        </Button>
+                      ))}
+                      
+                      {showCustomSize && (
+                        <div className="flex items-center gap-2 w-full mt-2">
+                          <Input
+                            placeholder={getCustomSizePlaceholder(selectedCategory)}
+                            value={customSize}
+                            onChange={(e) => {
+                              setCustomSize(e.target.value);
+                              // Set the custom size as the selected size
+                              if (e.target.value) {
+                                form.setValue('size', e.target.value);
+                              }
+                            }}
+                            className="h-8"
+                          />
+                          <span className="text-xs text-muted-foreground">Custom Size</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <FormMessage>
                 {form.formState.errors?.size?.message}
@@ -323,20 +361,30 @@ export function EditProductDialog({
             {/* Color Selection */}
             <div className="space-y-2">
               <FormLabel>Color</FormLabel>
-              <div className="flex flex-wrap gap-2">
-                {['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink'].map((color) => (
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {getColorOptions().map((color) => (
                   <Button
-                    key={color}
+                    key={color.value}
                     type="button"
-                    variant={form.watch('color') === color ? 'default' : 'outline'}
+                    variant={form.watch('color') === color.value ? 'default' : 'outline'}
                     onClick={() => {
                       const currentColor = form.watch('color') || '';
-                      const newColor = currentColor === color ? '' : color;
+                      const newColor = currentColor === color.value ? '' : color.value;
                       form.setValue('color', newColor);
                     }}
-                    className="h-8"
+                    className={`h-8 transition-all duration-200 ${
+                      form.watch('color') === color.value 
+                        ? 'h-10 scale-110 shadow-lg ring-2 ring-offset-2' 
+                        : 'hover:scale-105'
+                    }`}
+                    title={color.description}
+                    style={color.hex ? { 
+                      backgroundColor: color.hex, 
+                      color: getContrastColor(color.hex),
+                      border: `1px solid ${getContrastColor(color.hex)}20`
+                    } : undefined}
                   >
-                    {color}
+                    {color.label}
                   </Button>
                 ))}
               </div>

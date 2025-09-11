@@ -3,6 +3,8 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getCategoryOptions } from '@/constants/categories';
+import { getSizeOptions, hasCustomSizes, getCustomSizePlaceholder } from '@/constants/sizes';
+import { getColorOptions, getContrastColor } from '@/constants/colors';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +50,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const { createProduct } = useVendorStore();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
+  const [customSizes, setCustomSizes] = useState<Record<number, string>>({});
 
   const form = useForm<{ products: ProductFormValues[] }>({
     resolver: zodResolver(z.object({ 
@@ -170,6 +173,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       form.reset();
       setProductImages([]);
       setPreviewUrls([]);
+      setCustomSizes({});
     } catch (error) {
       console.error('Error creating products:', error);
       toast({
@@ -184,6 +188,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     form.reset();
     setProductImages([]);
     setPreviewUrls([]);
+    setCustomSizes({});
     setOpen(false);
   };
 
@@ -328,21 +333,54 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     <div className="space-y-2">
                       <FormLabel>Sizes</FormLabel>
                       <div className="flex flex-wrap gap-2">
-                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
-                          <Button
-                            key={size}
-                            type="button"
-                            variant={form.watch(`products.${index}.size`) === size ? 'default' : 'outline'}
-                            onClick={() => {
-                              const currentSize = form.watch(`products.${index}.size`) || '';
-                              const newSize = currentSize === size ? '' : size;
-                              form.setValue(`products.${index}.size`, newSize);
-                            }}
-                            className="h-8"
-                          >
-                            {size}
-                          </Button>
-                        ))}
+                        {(() => {
+                          const selectedCategory = form.watch(`products.${index}.category`);
+                          const sizeOptions = selectedCategory ? getSizeOptions(selectedCategory) : [];
+                          const showCustomSize = selectedCategory && hasCustomSizes(selectedCategory);
+                          
+                          return (
+                            <>
+                              {sizeOptions.map((size) => (
+                                <Button
+                                  key={size.value}
+                                  type="button"
+                                  variant={form.watch(`products.${index}.size`) === size.value ? 'default' : 'outline'}
+                                  onClick={() => {
+                                    const currentSize = form.watch(`products.${index}.size`) || '';
+                                    const newSize = currentSize === size.value ? '' : size.value;
+                                    form.setValue(`products.${index}.size`, newSize);
+                                    // Clear custom size when selecting predefined size
+                                    if (newSize) {
+                                      setCustomSizes(prev => ({ ...prev, [index]: '' }));
+                                    }
+                                  }}
+                                  className="h-8"
+                                  title={size.description}
+                                >
+                                  {size.label}
+                                </Button>
+                              ))}
+                              
+                              {showCustomSize && (
+                                <div className="flex items-center gap-2 w-full mt-2">
+                                  <Input
+                                    placeholder={getCustomSizePlaceholder(selectedCategory)}
+                                    value={customSizes[index] || ''}
+                                    onChange={(e) => {
+                                      setCustomSizes(prev => ({ ...prev, [index]: e.target.value }));
+                                      // Set the custom size as the selected size
+                                      if (e.target.value) {
+                                        form.setValue(`products.${index}.size`, e.target.value);
+                                      }
+                                    }}
+                                    className="h-8"
+                                  />
+                                  <span className="text-xs text-muted-foreground">Custom Size</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                       <FormMessage>
                         {form.formState.errors?.products?.[index]?.['size']?.message}
@@ -351,20 +389,30 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     
                     <div className="space-y-2">
                       <FormLabel>Colors</FormLabel>
-                      <div className="flex flex-wrap gap-2">
-                        {['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink'].map((color) => (
+                      <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                        {getColorOptions().map((color) => (
                           <Button
-                            key={color}
+                            key={color.value}
                             type="button"
-                            variant={form.watch(`products.${index}.color`) === color ? 'default' : 'outline'}
+                            variant={form.watch(`products.${index}.color`) === color.value ? 'default' : 'outline'}
                             onClick={() => {
                               const currentColor = form.watch(`products.${index}.color`) || '';
-                              const newColor = currentColor === color ? '' : color;
+                              const newColor = currentColor === color.value ? '' : color.value;
                               form.setValue(`products.${index}.color`, newColor);
                             }}
-                            className="h-8"
+                            className={`h-8 transition-all duration-200 ${
+                              form.watch(`products.${index}.color`) === color.value 
+                                ? 'h-10 scale-110 shadow-lg ring-2 ring-offset-2' 
+                                : 'hover:scale-105'
+                            }`}
+                            title={color.description}
+                            style={color.hex ? { 
+                              backgroundColor: color.hex, 
+                              color: getContrastColor(color.hex),
+                              border: `1px solid ${getContrastColor(color.hex)}20`
+                            } : undefined}
                           >
-                            {color}
+                            {color.label}
                           </Button>
                         ))}
                       </div>

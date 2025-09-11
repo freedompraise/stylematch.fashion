@@ -31,9 +31,9 @@ export function FilterSummary({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 bg-gray-50 rounded-lg border">
+    <div className="flex flex-wrap items-center gap-2 p-4 bg-muted rounded-lg border">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-gray-700">Active filters:</span>
+        <span className="text-sm font-medium text-foreground">Active filters:</span>
         {activeFilters.map((filter, index) => (
           <Badge key={index} variant="secondary" className="flex items-center gap-1">
             {filter}
@@ -42,7 +42,7 @@ export function FilterSummary({
       </div>
       
       <div className="flex items-center gap-2 ml-auto">
-        <span className="text-sm text-gray-600">{summary}</span>
+        <span className="text-sm text-muted-foreground">{summary}</span>
         <Button
           variant="ghost"
           size="sm"

@@ -139,7 +139,7 @@ export function ProductImageUpload({
             }
           </p>
           <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-primary">Required:</span> Product image increases sales by 5x • 
+          
             Max size: {formatFileSize(PRODUCT_IMAGE_CONFIG.maxFileSize)} • 
             Max dimensions: {PRODUCT_IMAGE_CONFIG.maxWidth}x{PRODUCT_IMAGE_CONFIG.maxHeight}
           </p>

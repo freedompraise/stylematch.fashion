@@ -25,18 +25,46 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        
+        // Primary brand colors with dark mode support
         primary: {
-          DEFAULT: '#0055A4', // Medium Blue
-          foreground: '#FFFFFF', // White for contrast
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+          hover: 'hsl(var(--primary-hover))',
         },
+        
+        // Secondary colors with dark mode support
         secondary: {
-          DEFAULT: '#0099CC', // Light Blue
-          foreground: '#FFFFFF',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+          hover: 'hsl(var(--secondary-hover))',
         },
+        
+        // Content colors with dark mode support
         baseContent: {
-          DEFAULT: '#002244', // Dark Blue
-          secondary: '#6699CC', // Soft Grayish Blue
+          DEFAULT: 'hsl(var(--base-content))',
+          secondary: 'hsl(var(--base-content-secondary))',
         },
+        
+        // Semantic colors
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
+        },
+        error: {
+          DEFAULT: 'hsl(var(--error))',
+          foreground: 'hsl(var(--error-foreground))',
+        },
+        
+        // Interactive states
+        hover: 'hsl(var(--hover))',
+        active: 'hsl(var(--active))',
+        focus: 'hsl(var(--focus))',
+        
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))'

@@ -81,7 +81,7 @@ const SettingsProfile: React.FC = () => {
                 type="email"
                 value={formData.email}
                 disabled
-                className="bg-gray-50"
+                className="bg-muted"
               />
               <p className="text-sm text-muted-foreground">
                 Email address cannot be changed. Contact support if needed.

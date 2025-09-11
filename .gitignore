@@ -30,3 +30,4 @@ src/integrations/
 docs/
 stylematch-nextjs/
 /test-image.jpg
+.playwright-mcp/
