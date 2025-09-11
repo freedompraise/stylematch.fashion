@@ -10,11 +10,11 @@ const VerificationComplete: React.FC = () => {
   const navigate = useNavigate();
 
   const handleContinue = () => {
-    if (isVendorSignup) {
+    // if (isVendorSignup) {
       navigate('/vendor/onboarding');
-    } else {
-      navigate('/');
-    }
+    // } else {
+    //   navigate('/');
+    // }
   };
 
   return (
