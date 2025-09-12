@@ -10,7 +10,7 @@ import {
 import { vendorDataService, VendorStats, ProductWithSales } from '@/services/vendorDataService';
 import { VendorProfile, CreateVendorProfileInput } from '@/types';
 import { Product, CreateProductInput } from '@/types/ProductSchema';
-import { Order } from '@/types/OrderSchema';
+import { Order, OrderStatus } from '@/types/OrderSchema';
 import {
   ProductVariant,
   ProductAttribute,
@@ -132,14 +132,16 @@ interface VendorState {
   fetchColorPalettes: (useCache?: boolean) => Promise<void>;
   fetchExtendedCategories: (useCache?: boolean) => Promise<void>;
   
-  // Order actions
+  // Order management
   setOrders: (orders: Order[]) => void;
   addOrder: (order: Order) => void;
-  updateOrder: (id: string, updates: Partial<Order>) => Promise<void>;
   removeOrder: (id: string) => void;
   setOrdersLoaded: (loaded: boolean) => void;
   fetchOrders: (useCache?: boolean) => Promise<Order[]>;
   deleteOrder: (orderId: string) => Promise<void>;
+  getOrderWithDetails: (orderId: string, useCache?: boolean) => Promise<Order>;
+  verifyPayment: (orderId: string, status: 'verified' | 'rejected') => Promise<Order>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<Order>;
   
   // Stats and analytics
   calculateVendorStats: (products: Product[], orders: Order[]) => VendorStats;
@@ -821,23 +823,12 @@ export const useVendorStore = create<VendorState>()(
         }
       },
       
-      // Order actions
       setOrders: (orders: Order[]) => {
         set({ orders });
       },
       
       addOrder: (order: Order) => {
         set((state) => ({ orders: [order, ...state.orders] }));
-      },
-      
-      updateOrder: async (id: string, updates: Partial<Order>) => {
-        const { vendor } = get();
-        if (!vendor?.user_id) throw new Error('No vendor profile');
-        
-        const updatedOrder = await vendorDataService.updateOrder(id, updates, vendor.user_id);
-        set((state) => ({
-          orders: state.orders.map(o => (o.id === id ? updatedOrder : o))
-        }));
       },
       
       removeOrder: (id: string) => {
@@ -885,6 +876,75 @@ export const useVendorStore = create<VendorState>()(
           set((state) => ({ orders: state.orders.filter(o => o.id !== orderId) }));
         } catch (error) {
           console.error('[VendorStore] Error deleting order:', error);
+          throw error;
+        }
+      },
+      getOrderWithDetails: async (orderId: string, useCache: boolean = true) => {
+        const { vendor, orders } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        const cachedOrder = orders.find(o => o.id === orderId);
+        
+        try {
+          const order = await vendorDataService.getOrderWithDetails(
+            orderId, 
+            useCache, 
+            cachedOrder || null
+          );
+          
+          if (!useCache || !cachedOrder) {
+            set((state) => ({
+              orders: state.orders.map(o => o.id === orderId ? order : o)
+            }));
+          }
+          
+          return order;
+        } catch (error) {
+          console.error('[VendorStore] Error fetching order details:', error);
+          throw error;
+        }
+      },
+
+      verifyPayment: async (orderId: string, status: 'verified' | 'rejected') => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const updatedOrder = await vendorDataService.verifyPayment(
+            orderId,
+            status,
+            vendor.user_id
+          );
+          
+          set((state) => ({
+            orders: state.orders.map(o => o.id === orderId ? updatedOrder : o)
+          }));
+          
+          return updatedOrder;
+        } catch (error) {
+          console.error('[VendorStore] Error verifying payment:', error);
+          throw error;
+        }
+      },
+
+      updateOrderStatus: async (orderId: string, status: OrderStatus) => {
+        const { vendor } = get();
+        if (!vendor?.user_id) throw new Error('No vendor profile');
+        
+        try {
+          const updatedOrder = await vendorDataService.updateOrderStatus(
+            orderId,
+            status,
+            vendor.user_id
+          );
+          
+          set((state) => ({
+            orders: state.orders.map(o => o.id === orderId ? updatedOrder : o)
+          }));
+          
+          return updatedOrder;
+        } catch (error) {
+          console.error('[VendorStore] Error updating order status:', error);
           throw error;
         }
       },

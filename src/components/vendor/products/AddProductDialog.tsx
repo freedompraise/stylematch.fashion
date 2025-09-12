@@ -341,25 +341,25 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                           return (
                             <>
                               {sizeOptions.map((size) => (
-                                <Button
+                          <Button
                                   key={size.value}
-                                  type="button"
+                            type="button"
                                   variant={form.watch(`products.${index}.size`) === size.value ? 'default' : 'outline'}
-                                  onClick={() => {
-                                    const currentSize = form.watch(`products.${index}.size`) || '';
+                            onClick={() => {
+                              const currentSize = form.watch(`products.${index}.size`) || '';
                                     const newSize = currentSize === size.value ? '' : size.value;
-                                    form.setValue(`products.${index}.size`, newSize);
+                              form.setValue(`products.${index}.size`, newSize);
                                     // Clear custom size when selecting predefined size
                                     if (newSize) {
                                       setCustomSizes(prev => ({ ...prev, [index]: '' }));
                                     }
-                                  }}
-                                  className="h-8"
+                            }}
+                            className="h-8"
                                   title={size.description}
-                                >
+                          >
                                   {size.label}
-                                </Button>
-                              ))}
+                          </Button>
+                        ))}
                               
                               {showCustomSize && (
                                 <div className="flex items-center gap-2 w-full mt-2">

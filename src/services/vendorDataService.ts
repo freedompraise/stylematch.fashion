@@ -1,7 +1,8 @@
+
 // src/services/vendorDataService.ts
 import supabase from '@/lib/supabaseClient';
 import { Product, CreateProductInput, SoftDeleteProductInput } from '@/types/ProductSchema';
-import { Order } from '@/types/OrderSchema';
+import { Order, OrderStatus} from '@/types/OrderSchema';
 import {
   ProductVariant,
   ProductAttribute,
@@ -22,6 +23,7 @@ import {
   deleteFromCloudinary,
   getPublicIdFromUrl,
 } from '@/lib/cloudinary';
+
 import { ProductDeletionError } from './errors/VendorServiceError';
 
 export interface VendorStats {
@@ -349,6 +351,93 @@ class VendorDataService {
       return data || [];
     } catch (error) {
       console.error('[VendorDataService] Error fetching orders:', error);
+      throw error;
+    }
+  }
+
+  // NEW: Get order with details (cache-aware)
+  async getOrderWithDetails(orderId: string, useCache: boolean = true, cachedOrder: Order | null = null): Promise<Order> {
+    if (useCache && cachedOrder) {
+      return cachedOrder;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          vendor:vendor_id (
+            store_name,
+            payout_info
+          )
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching order with details:', error);
+      throw error;
+    }
+  }
+
+  async verifyPayment(
+    orderId: string, 
+    status: 'verified' | 'rejected',
+    vendorId: string
+  ): Promise<Order> {
+    try {
+      const { data, error } = await supabase.rpc('verify_payment', {
+        order_id: orderId,
+        status: status,
+        vendor_id: vendorId
+      });
+
+      if (error) throw error;
+
+      if (data.payment_proof_urls && data.payment_proof_urls.length > 0) {
+        console.log(`Cleaning up payment proof images for ${status} payment...`);
+        try {
+          await Promise.all(
+            data.payment_proof_urls.map(async (url: string) => {
+              const publicId = getPublicIdFromUrl(url);
+              if (publicId) {
+                await deleteFromCloudinary(publicId);
+              }
+            })
+          );
+          console.log('Successfully cleaned up payment proof images');
+        } catch (cleanupError) {
+          console.error('Error cleaning up payment proof images:', cleanupError);
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      throw error;
+    }
+  }
+
+  // NEW: Update order status with proper validation
+  async updateOrderStatus(orderId: string, status: OrderStatus, vendorId: string): Promise<Order> {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ 
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('vendor_id', vendorId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error updating order status:', error);
       throw error;
     }
   }

@@ -17,7 +17,7 @@ interface PaymentVerificationProps {
 }
 
 const PaymentVerification: React.FC<PaymentVerificationProps> = ({ order, onVerificationComplete }) => {
-  const { updateOrder, vendor } = useVendorStore();
+  const { verifyPayment, vendor } = useVendorStore();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -34,28 +34,23 @@ const PaymentVerification: React.FC<PaymentVerificationProps> = ({ order, onVeri
 
     setVerifying(true);
     try {
-      const updates = {
-        payment_status: status,
-        payment_verified_at: new Date().toISOString(),
-        payment_verified_by: vendor.user_id,
-        status: status === 'verified' ? 'confirmed' : 'payment_rejected',
-      };
-
-      await updateOrder(order.id, updates);
+      const updatedOrder = await verifyPayment(order.id, status);
       
       toast({
         title: status === 'verified' ? 'Payment Verified' : 'Payment Rejected',
         description: status === 'verified' 
           ? 'Order has been confirmed and will be processed'
           : 'Payment has been rejected. Customer will be notified.',
+        variant: status === 'verified' ? 'default' : 'destructive',
       });
 
       setIsOpen(false);
       onVerificationComplete();
     } catch (error) {
+      console.error('Error verifying payment:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update payment status. Please try again.',
+        description: 'Failed to verify payment. Please try again.',
         variant: 'destructive',
       });
     } finally {

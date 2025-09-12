@@ -8,10 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { uploadPaymentProof } from '@/lib/cloudinary';
-
 interface PaymentProofUploadProps {
-  onProofsChange: (proofs: string[], reference: string, notes: string) => void;
+  onProofsChange: (files: File[], reference: string, notes: string) => void;
   orderId: string;
   totalAmount: number;
 }
@@ -22,13 +20,12 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
   totalAmount,
 }) => {
   const { toast } = useToast();
-  const [uploading, setUploading] = useState(false);
-  const [proofUrls, setProofUrls] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [transactionReference, setTransactionReference] = useState('');
   const [notes, setNotes] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (files: FileList) => {
+  const handleFileUpload = (files: FileList) => {
     if (files.length === 0) return;
 
     // Validate file types and sizes
@@ -54,47 +51,30 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
 
     if (validFiles.length === 0) return;
 
-    setUploading(true);
-    try {
-      const uploadPromises = validFiles.map(async (file) => {
-        const url = await uploadPaymentProof(file, orderId);
-        return url;
-      });
+    const updatedFiles = [...selectedFiles, ...validFiles];
+    setSelectedFiles(updatedFiles);
+    onProofsChange(updatedFiles, transactionReference, notes);
 
-      const newUrls = await Promise.all(uploadPromises);
-      const updatedUrls = [...proofUrls, ...newUrls];
-      setProofUrls(updatedUrls);
-      onProofsChange(updatedUrls, transactionReference, notes);
-
-      toast({
-        title: 'Upload successful',
-        description: `${newUrls.length} payment proof(s) uploaded`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to upload payment proof. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-    }
+    toast({
+      title: 'Files selected',
+      description: `${validFiles.length} payment proof(s) selected`,
+    });
   };
 
   const removeProof = (index: number) => {
-    const updatedUrls = proofUrls.filter((_, i) => i !== index);
-    setProofUrls(updatedUrls);
-    onProofsChange(updatedUrls, transactionReference, notes);
+    const updatedFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(updatedFiles);
+    onProofsChange(updatedFiles, transactionReference, notes);
   };
 
   const handleReferenceChange = (value: string) => {
     setTransactionReference(value);
-    onProofsChange(proofUrls, value, notes);
+    onProofsChange(selectedFiles, value, notes);
   };
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
-    onProofsChange(proofUrls, transactionReference, value);
+    onProofsChange(selectedFiles, transactionReference, value);
   };
 
   return (
@@ -149,15 +129,15 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
           />
         </div>
 
-        {/* Uploaded Images Preview */}
-        {proofUrls.length > 0 && (
+        {/* Selected Files Preview */}
+        {selectedFiles.length > 0 && (
           <div className="space-y-2">
-            <Label>Uploaded Proofs ({proofUrls.length})</Label>
+            <Label>Selected Files ({selectedFiles.length})</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {proofUrls.map((url, index) => (
+              {selectedFiles.map((file, index) => (
                 <div key={index} className="relative group">
                   <img
-                    src={url}
+                    src={URL.createObjectURL(file)}
                     alt={`Payment proof ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg border"
                   />
@@ -187,13 +167,6 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
           />
         </div>
 
-        {/* Upload Status */}
-        {uploading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-            Uploading payment proof...
-          </div>
-        )}
 
         {/* Validation Notice */}
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

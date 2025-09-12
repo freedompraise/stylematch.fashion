@@ -13,8 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Clock, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import BankDetailsDisplay from '@/components/buyer/BankDetailsDisplay';
 import PaymentProofUpload from '@/components/buyer/PaymentProofUpload';
-import { createOrder } from '@/services/buyerStorefrontService';
-import { getVendorBySlug } from '@/services/buyerStorefrontService';
+import { createOrderWithPaymentProof, getVendorBySlug } from '@/services/buyerStorefrontService';
 
 interface DeliveryInfo {
   name: string;
@@ -38,7 +37,7 @@ const ManualCheckout: React.FC = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [paymentProofs, setPaymentProofs] = useState<string[]>([]);
+  const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
   const [transactionReference, setTransactionReference] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -65,8 +64,8 @@ const ManualCheckout: React.FC = () => {
     setDelivery({ ...delivery, [e.target.name]: e.target.value });
   };
 
-  const handleProofsChange = (proofs: string[], reference: string, additionalNotes: string) => {
-    setPaymentProofs(proofs);
+  const handleProofsChange = (files: File[], reference: string, additionalNotes: string) => {
+    setPaymentProofFiles(files);
     setTransactionReference(reference);
     setNotes(additionalNotes);
   };
@@ -89,7 +88,7 @@ const ManualCheckout: React.FC = () => {
       return;
     }
 
-    if (paymentProofs.length === 0) {
+    if (paymentProofFiles.length === 0) {
       setFormError('Please upload at least one payment proof image');
       setSubmitting(false);
       return;
@@ -99,12 +98,12 @@ const ManualCheckout: React.FC = () => {
       if (!vendor) throw new Error('Vendor information not available');
 
       // Create order with manual payment details
-      const orderPayload = {
-        vendor_id: vendor.user_id,
-        status: 'payment_pending',
-        delivery_location: delivery.pickup_location,
-        delivery_date: new Date().toISOString(),
-        total_amount: getTotal(),
+        const orderPayload = {
+          product_id: items[0]?.id || '', // Required for backward compatibility
+          vendor_id: vendor.user_id,
+          status: 'payment_pending' as const,
+          delivery_location: delivery.pickup_location,
+          total_amount: getTotal(),
         customer_info: {
           name: delivery.name,
           phone: delivery.phone,
@@ -119,14 +118,13 @@ const ManualCheckout: React.FC = () => {
           color: item.color || '',
         })),
         // Manual payment fields
-        payment_proof_urls: paymentProofs,
         transaction_reference: transactionReference,
-        payment_status: 'pending',
+        payment_status: 'pending' as const,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
         notes: notes,
       };
 
-      const order = await createOrder(orderPayload);
+      const order = await createOrderWithPaymentProof(orderPayload, paymentProofFiles);
       
       // Clear cart and redirect to confirmation
       clearCart();

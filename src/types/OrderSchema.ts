@@ -28,7 +28,7 @@ export const orderSchema = z.object({
   vendor_id: z.string().uuid(),
   status: orderStatusSchema,
   delivery_location: z.string(),
-  delivery_date: z.string(), // Date string from database
+  delivery_date: z.string().nullable(), // Date string from database, null until vendor sets it
   total_amount: z.number().int().min(0),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
@@ -58,7 +58,7 @@ export const createOrderSchema = z.object({
   vendor_id: z.string().uuid(),
   status: orderStatusSchema.optional(),
   delivery_location: z.string(),
-  delivery_date: z.string(), // ISO date string
+  delivery_date: z.string().optional(), // ISO date string, optional for buyer input
   total_amount: z.number().int().min(0),
   customer_info: customerInfoSchema,
   // Manual payment fields

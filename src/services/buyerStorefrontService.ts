@@ -1,5 +1,7 @@
 import supabase from '@/lib/supabaseClient';
 import { VendorProfile, Product } from '@/types';
+import { CreateOrderInput, Order } from '@/types/OrderSchema';
+import { uploadPaymentProof, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 
 export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
  const { data, error } = await supabase
@@ -54,4 +56,78 @@ export async function getOrderById(orderId: string) {
     .single();
   if (error || !data) throw new Error('Order not found.');
   return data;
+}
+
+// NEW: Enhanced order creation with payment proof and proper error handling
+export async function createOrderWithPaymentProof(
+  orderData: CreateOrderInput,
+  paymentProofFiles: File[]
+): Promise<Order> {
+  let uploadedUrls: string[] = [];
+  
+  try {
+    // Step 1: Upload payment proofs first
+    if (paymentProofFiles.length > 0) {
+      const tempOrderId = `temp-${Date.now()}`;
+      uploadedUrls = await Promise.all(
+        paymentProofFiles.map(file => uploadPaymentProof(file, tempOrderId))
+      );
+    }
+    
+    // Step 2: Create order with RPC (includes inventory validation)
+    const { data, error } = await supabase.rpc('create_order_with_payment_proof', {
+      order_data: orderData,
+      payment_proof_urls: uploadedUrls
+    });
+    
+    if (error) throw error;
+    return data;
+    
+  } catch (error) {
+    // CRITICAL: Cleanup uploaded images on failure
+    console.error('Error creating order with payment proof:', error);
+    
+    if (uploadedUrls.length > 0) {
+      console.log('Cleaning up uploaded payment proof images...');
+      try {
+        await Promise.all(
+          uploadedUrls.map(async (url) => {
+            const publicId = getPublicIdFromUrl(url);
+            if (publicId) {
+              await deleteFromCloudinary(publicId);
+            }
+          })
+        );
+        console.log('Successfully cleaned up payment proof images');
+      } catch (cleanupError) {
+        console.error('Error cleaning up payment proof images:', cleanupError);
+      }
+    }
+    
+    throw error;
+  }
+}
+
+// NEW: Get order status for buyers
+export async function getOrderStatus(orderId: string): Promise<Order> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// NEW: Get order history for buyers using proper schema
+export async function getOrderHistory(customerEmail: string): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .contains('customer_info', { email: customerEmail })
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
 } 
