@@ -26,10 +26,10 @@ const ProductDetailContent: React.FC<{ vendorSlug: string; productId: string }> 
   }, [loading, products, productId]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-destructive">{error}</div>;
   if (!vendor) return null;
   const product = products.find(prod => prod.id === productId);
-  if (!product) return <div className="min-h-screen flex items-center justify-center text-red-500">Product not found</div>;
+  if (!product) return <div className="min-h-screen flex items-center justify-center text-destructive">Product not found</div>;
 
   const handleAddToCart = () => {
     addToCart({

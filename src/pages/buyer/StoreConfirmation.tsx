@@ -36,12 +36,12 @@ const StoreConfirmation: React.FC = () => {
   }, [orderId]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-destructive">{error}</div>;
   if (!order) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12">
-      <div className="bg-white rounded-lg shadow p-8 max-w-lg w-full text-center">
+      <div className="bg-background rounded-lg shadow p-8 max-w-lg w-full text-center">
         <h1 className="text-2xl font-bold mb-4">Thank you for your order!</h1>
         <p className="mb-2">Order ID: <span className="font-mono text-primary">{order.id}</span></p>
         <p className="mb-2">Status: <span className="font-semibold">{order.status}</span></p>

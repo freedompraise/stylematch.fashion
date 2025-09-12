@@ -71,13 +71,13 @@ const ForgotPassword = (): JSX.Element => {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Logo />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-background rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-baseContent">
               Forgot Password?
@@ -97,7 +97,7 @@ const ForgotPassword = (): JSX.Element => {
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <Input
                           type="email"
                           placeholder="your@email.com"

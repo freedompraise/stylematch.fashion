@@ -148,7 +148,7 @@ const ManualCheckout: React.FC = () => {
   const totalAmount = getTotal();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-background py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-6">
@@ -295,8 +295,8 @@ const ManualCheckout: React.FC = () => {
             {/* Submit Button */}
             <form onSubmit={handleSubmit}>
               {formError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
-                  <div className="flex items-center gap-2 text-red-800">
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg mb-4">
+                  <div className="flex items-center gap-2 text-destructive">
                     <AlertCircle className="h-4 w-4" />
                     <span className="text-sm">{formError}</span>
                   </div>
