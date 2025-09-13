@@ -33,7 +33,7 @@ const Hero: React.FC = () => {
               </Button>
             </div>
             
-            <div className="flex flex-wrap gap-6 mt-8">
+            {/* <div className="flex flex-wrap gap-6 mt-8">
               <div className="flex items-center">
                 <div className="bg-primary/10 p-2 rounded-full mr-3">
                   <ShoppingBag size={20} className="text-primary" />
@@ -52,7 +52,7 @@ const Hero: React.FC = () => {
                 </div>
                 <p className="font-semibold">10k+ Daily Customers</p>
               </div>
-            </div>
+            </div> */}
           </div>
           
           <div className="relative animate-scale-in">
