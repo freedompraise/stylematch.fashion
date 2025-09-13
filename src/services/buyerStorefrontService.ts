@@ -5,7 +5,7 @@ import { uploadPaymentProof, deleteFromCloudinary, getPublicIdFromUrl } from '@/
 
 export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
  const { data, error } = await supabase
-   .from('vendors')
+   .from('vendor_storefront_view')
    .select('*')
    .eq('store_slug', storeSlug)
    .single();
