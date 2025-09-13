@@ -9,7 +9,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="fixed w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
+    <header className="fixed w-full bg-background/95 backdrop-blur-sm shadow-sm z-50">
       <div className="container flex items-center justify-between py-4">
         <Logo />
         
@@ -39,32 +39,32 @@ const Navbar: React.FC = () => {
 
       {/* Mobile navigation */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white shadow-lg animate-fade-in">
+        <div className="md:hidden bg-background shadow-lg animate-fade-in">
           <div className="container py-4 flex flex-col space-y-4">
             <Link 
               to="/#features" 
-              className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
+              className="text-baseContent hover:text-primary py-3 border-b border-border font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Features
             </Link>
             <Link 
               to="/#benefits" 
-              className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
+              className="text-baseContent hover:text-primary py-3 border-b border-border font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Benefits
             </Link>
             <Link 
               to="/#testimonials" 
-              className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
+              className="text-baseContent hover:text-primary py-3 border-b border-border font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Success Stories
             </Link>
             <Link 
               to="/#pricing" 
-              className="text-baseContent hover:text-primary py-3 border-b border-gray-100 font-semibold"
+              className="text-baseContent hover:text-primary py-3 border-b border-border font-semibold"
               onClick={() => setIsMenuOpen(false)}
             >
               Pricing

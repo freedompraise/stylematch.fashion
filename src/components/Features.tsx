@@ -37,7 +37,7 @@ const features = [
 
 const Features: React.FC = () => {
   return (
-    <section id="features" className="section bg-white">
+    <section id="features" className="section bg-background">
       <div className="container">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-bold text-baseContent mb-4">Powerful Features for Fashion Success</h2>
@@ -48,7 +48,7 @@ const Features: React.FC = () => {
           {features.map((feature, index) => (
             <div 
               key={index}
-              className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow group"
+              className="bg-background p-6 rounded-xl shadow-lg border border-border hover:shadow-xl transition-shadow group"
             >
               <div className="bg-primary/5 p-3 rounded-lg inline-block mb-4 group-hover:bg-primary/10 transition-colors">
                 {feature.icon}

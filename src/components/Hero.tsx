@@ -12,7 +12,7 @@ const Hero: React.FC = () => {
   };
 
   return (
-    <section className="pt-24 pb-12 md:pt-32 md:pb-20 overflow-hidden bg-gradient-to-br from-white to-blue-50">
+    <section className="pt-24 pb-12 md:pt-32 md:pb-20 overflow-hidden bg-gradient-to-br from-background to-muted">
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="animate-fade-in">
@@ -62,12 +62,12 @@ const Hero: React.FC = () => {
                 alt="Fashion vendor managing inventory" 
                 className="w-full h-auto object-cover mix-blend-overlay opacity-60"
               />
-              <div className="absolute inset-0 flex flex-col justify-end p-8 text-white">
+              <div className="absolute inset-0 flex flex-col justify-end p-8 text-primary-foreground">
                 <h3 className="text-2xl font-bold mb-2">Your Style. Your Store.</h3>
                 <p className="mb-4">Join hundreds of fashion vendors already thriving online with Stylematch.</p>
                 <Button 
                   variant="primary" 
-                  className="bg-white text-primary hover:bg-white/90 w-full md:w-auto text-center"
+                  className="bg-background text-primary hover:bg-background/90 w-full md:w-auto text-center"
                   onClick={handleGetStarted}
                 >
                   Start Your Journey
@@ -75,15 +75,15 @@ const Hero: React.FC = () => {
               </div>
             </div>
             
-            <div className="absolute -bottom-6 -right-6 bg-white rounded-lg p-4 shadow-xl max-w-xs hidden md:block">
+            <div className="absolute -bottom-6 -right-6 bg-background rounded-lg p-4 shadow-xl max-w-xs hidden md:block">
               <div className="flex items-center mb-2">
-                <div className="h-3 w-3 bg-green-500 rounded-full mr-2"></div>
+                <div className="h-3 w-3 bg-success rounded-full mr-2"></div>
                 <p className="text-sm font-semibold">Sales are up 24% this month</p>
               </div>
-              <div className="h-10 bg-gray-100 rounded-md flex overflow-hidden">
+              <div className="h-10 bg-muted rounded-md flex overflow-hidden">
                 <div className="h-full bg-primary w-1/4"></div>
                 <div className="h-full bg-secondary w-1/2"></div>
-                <div className="h-full bg-green-500 w-1/4"></div>
+                <div className="h-full bg-success w-1/4"></div>
               </div>
             </div>
           </div>

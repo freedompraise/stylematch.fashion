@@ -12,7 +12,7 @@ const Benefits: React.FC = () => {
   };
 
   return (
-    <section id="benefits" className="section bg-gray-50">
+    <section id="benefits" className="section bg-muted">
       <div className="container">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
@@ -76,9 +76,9 @@ const Benefits: React.FC = () => {
               className="rounded-xl shadow-xl w-full"
             />
             
-            <div className="absolute -bottom-8 -left-8 bg-white rounded-lg p-6 shadow-xl max-w-xs">
+            <div className="absolute -bottom-8 -left-8 bg-background rounded-lg p-6 shadow-xl max-w-xs">
               <div className="flex items-center mb-3">
-                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <div className="w-3 h-3 rounded-full bg-success mr-2"></div>
                 <p className="font-semibold text-sm">Real-time Dashboard</p>
               </div>
               <div className="space-y-2">
