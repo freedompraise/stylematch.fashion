@@ -203,7 +203,7 @@ export const useMarketplaceStore = create<MarketplaceState>()(
         try {
           const vendor = await getVendorBySlug(slug);
           if (!vendor) {
-            set({ error: 'Vendor not found', loading: false });
+            set({ error: 'Vendor not found', loading: false, currentVendor: null });
             return;
           }
           
@@ -261,16 +261,26 @@ export const useMarketplaceStore = create<MarketplaceState>()(
         
         // Size filter
         if (filters.size && filters.size.length > 0) {
-          filtered = filtered.filter(product => 
-            product.size?.some(size => filters.size!.includes(size))
-          );
+          filtered = filtered.filter(product => {
+            if (Array.isArray(product.size)) {
+              return product.size.some(size => filters.size!.includes(size));
+            } else if (typeof product.size === 'string') {
+              return filters.size!.includes(product.size);
+            }
+            return false;
+          });
         }
         
         // Color filter
         if (filters.color && filters.color.length > 0) {
-          filtered = filtered.filter(product => 
-            product.color?.some(color => filters.color!.includes(color))
-          );
+          filtered = filtered.filter(product => {
+            if (Array.isArray(product.color)) {
+              return product.color.some(color => filters.color!.includes(color));
+            } else if (typeof product.color === 'string') {
+              return filters.color!.includes(product.color);
+            }
+            return false;
+          });
         }
         
         // Brand filter - removed as brand doesn't exist in Product type

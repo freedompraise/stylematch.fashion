@@ -4,19 +4,64 @@ import { CreateOrderInput, Order } from '@/types/OrderSchema';
 import { uploadPaymentProof, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 
 export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
- const { data, error } = await supabase
+ // Try the view first
+ const { data: viewData, error: viewError } = await supabase
    .from('vendor_storefront_view')
    .select('*')
    .eq('store_slug', storeSlug)
    .single();
    
- if (error) {
-   if (error.code === 'PGRST116') {
-     return null;
-   }
-   throw new Error(`Failed to fetch vendor: ${error.message}`);
+ if (!viewError && viewData) {
+   return viewData as VendorProfile;
  }
- return data as VendorProfile;
+ 
+ // If view fails, fallback to RPC function
+ console.log('[BuyerStorefrontService] View query failed, trying RPC function:', viewError?.message);
+ 
+ const { data: rpcData, error: rpcError } = await supabase.rpc('get_vendor_storefront', {
+   slug: storeSlug
+ });
+   
+ if (rpcError) {
+   console.error('[BuyerStorefrontService] RPC function also failed:', rpcError.message);
+   throw new Error(`Failed to fetch vendor: ${rpcError.message}`);
+ }
+ 
+ if (!rpcData || rpcData.length === 0) {
+   return null;
+ }
+ 
+ return rpcData[0] as VendorProfile;
+}
+
+// Helper function to debug vendor issues - checks vendor status without strict filtering
+export async function getVendorStatus(storeSlug: string): Promise<{
+  exists: boolean;
+  archived: boolean;
+  isOnboarded: boolean;
+  verificationStatus: string;
+  storeName?: string;
+} | null> {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('store_name, archived, "isOnboarded", verification_status')
+    .eq('store_slug', storeSlug)
+    .single();
+    
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return { exists: false, archived: false, isOnboarded: false, verificationStatus: 'not_found' };
+    }
+    throw new Error(`Failed to fetch vendor status: ${error.message}`);
+  }
+  
+  return {
+    exists: true,
+    archived: data.archived,
+    isOnboarded: data.isOnboarded,
+    verificationStatus: data.verification_status,
+    storeName: data.store_name
+  };
 }
 
 export async function getProductsByVendorSlug(slug: string): Promise<Product[]> {
@@ -130,4 +175,4 @@ export async function getOrderHistory(customerEmail: string): Promise<Order[]> {
   
   if (error) throw error;
   return data || [];
-} 
+}

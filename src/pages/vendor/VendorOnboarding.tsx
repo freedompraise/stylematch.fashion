@@ -278,7 +278,7 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       
       toast({
         title: 'Onboarding Complete',
-        description: 'Your store profile has been successfully set up.',
+        description: 'Your store profile has been successfully set up and verified.',
       });
       
       navigate('/vendor/dashboard', { replace: true });

@@ -59,6 +59,8 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
-  size: string;
-  color: string;
+  size?: string;
+  color?: string;
+  image?: string;
+  vendor_slug?: string;
 }
