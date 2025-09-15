@@ -81,7 +81,7 @@ export async function createVendorProfile(userId: string, profile: CreateVendorP
         ...profile,
         ...(imageUrl && { banner_image_url: imageUrl }),
         isOnboarded: true,
-        verification_status: 'pending',
+        verification_status: 'verified', // tempoariliy save each vendor as verified
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
