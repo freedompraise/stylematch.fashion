@@ -54,7 +54,8 @@ export function useOnboardingState() {
     onboardingState: vendorOnboardingState, 
     setOnboardingStep, 
     completeOnboardingStep,
-    getCurrentOnboardingStep 
+    getCurrentOnboardingStep,
+    resetOnboarding
   } = useVendorStore();
 
   // Load state from vendorStore on mount
@@ -72,51 +73,33 @@ export function useOnboardingState() {
 
 
   const updateBasics = useCallback((basics: Partial<OnboardingState['formData']['basics']>) => {
-    console.log('updateBasics called with:', basics);
-    setState(prev => {
-      console.log('Previous state in updateBasics:', prev);
-      const newState = {
-        ...prev,
-        formData: {
-          ...prev.formData,
-          basics: { ...prev.formData.basics, ...basics },
-        },
-      };
-      console.log('New state in updateBasics:', newState);
-      return newState;
-    });
+    setState(prev => ({
+      ...prev,
+      formData: {
+        ...prev.formData,
+        basics: { ...prev.formData.basics, ...basics },
+      },
+    }));
   }, []);
 
   const updateDetails = useCallback((details: Partial<OnboardingState['formData']['details']>) => {
-    console.log('updateDetails called with:', details);
-    setState(prev => {
-      console.log('Previous state:', prev);
-      const newState = {
-        ...prev,
-        formData: {
-          ...prev.formData,
-          details: { ...prev.formData.details, ...details },
-        },
-      };
-      console.log('New state:', newState);
-      return newState;
-    });
+    setState(prev => ({
+      ...prev,
+      formData: {
+        ...prev.formData,
+        details: { ...prev.formData.details, ...details },
+      },
+    }));
   }, []);
 
   const updateSocial = useCallback((social: Partial<OnboardingState['formData']['social']>) => {
-    console.log('updateSocial called with:', social);
-    setState(prev => {
-      console.log('Previous state in updateSocial:', prev);
-      const newState = {
-        ...prev,
-        formData: {
-          ...prev.formData,
-          social: { ...prev.formData.social, ...social },
-        },
-      };
-      console.log('New state in updateSocial:', newState);
-      return newState;
-    });
+    setState(prev => ({
+      ...prev,
+      formData: {
+        ...prev.formData,
+        social: { ...prev.formData.social, ...social },
+      },
+    }));
   }, []);
 
   const updatePayout = useCallback((payout: PayoutFormData) => {
@@ -155,7 +138,8 @@ export function useOnboardingState() {
 
   const clearState = useCallback(() => {
     setState(defaultState);
-  }, []);
+    resetOnboarding();
+  }, [resetOnboarding]);
 
   return {
     state,
