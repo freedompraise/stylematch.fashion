@@ -45,7 +45,7 @@ export default function AuthCallback() {
         <div className="text-destructive">{error}</div>
         <button
           onClick={() => navigate('/auth')}
-          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+          className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90"
         >
           Return to Login
         </button>

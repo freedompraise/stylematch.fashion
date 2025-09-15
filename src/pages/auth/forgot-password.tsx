@@ -77,7 +77,7 @@ const ForgotPassword = (): JSX.Element => {
           <Logo />
         </div>
 
-        <div className="bg-background rounded-xl shadow-lg p-8">
+        <div className="bg-card rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-baseContent">
               Forgot Password?

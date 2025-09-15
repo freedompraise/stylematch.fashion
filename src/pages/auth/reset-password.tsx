@@ -116,7 +116,7 @@ export default function ResetPassword() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
           <h1 className="text-xl font-semibold text-baseContent">
@@ -135,13 +135,13 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Logo />
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-card rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-baseContent">
               Reset Your Password
@@ -161,7 +161,7 @@ export default function ResetPassword() {
                     <FormLabel>New Password</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
@@ -171,7 +171,7 @@ export default function ResetPassword() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground focus:outline-none"
                           onClick={() => setShowPassword(prev => !prev)}
                           aria-label={showPassword ? "Hide password" : "Show password"}
                         >
@@ -192,7 +192,7 @@ export default function ResetPassword() {
                     <FormLabel>Confirm New Password</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                         <Input
                           type={showConfirmPassword ? "text" : "password"}
                           placeholder="••••••••"
@@ -202,7 +202,7 @@ export default function ResetPassword() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground focus:outline-none"
                           onClick={() => setShowConfirmPassword(prev => !prev)}
                           aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                         >
