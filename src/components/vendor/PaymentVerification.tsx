@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Order } from '@/types/OrderSchema';
-import { useVendorStore } from '@/stores';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,28 +12,23 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface PaymentVerificationProps {
   order: Order;
+  onVerifyPayment: (orderId: string, status: 'verified' | 'rejected') => Promise<void>;
   onVerificationComplete: () => void;
 }
 
-const PaymentVerification: React.FC<PaymentVerificationProps> = ({ order, onVerificationComplete }) => {
-  const { verifyPayment, vendor } = useVendorStore();
+const PaymentVerification: React.FC<PaymentVerificationProps> = ({ 
+  order, 
+  onVerifyPayment, 
+  onVerificationComplete 
+}) => {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
   const handleVerifyPayment = async (status: 'verified' | 'rejected') => {
-    if (!vendor?.user_id) {
-      toast({
-        title: 'Error',
-        description: 'Vendor information not available',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setVerifying(true);
     try {
-      const updatedOrder = await verifyPayment(order.id, status);
+      await onVerifyPayment(order.id, status);
       
       toast({
         title: status === 'verified' ? 'Payment Verified' : 'Payment Rejected',

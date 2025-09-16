@@ -100,6 +100,7 @@ const ManualCheckout: React.FC = () => {
       // Create order with manual payment details
         const orderPayload = {
           product_id: items[0]?.id || '', // Required for backward compatibility
+          product_name: items[0]?.name || '', // Product name for display
           vendor_id: vendor.user_id,
           status: 'payment_pending' as const,
           delivery_location: delivery.pickup_location,
@@ -112,6 +113,7 @@ const ManualCheckout: React.FC = () => {
         },
         items: items.map(item => ({
           product_id: item.id,
+          product_name: item.name, // Add product name for display
           quantity: item.quantity,
           price: item.price,
           size: item.size || '',

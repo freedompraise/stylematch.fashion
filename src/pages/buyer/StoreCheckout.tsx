@@ -67,6 +67,8 @@ const StoreCheckoutContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) 
       if (!subaccount_code) throw new Error('Vendor payout info not available.');
       // 2. Create order in Supabase
       const orderPayload = {
+        product_id: items[0]?.id || '', // Required for backward compatibility
+        product_name: items[0]?.name || '', // Product name for display
         vendor_id: vendor.user_id,
         status: 'pending',
         delivery_location: delivery.pickup_location,
@@ -80,6 +82,7 @@ const StoreCheckoutContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) 
         },
         items: items.map(item => ({
           product_id: item.id,
+          product_name: item.name, // Add product name for display
           quantity: item.quantity,
           price: item.price,
           size: item.size || '',

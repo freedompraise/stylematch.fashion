@@ -24,7 +24,8 @@ export const customerInfoSchema = z.object({
 
 export const orderSchema = z.object({
   id: z.string().uuid(),
-  product_id: z.string().uuid(),
+  product_id: z.string().uuid().optional(), // Legacy field, will be removed
+  product_name: z.string().optional(), // New field for product name
   vendor_id: z.string().uuid(),
   status: orderStatusSchema,
   delivery_location: z.string(),
@@ -43,6 +44,7 @@ export const orderSchema = z.object({
   notes: z.string().optional(),
   items: z.array(z.object({
     product_id: z.string().uuid(),
+    product_name: z.string(), // Product name for display
     quantity: z.number().int().min(1),
     price: z.number().int().min(0),
     size: z.string().optional(),
@@ -54,7 +56,8 @@ export type Order = z.infer<typeof orderSchema>;
 export type CustomerInfo = z.infer<typeof customerInfoSchema>;
 
 export const createOrderSchema = z.object({
-  product_id: z.string().uuid(),
+  product_id: z.string().uuid().optional(), // Legacy field, will be removed
+  product_name: z.string().optional(), // New field for product name
   vendor_id: z.string().uuid(),
   status: orderStatusSchema.optional(),
   delivery_location: z.string(),
@@ -69,6 +72,7 @@ export const createOrderSchema = z.object({
   notes: z.string().optional(),
   items: z.array(z.object({
     product_id: z.string().uuid(),
+    product_name: z.string(), // Product name for display
     quantity: z.number().int().min(1),
     price: z.number().int().min(0),
     size: z.string().optional(),
