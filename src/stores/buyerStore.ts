@@ -27,9 +27,33 @@ interface BrowsingHistoryItem {
   metadata?: Record<string, any>;
 }
 
+interface WishlistItem {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  image?: string;
+  vendorSlug: string;
+  vendorName: string;
+  addedAt: number;
+}
+
+// TODO: WISHLIST VENDOR ACCESS IMPLEMENTATION
+// Current implementation uses local storage only, limiting vendor analytics
+// See docs/wishlist-vendor-access-spec.md for implementation plan
+// 
+// Required updates:
+// 1. Add database integration for vendor analytics
+// 2. Implement wishlist event tracking
+// 3. Add vendor dashboard analytics widgets
+// 4. Consider hybrid local/database storage approach
+
 interface BuyerState {
   // Cart state
   cart: CartItem[];
+  
+  // Wishlist state
+  wishlist: WishlistItem[];
   
   // Buyer preferences
   preferences: BuyerPreferences;
@@ -44,6 +68,12 @@ interface BuyerState {
   updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
   clearCart: () => void;
   getTotal: () => number;
+  
+  // Wishlist actions
+  addToWishlist: (item: Omit<WishlistItem, 'addedAt'>) => void;
+  removeFromWishlist: (productId: string) => void;
+  isInWishlist: (productId: string) => boolean;
+  clearWishlist: () => void;
   
   // Preferences actions
   updatePreferences: (updates: Partial<BuyerPreferences>) => void;
@@ -81,6 +111,7 @@ export const useBuyerStore = create<BuyerState>()(
     (set, get) => ({
       // Initial state
       cart: [],
+      wishlist: [],
       preferences: defaultPreferences,
       browsingHistory: [],
       
@@ -126,6 +157,48 @@ export const useBuyerStore = create<BuyerState>()(
       getTotal: () => {
         const { cart } = get();
         return cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      },
+      
+      // Wishlist actions
+      // TODO: Add database tracking for vendor analytics
+      // Should call trackWishlistEvent(productId, 'added', userId) for vendor insights
+      addToWishlist: (item: Omit<WishlistItem, 'addedAt'>) => {
+        set((state) => {
+          const exists = state.wishlist.some(w => w.productId === item.productId);
+          if (exists) return state;
+          
+          const wishlistItem: WishlistItem = {
+            ...item,
+            addedAt: Date.now(),
+          };
+          
+          // TODO: Track wishlist event in database for vendor analytics
+          // trackWishlistEvent(item.productId, 'added', currentUserId);
+          
+          return { wishlist: [...state.wishlist, wishlistItem] };
+        });
+      },
+      
+      // TODO: Add database tracking for vendor analytics
+      // Should call trackWishlistEvent(productId, 'removed', userId) for vendor insights
+      removeFromWishlist: (productId: string) => {
+        set((state) => {
+          // TODO: Track wishlist event in database for vendor analytics
+          // trackWishlistEvent(productId, 'removed', currentUserId);
+          
+          return {
+            wishlist: state.wishlist.filter(item => item.productId !== productId)
+          };
+        });
+      },
+      
+      isInWishlist: (productId: string) => {
+        const { wishlist } = get();
+        return wishlist.some(item => item.productId === productId);
+      },
+      
+      clearWishlist: () => {
+        set({ wishlist: [] });
       },
       
       // Preferences actions
@@ -214,6 +287,7 @@ export const useBuyerStore = create<BuyerState>()(
       name: 'buyer-storage',
       partialize: (state) => ({ 
         cart: state.cart,
+        wishlist: state.wishlist, // TODO: Consider hybrid local/database storage for vendor analytics
         preferences: state.preferences,
         browsingHistory: state.browsingHistory.slice(0, 50) // Only persist last 50 history items
       }),

@@ -42,7 +42,7 @@ import { useMarketplaceStore, useBuyerStore } from '@/stores';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { getAllCategoryNames, getCategoryName } from '@/constants/categories';
-import { CartItem } from '@/types';
+import { shareProduct, getVendorContactMethod, getProductRatings } from '@/services/buyerStorefrontService';
 
 const categories = [
   'All Categories', 
@@ -52,16 +52,40 @@ const categories = [
 
 const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => {
   const { currentVendor: vendor, listings: products, loading, error, fetchVendorData } = useMarketplaceStore();
-  const { cart: cartItems, addToCart, removeFromCart, updateQuantity, getTotal, clearCart } = useBuyerStore();
+  const { 
+    cart: cartItems, 
+    addToCart, 
+    removeFromCart, 
+    updateQuantity, 
+    getTotal, 
+    clearCart,
+    wishlist,
+    addToWishlist,
+    removeFromWishlist,
+    isInWishlist
+  } = useBuyerStore();
   const [searchTerm, setSearchTerm] = useState('');
   
   useEffect(() => {
     fetchVendorData(vendorSlug);
   }, [vendorSlug, fetchVendorData]);
+
+  // Fetch product ratings when products are loaded
+  useEffect(() => {
+    if (products.length > 0) {
+      const productIds = products.map(p => p.id);
+      getProductRatings(productIds).then(ratings => {
+        setProductRatings(ratings);
+      }).catch(error => {
+        console.error('Error fetching product ratings:', error);
+      });
+    }
+  }, [products]);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [productRatings, setProductRatings] = useState<Record<string, { average_rating: number; review_count: number }>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -96,6 +120,46 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     toast({ title: 'Added to Cart', description: `${selectedProduct.name} added to your cart.` });
     setSelectedProduct(null);
   };
+
+  const toggleWishlist = (product: any) => {
+    if (!vendor) return;
+    
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+      toast({ title: 'Removed from Wishlist', description: `${product.name} removed from your wishlist.` });
+    } else {
+      addToWishlist({
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        image: Array.isArray(product.images) ? product.images[0] : '',
+        vendorSlug: vendorSlug,
+        vendorName: vendor.store_name,
+      });
+      toast({ title: 'Added to Wishlist', description: `${product.name} added to your wishlist.` });
+    }
+  };
+
+  const handleShare = async (product: any) => {
+    if (!vendor) return;
+    
+    try {
+      await shareProduct(product, vendor, 'native');
+    } catch (error) {
+      // Fallback to copy link
+      try {
+        await shareProduct(product, vendor, 'copy');
+        toast({ title: 'Link Copied!', description: 'Product link copied to clipboard.' });
+      } catch (copyError) {
+        toast({ 
+          title: 'Share Failed', 
+          description: 'Unable to share. Please try again.', 
+          variant: 'destructive' 
+        });
+      }
+    }
+  };
   
   const updateCartItemQuantity = (index: number, change: number) => {
     const item = cartItems[index];
@@ -113,6 +177,18 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
   };
   
   const cartTotal = getTotal();
+  
+  // Get vendor contact method for "Chat Now" button
+  const contactMethod = vendor ? getVendorContactMethod(vendor) : null;
+
+  // Helper function to get product rating
+  const getProductRating = (productId: string) => {
+    const rating = productRatings[productId];
+    return {
+      average: rating?.average_rating || 0,
+      count: rating?.review_count || 0
+    };
+  };
 
   if (loading) {
     return (
@@ -151,6 +227,11 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
             <div className="flex items-center space-x-3">
               <Button variant="ghost" size="icon" className="relative">
                 <Heart size={20} />
+                {wishlist.length > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 text-white">
+                    {wishlist.length}
+                  </Badge>
+                )}
               </Button>
               
               <Sheet>
@@ -288,25 +369,13 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
       )}
 
       <main className="container mx-auto py-8 px-4">
-        {/* Modern Store Header */}
         <div className="mb-12">
           <div className="flex flex-col lg:flex-row gap-8 items-start">
             {/* Store Info */}
             <div className="flex-1">
-              <div className="flex items-start gap-4 mb-4">
-                {vendor.logo_url && (
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-border">
-                    <img
-                      src={vendor.logo_url}
-                      alt={vendor.store_name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground mb-2">{vendor.store_name}</h1>
-                  <p className="text-muted-foreground text-lg">{vendor.bio}</p>
-                </div>
+              <div className="mb-4">
+                <h1 className="text-3xl font-bold text-foreground mb-2">{vendor.store_name}</h1>
+                <p className="text-muted-foreground text-lg">{vendor.bio}</p>
               </div>
               
               {/* Social Links */}
@@ -354,6 +423,24 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                   <div className="text-xs text-muted-foreground">Rating</div>
                 </div>
               </div>
+              
+              {/* Chat Now Button */}
+              {contactMethod && contactMethod.method && (
+                <Button 
+                  asChild
+                  className="w-full sm:w-auto lg:w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <a 
+                    href={contactMethod.url} 
+                    target={contactMethod.method === 'phone' ? '_self' : '_blank'}
+                    rel={contactMethod.method === 'phone' ? '' : 'noopener noreferrer'}
+                    className="flex items-center gap-2"
+                  >
+                    <MessageCircle size={16} />
+                    {contactMethod.label}
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -406,12 +493,18 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                   <Button 
                     variant="secondary" 
                     size="icon" 
-                    className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
+                    className={`h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background ${
+                      isInWishlist(product.id) ? 'text-red-500' : 'text-muted-foreground hover:text-primary'
+                    }`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      toggleWishlist(product);
                     }}
                   >
-                    <Heart size={14} className="text-muted-foreground hover:text-primary" />
+                    <Heart 
+                      size={14} 
+                      className={isInWishlist(product.id) ? 'fill-current' : ''} 
+                    />
                   </Button>
                   <Button 
                     variant="secondary" 
@@ -419,6 +512,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                     className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
                     onClick={(e) => {
                       e.stopPropagation();
+                      handleShare(product);
                     }}
                   >
                     <Share2 size={14} className="text-muted-foreground hover:text-primary" />
@@ -450,10 +544,15 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
+                  {/* <div className="flex items-center gap-1">
                     <Star size={12} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-xs text-muted-foreground">4.8</span>
-                  </div>
+                    <span className="text-xs text-muted-foreground">
+                      {getProductRating(product.id).average > 0 
+                        ? `${getProductRating(product.id).average} (${getProductRating(product.id).count})`
+                        : 'No ratings'
+                      }
+                    </span>
+                  </div> */}
                   <p className="font-bold text-primary text-lg">₦{product.price.toLocaleString()}</p>
                 </div>
                 
@@ -533,10 +632,15 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                       {selectedProduct.name}
                     </h2>
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="flex items-center gap-1">
+                      {/* <div className="flex items-center gap-1">
                         <Star size={16} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm text-muted-foreground">4.8 (24 reviews)</span>
-                      </div>
+                        <span className="text-sm text-muted-foreground">
+                          {getProductRating(selectedProduct.id).average > 0 
+                            ? `${getProductRating(selectedProduct.id).average} (${getProductRating(selectedProduct.id).count} reviews)`
+                            : 'No ratings yet'
+                          }
+                        </span>
+                      </div> */}
                     </div>
                   </div>
                   
@@ -610,11 +714,24 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                     Add to Cart
                   </Button>
                   <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1" size="lg">
-                      <Heart size={18} className="mr-2" />
-                      Add to Wishlist
+                    <Button 
+                      variant="outline" 
+                      className={`flex-1 ${isInWishlist(selectedProduct.id) ? 'text-red-500 border-red-500' : ''}`}
+                      size="lg"
+                      onClick={() => toggleWishlist(selectedProduct)}
+                    >
+                      <Heart 
+                        size={18} 
+                        className={`mr-2 ${isInWishlist(selectedProduct.id) ? 'fill-current' : ''}`} 
+                      />
+                      {isInWishlist(selectedProduct.id) ? 'In Wishlist' : 'Add to Wishlist'}
                     </Button>
-                    <Button variant="outline" className="flex-1" size="lg">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1" 
+                      size="lg"
+                      onClick={() => handleShare(selectedProduct)}
+                    >
                       <Share2 size={18} className="mr-2" />
                       Share
                     </Button>
