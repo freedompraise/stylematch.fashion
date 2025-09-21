@@ -18,6 +18,7 @@ import {
 import { Product } from '@/types/ProductSchema';
 import CloudinaryImage from '@/components/CloudinaryImage';
 import { EditProductDialog } from './EditProductDialog';
+import { ProductDetailDialog } from './ProductDetailDialog';
 
 interface ProductListProps {
   products: Product[];
@@ -29,6 +30,8 @@ interface ProductListProps {
 export function ProductList({ products, onDeleteProduct, onProductUpdated, loading }: ProductListProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [productToView, setProductToView] = useState<Product | null>(null);
 
   const handleEditProduct = (product: Product) => {
     setProductToEdit(product);
@@ -39,6 +42,11 @@ export function ProductList({ products, onDeleteProduct, onProductUpdated, loadi
     onProductUpdated?.(updatedProduct);
     setEditDialogOpen(false);
     setProductToEdit(null);
+  };
+
+  const handleViewProduct = (product: Product) => {
+    setProductToView(product);
+    setDetailDialogOpen(true);
   };
 
   if (loading) {
@@ -115,7 +123,7 @@ export function ProductList({ products, onDeleteProduct, onProductUpdated, loadi
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewProduct(product)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View
                       </DropdownMenuItem>
@@ -145,6 +153,14 @@ export function ProductList({ products, onDeleteProduct, onProductUpdated, loadi
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onProductUpdated={handleProductUpdated}
+      />
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        product={productToView}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onEdit={handleEditProduct}
       />
     </div>
   );

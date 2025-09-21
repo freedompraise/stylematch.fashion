@@ -250,7 +250,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                         name={`products.${index}.price`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Price</FormLabel>
+                            <FormLabel>Price (₦)</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
