@@ -41,8 +41,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { toast } from '@/lib/toast';
 import { useVendorSearch } from '@/hooks/use-vendor-search';
-import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import SupportChat from '@/components/SupportChat';
 
@@ -81,7 +81,6 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const { vendor, clearVendorData } = useVendorStore();
   const { signOut } = useAuthStore();
-  const { toast } = useToast();
 
   const {
     searchQuery,
@@ -103,17 +102,10 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     try {
       await signOut();
       clearVendorData();
-      toast({
-        title: 'Signed out',
-        description: 'You have successfully signed out.',
-      });
+      toast.auth.signOutSuccess();
       navigate('/');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to sign out. Please try again.',
-        variant: 'destructive',
-      });
+      toast.auth.signOutError();
     }
   };
 

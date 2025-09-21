@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBuyerStore } from '@/stores';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,7 @@ import { Clock, ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import BankDetailsDisplay from '@/components/buyer/BankDetailsDisplay';
 import PaymentProofUpload from '@/components/buyer/PaymentProofUpload';
 import { createOrderWithPaymentProof, getVendorBySlug } from '@/services/buyerStorefrontService';
+import { toast } from '@/lib/toast';
 
 interface DeliveryInfo {
   name: string;
@@ -25,7 +25,6 @@ interface DeliveryInfo {
 const ManualCheckout: React.FC = () => {
   const { vendorSlug } = useParams<{ vendorSlug: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { cart: items, getTotal, clearCart } = useBuyerStore();
   
   const [vendor, setVendor] = useState<any>(null);
@@ -49,16 +48,15 @@ const ManualCheckout: React.FC = () => {
         const vendorData = await getVendorBySlug(vendorSlug);
         setVendor(vendorData);
       } catch (error) {
-        toast({
+        toast.error({
           title: 'Error',
           description: 'Failed to load vendor information',
-          variant: 'destructive',
         });
         navigate(`/store/${vendorSlug}`);
       }
     };
     loadVendor();
-  }, [vendorSlug, navigate, toast]);
+  }, [vendorSlug, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setDelivery({ ...delivery, [e.target.name]: e.target.value });
@@ -133,7 +131,10 @@ const ManualCheckout: React.FC = () => {
       navigate(`/store/${vendorSlug}/confirmation?orderId=${order.id}&payment=pending`);
       
     } catch (err: any) {
-      setFormError(err.message || 'Failed to process order. Please try again.');
+      toast.error({
+        title: 'Order Failed',
+        description: err.message || 'Failed to process order. Please try again.',
+      });
     } finally {
       setSubmitting(false);
     }

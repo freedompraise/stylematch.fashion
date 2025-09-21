@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
 import { useVendorStore } from '@/stores';
 import { Product } from '@/types/ProductSchema';
 import { FilterBar } from '@/components/vendor/FilterBar';
@@ -23,9 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { toast } from '@/lib/toast';
 
 const ProductManagement: React.FC = () => {
-  const { toast } = useToast();
   const {
     products,
     addProduct,
@@ -58,11 +57,7 @@ const ProductManagement: React.FC = () => {
         await fetchProducts(true); // use cache
       } catch (error) {
         if (mounted) {
-          toast({
-            title: 'Error loading products',
-            description: 'Could not load your products. Please try again later.',
-            variant: 'destructive',
-          });
+          toast.products.loadError();
         }
       } finally {
         if (mounted) {
@@ -76,7 +71,7 @@ const ProductManagement: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fetchProducts, toast]);
+  }, [fetchProducts]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -108,36 +103,27 @@ const ProductManagement: React.FC = () => {
     if (!productToDelete) return;
 
     try {
-      await softDeleteProduct(productToDelete.id, 'User requested deletion', productToDelete);
-      toast({
-        title: 'Product deleted',
-        description: 'Product has been successfully deleted.',
-      });
-      setDeleteDialogOpen(false);
-      setProductToDelete(null);
+      await softDeleteProduct(productToDelete.id);
+      toast.products.deleteSuccess();
     } catch (error) {
-      toast({
-        title: 'Error deleting product',
-        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
-      setDeleteDialogOpen(false);
+      toast.products.deleteError();
+    } finally {
       setProductToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
   const handleUpdateStock = async (productId: string, quantity: number) => {
     try {
       await updateProduct(productId, { stock_quantity: quantity });
-      toast({
+      toast.success({
         title: 'Stock updated',
         description: 'Product stock has been updated successfully.',
       });
     } catch {
-      toast({
+      toast.error({
         title: 'Error updating stock',
         description: 'Could not update product stock. Please try again.',
-        variant: 'destructive',
       });
     }
   };

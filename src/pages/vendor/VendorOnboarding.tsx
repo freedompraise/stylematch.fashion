@@ -19,10 +19,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Logo from '@/components/Logo';
-import { useToast } from '@/hooks/use-toast';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { toast } from '@/lib/toast';
 import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
 import { PayoutFormData } from '@/types';
-import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 import SupportChat from '@/components/SupportChat';
 
@@ -45,7 +45,6 @@ const socialSchema = z.object({
 });
 
 const VendorOnboarding: React.FC = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuthStore();
 const { createVendorProfile, completeOnboarding } = useVendorStore();
@@ -108,15 +107,11 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
         const bankList = await paystackClient.listBanks();
         setBanks(bankList);
       } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load banks list. Please refresh the page.',
-          variant: 'destructive'
-        });
+        toast.payouts.loadBanksError();
       }
     };
     loadBanks();
-  }, [toast]);
+  }, []);
 
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
@@ -276,21 +271,14 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       completeOnboarding();
       clearState();
       
-      toast({
-        title: 'Onboarding Complete',
-        description: 'Your store profile has been successfully set up and verified.',
-      });
+      toast.store.onboardingSuccess();
       
       navigate('/vendor/dashboard', { replace: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to complete onboarding';
       setError('submission', errorMessage);
       
-      toast({
-        title: 'Error',
-        description: `${errorMessage}. Please try again.`,
-        variant: 'destructive',
-      });
+      toast.store.onboardingError();
       
       console.error('[Onboarding] Error during completion:', error);
     } finally {

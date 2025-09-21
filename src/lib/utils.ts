@@ -45,7 +45,7 @@ export async function generateUniqueSlug(
     throw new Error(validation.error);
   }
   
-  let baseSlug = generateSlug(storeName);
+  const baseSlug = generateSlug(storeName);
   let slug = baseSlug;
   let counter = 1;
 

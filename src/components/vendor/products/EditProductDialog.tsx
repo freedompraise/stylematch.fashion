@@ -31,11 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
 import { useVendorStore } from '@/stores';
 import { Product, ProductFormValues } from '@/types/ProductSchema';
 import { ProductImageUpload } from './ProductImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
+import { X } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -53,7 +54,6 @@ export function EditProductDialog({
   onOpenChange, 
   onProductUpdated 
 }: EditProductDialogProps) {
-  const { toast } = useToast();
   const { updateProduct } = useVendorStore();
   const [productImage, setProductImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -141,20 +141,13 @@ export function EditProductDialog({
         shouldRemoveImage
       );
       
-      toast({
-        title: 'Product updated',
-        description: `${updatedProduct.name} has been updated successfully.`,
-      });
+      toast.products.updateSuccess();
 
       onProductUpdated(updatedProduct);
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating product:', error);
-      toast({
-        title: 'Error updating product',
-        description: 'Could not update the product. Please try again.',
-        variant: 'destructive',
-      });
+      toast.products.updateError();
     } finally {
       setIsSubmitting(false);
     }

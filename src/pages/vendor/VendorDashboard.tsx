@@ -9,7 +9,7 @@ import RecentOrders from '@/components/vendor/dashboard/RecentOrders'
 import TopProducts from '@/components/vendor/dashboard/TopProducts'
 import DashboardEmptyState from '@/components/vendor/dashboard/DashboardEmptyState'
 import DashboardLoadingState from '@/components/vendor/dashboard/DashboardLoadingState'
-import { toast } from '@/components/ui/use-toast'
+import { toast } from '@/lib/toast';
 
 interface DashboardStats {
   totalSales: number
@@ -65,11 +65,7 @@ const VendorDashboard: React.FC = () => {
       } catch (error) {
         if (mounted) {
           console.error('Error loading dashboard data:', error)
-          toast({
-            title: 'Error loading dashboard',
-            description: 'Could not load dashboard data. Please try again later.',
-            variant: 'destructive',
-          })
+          toast.orders.loadError();
         }
       } finally {
         if (mounted) {
@@ -83,7 +79,7 @@ const VendorDashboard: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fetchProducts, fetchOrders, calculateVendorStats, getTopProducts, toast])
+  }, [fetchProducts, fetchOrders, calculateVendorStats, getTopProducts])
 
   // Calculate stats for display using fresh data
   const vendorStats = calculateVendorStats(products, orders)

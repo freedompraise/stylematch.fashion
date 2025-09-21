@@ -1,50 +1,58 @@
 import React, { useEffect } from 'react';
 import { useVendorStore } from '@/stores';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
+import { toast } from '@/lib/toast';
+import { useAuthStore } from '@/stores/authStore';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
-const SettingsProfile: React.FC = () => {
-  const { user, vendor, updateVendorProfile } = useVendorStore();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+const profileFormSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  phone: z.string().optional(),
+});
 
-  const [formData, setFormData] = useState({
-    name: vendor?.name || '',
-    email: user?.email || '',
-    phone: vendor?.phone || '',
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+export function SettingsProfile() {
+  const { vendor, updateVendorProfile } = useVendorStore();
+  const { user } = useAuthStore();
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: vendor?.name || '',
+      phone: vendor?.phone || '',
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await updateVendorProfile({
-        name: formData.name,
-        phone: formData.phone,
+  useEffect(() => {
+    if (vendor) {
+      form.reset({
+        name: vendor.name || '',
+        phone: vendor.phone || '',
       });
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile has been updated successfully.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [vendor, form]);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  async function onSubmit(data: ProfileFormValues) {
+    try {
+      await updateVendorProfile(data);
+      toast.store.updateSuccess();
+    } catch (error) {
+      toast.store.updateError();
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -63,15 +71,17 @@ const SettingsProfile: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
+                {...form.register('name')}
                 placeholder="Enter your full name"
               />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -79,7 +89,7 @@ const SettingsProfile: React.FC = () => {
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={user?.email || ''}
                 disabled
                 className="bg-muted"
               />
@@ -93,14 +103,13 @@ const SettingsProfile: React.FC = () => {
               <Input
                 id="phone"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                {...form.register('phone')}
                 placeholder="Enter your phone number"
               />
             </div>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Profile'}
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? 'Updating...' : 'Update Profile'}
             </Button>
           </form>
         </CardContent>

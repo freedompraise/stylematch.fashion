@@ -39,7 +39,7 @@ import {
 import Logo from '@/components/Logo';
 import VendorNotFound from '@/components/buyer/VendorNotFound';
 import { useMarketplaceStore, useBuyerStore } from '@/stores';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import { useNavigate } from 'react-router-dom';
 import { getAllCategoryNames, getCategoryName } from '@/constants/categories';
 import { shareProduct, getVendorContactMethod, getProductRatings } from '@/services/buyerStorefrontService';
@@ -86,7 +86,6 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [productRatings, setProductRatings] = useState<Record<string, { average_rating: number; review_count: number }>>({});
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   const filteredProducts = products.filter(product => {
@@ -117,7 +116,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
       color: selectedColor,
       vendor_slug: vendorSlug,
     });
-    toast({ title: 'Added to Cart', description: `${selectedProduct.name} added to your cart.` });
+    toast.cart.addSuccess(selectedProduct.name);
     setSelectedProduct(null);
   };
 
@@ -126,7 +125,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
-      toast({ title: 'Removed from Wishlist', description: `${product.name} removed from your wishlist.` });
+      toast.wishlist.removeSuccess(product.name);
     } else {
       addToWishlist({
         id: product.id,
@@ -137,7 +136,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
         vendorSlug: vendorSlug,
         vendorName: vendor.store_name,
       });
-      toast({ title: 'Added to Wishlist', description: `${product.name} added to your wishlist.` });
+      toast.wishlist.addSuccess(product.name);
     }
   };
 
@@ -146,17 +145,14 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     
     try {
       await shareProduct(product, vendor, 'native');
+      toast.general.shareSuccess();
     } catch (error) {
       // Fallback to copy link
       try {
         await shareProduct(product, vendor, 'copy');
-        toast({ title: 'Link Copied!', description: 'Product link copied to clipboard.' });
+        toast.general.linkCopied();
       } catch (copyError) {
-        toast({ 
-          title: 'Share Failed', 
-          description: 'Unable to share. Please try again.', 
-          variant: 'destructive' 
-        });
+        toast.general.shareError();
       }
     }
   };
@@ -173,7 +169,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     const item = cartItems[index];
     if (!item) return;
     removeFromCart(item.id, item.size, item.color);
-    toast({ title: 'Removed from Cart', description: `${item.name} removed from your cart.` });
+    toast.cart.removeSuccess(item.name);
   };
   
   const cartTotal = getTotal();

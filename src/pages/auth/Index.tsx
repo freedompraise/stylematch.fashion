@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff } from 'lucide-react';
 import Logo from '@/components/Logo';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import { AuthService } from '@/services/authService';
 import { useAuthStore } from '@/stores';
 import SupportChat from '@/components/SupportChat';
@@ -72,11 +72,7 @@ const Auth = (): JSX.Element => {
       await signIn(data.email, data.password);
       navigate('/vendor/dashboard');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to sign in',
-        variant: 'destructive',
-      });
+      toast.auth.signInError();
     } finally {
       setIsLoading(false);
     }
@@ -89,19 +85,12 @@ const Auth = (): JSX.Element => {
         email: data.email,
         password: data.password,
       });
-      toast({
-        title: 'Account created',
-        description: `Thanks for signing up! Please check your email to verify your account. Once verified, you'll be guided through setting up your store profile.`,
-      });
+      toast.auth.signUpSuccess();
       setIsLogin(true);
       loginForm.reset();
       registerForm.reset();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create account',
-        variant: 'destructive',
-      });
+      toast.auth.signUpError();
     } finally {
       setIsLoading(false);
     }
@@ -112,10 +101,9 @@ const Auth = (): JSX.Element => {
       setIsLoading(true);
       await authService.signInWithGoogle(`${window.location.origin}/auth/callback`);
     } catch (error) {
-      toast({
+      toast.error({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to sign in with Google',
-        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);

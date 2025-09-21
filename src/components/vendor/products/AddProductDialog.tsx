@@ -32,12 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
 import { useVendorStore } from '@/stores';
 import { Product, productsSchema, ProductFormValues, createProductSchema } from '@/types/ProductSchema';
 import { Plus, Trash2 } from 'lucide-react';
 import { ProductImageUpload } from './ProductImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
+import { toast } from '@/lib/toast';
 
 interface AddProductDialogProps {
   onProductsAdded: (products: Product[]) => void;
@@ -46,7 +46,6 @@ interface AddProductDialogProps {
 export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
-  const { toast } = useToast();
   const { createProduct } = useVendorStore();
   const [productImages, setProductImages] = useState<(File | null)[]>([]);
   const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
@@ -146,11 +145,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     const missingImages = data.products.map((_, index) => index).filter(index => productImages[index] === null);
     
     if (missingImages.length > 0) {
-      toast({
-        title: "Image Required",
-        description: "Product image is required for better visibility and sales",
-        variant: "destructive",
-      });
+      toast.products.imageRequired();
       return;
     }
 
@@ -165,10 +160,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       }
 
       onProductsAdded(createdProducts);
-      toast({
-        title: "Products created",
-        description: `${createdProducts.length} product(s) have been created successfully.`,
-      });
+      toast.products.createSuccess(createdProducts.length);
       setOpen(false);
       form.reset();
       setProductImages([]);
@@ -176,11 +168,7 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       setCustomSizes({});
     } catch (error) {
       console.error('Error creating products:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create products. Please try again.",
-        variant: "destructive"
-      });
+      toast.products.createError();
     }
   };
 

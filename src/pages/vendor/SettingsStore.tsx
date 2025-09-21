@@ -1,22 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useVendorStore } from '@/stores';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Clipboard } from 'lucide-react';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 import { validateStoreNameForSlug } from '@/lib/utils';
+import { toast } from '@/lib/toast';
 
 type StoreFormData = {
   store_name: string;
 };
 
-const SettingsStore: React.FC = () => {
+export function SettingsStore() {
   const { vendor, updateVendorProfile } = useVendorStore();
-  const { toast } = useToast();
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,16 +69,9 @@ const SettingsStore: React.FC = () => {
         updates.banner_image_url = null;
       }
       await updateVendorProfile(updates, imageFile || undefined);
-      toast({
-        title: 'Store settings updated',
-        description: 'Your store settings have been updated successfully.',
-      });
+      toast.store.updateSuccess();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update store settings. Please try again.',
-        variant: 'destructive',
-      });
+      toast.store.updateError();
     } finally {
       setLoading(false);
     }
@@ -99,6 +97,14 @@ const SettingsStore: React.FC = () => {
     setImageFile(null);
     setPreviewUrl(vendor?.banner_image_url || null);
     setStoreNameError(null);
+  };
+
+  const handleCopyLink = () => {
+    if (vendor?.store_slug) {
+      const link = `${window.location.origin}/store/${vendor.store_slug}`;
+      navigator.clipboard.writeText(link);
+      toast.general.linkCopied();
+    }
   };
 
   return (
@@ -128,13 +134,7 @@ const SettingsStore: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-1"
-                  onClick={() => {
-                    const storeSlug = vendor?.store_slug;
-                    if (!storeSlug) return;
-                    const link = `https://www.stylematch.fashion/store/${storeSlug}`;
-                    navigator.clipboard.writeText(link);
-                    toast({ title: 'Link copied', description: 'Store link copied to clipboard.' });
-                  }}
+                  onClick={handleCopyLink}
                   disabled={!vendor?.store_slug}
                 >
                   <Clipboard className="w-4 h-4" />

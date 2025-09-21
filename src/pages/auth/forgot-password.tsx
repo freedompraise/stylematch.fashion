@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import Logo from '@/components/Logo';
 import { AuthError } from '@/services/errors/AuthError';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,26 +44,10 @@ const ForgotPassword = (): JSX.Element => {
     try {
       setIsLoading(true);
       await authService.resetPassword(data.email);
-
-      toast({
-        title: 'Reset Link Sent',
-        description: 'Please check your email for a link to reset your password.',
-      });
-
-      // Keep them on the same page but show success state
+      toast.auth.resetPasswordSuccess();
       form.reset();
     } catch (error) {
-      console.error('Password reset request error:', error);
-      
-      const message = error instanceof AuthError
-        ? error.message
-        : 'Failed to send reset link. Please try again.';
-
-      toast({
-        title: 'Request Failed',
-        description: message,
-        variant: 'destructive',
-      });
+      toast.auth.resetPasswordError();
     } finally {
       setIsLoading(false);
     }

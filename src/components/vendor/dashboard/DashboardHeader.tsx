@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, Plus } from 'lucide-react';
 import { useAuthStore, useVendorStore } from '@/stores';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 
 interface DashboardHeaderProps {
   onAddProduct: () => void;
@@ -11,25 +11,25 @@ interface DashboardHeaderProps {
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onAddProduct }) => {
   const { signOut } = useAuthStore();
-  const { clearVendorData } = useVendorStore();
-  const { toast } = useToast();
+  const { clearVendorData, vendor } = useVendorStore();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
       await signOut();
       clearVendorData();
-      toast({
-        title: 'Signed out',
-        description: 'You have successfully signed out.',
-      });
+      toast.auth.signOutSuccess();
       navigate('/');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to sign out. Please try again.',
-        variant: 'destructive',
-      });
+      toast.auth.signOutError();
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (vendor?.store_slug) {
+      const link = `${window.location.origin}/store/${vendor.store_slug}`;
+      navigator.clipboard.writeText(link);
+      toast.general.linkCopied();
     }
   };
 

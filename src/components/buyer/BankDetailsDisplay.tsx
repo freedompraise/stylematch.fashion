@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Copy, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 
 interface BankDetailsDisplayProps {
   bankDetails: {
@@ -18,23 +18,9 @@ interface BankDetailsDisplayProps {
 }
 
 const BankDetailsDisplay: React.FC<BankDetailsDisplayProps> = ({ bankDetails, storeName }) => {
-  const { toast } = useToast();
-
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: 'Copied!',
-        description: `${label} copied to clipboard`,
-        duration: 2000,
-      });
-    } catch (err) {
-      toast({
-        title: 'Copy failed',
-        description: 'Please copy manually',
-        variant: 'destructive',
-      });
-    }
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.general.linkCopied();
   };
 
   return (
@@ -57,7 +43,7 @@ const BankDetailsDisplay: React.FC<BankDetailsDisplayProps> = ({ bankDetails, st
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => copyToClipboard(bankDetails.bank_name, 'Bank name')}
+              onClick={() => copyToClipboard(bankDetails.bank_name)}
             >
               <Copy className="h-4 w-4" />
             </Button>
@@ -72,7 +58,7 @@ const BankDetailsDisplay: React.FC<BankDetailsDisplayProps> = ({ bankDetails, st
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => copyToClipboard(bankDetails.account_number, 'Account number')}
+              onClick={() => copyToClipboard(bankDetails.account_number)}
             >
               <Copy className="h-4 w-4" />
             </Button>
@@ -87,7 +73,7 @@ const BankDetailsDisplay: React.FC<BankDetailsDisplayProps> = ({ bankDetails, st
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => copyToClipboard(bankDetails.account_name, 'Account name')}
+              onClick={() => copyToClipboard(bankDetails.account_name)}
             >
               <Copy className="h-4 w-4" />
             </Button>

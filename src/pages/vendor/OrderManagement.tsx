@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useVendorStore } from '@/stores';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search, Filter, Download, User, Phone, Mail, MapPin, Calendar, Package } from 'lucide-react';
 import { Order, OrderStatus } from '@/types/OrderSchema';
+import { toast } from '@/lib/toast';
 import PaymentVerification from '@/components/vendor/PaymentVerification';
 
 const OrderManagement: React.FC = () => {
@@ -22,7 +22,6 @@ const OrderManagement: React.FC = () => {
     deleteOrder: deleteOrderFromStore,
     ordersLoaded
   } = useVendorStore();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
@@ -44,11 +43,7 @@ const OrderManagement: React.FC = () => {
       } catch (error) {
         if (mounted) {
           console.error('[OrderManagement] Error loading orders:', error);
-          toast({
-            title: 'Error loading orders',
-            description: 'Could not load your orders. Please try again later.',
-            variant: 'destructive',
-          });
+          toast.orders.loadError();
         }
       } finally {
         if (mounted) {
@@ -62,22 +57,15 @@ const OrderManagement: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [fetchOrders, toast]);
+  }, [fetchOrders]);
 
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
       await updateOrderInStore(orderId, newStatus);
-      toast({
-        title: 'Order updated',
-        description: 'Order status has been updated successfully.',
-      });
+      toast.orders.updateSuccess();
     } catch (error) {
-      toast({
-        title: 'Error updating order',
-        description: 'Could not update order status. Please try again.',
-        variant: 'destructive',
-      });
+      toast.orders.updateError();
     }
   };
 
@@ -88,16 +76,9 @@ const OrderManagement: React.FC = () => {
 
     try {
       await deleteOrderFromStore(orderId);
-      toast({
-        title: 'Order deleted',
-        description: 'Order has been deleted successfully.',
-      });
+      toast.orders.deleteSuccess();
     } catch (error) {
-      toast({
-        title: 'Error deleting order',
-        description: 'Could not delete order. Please try again.',
-        variant: 'destructive',
-      });
+      toast.orders.deleteError();
     }
   };
 

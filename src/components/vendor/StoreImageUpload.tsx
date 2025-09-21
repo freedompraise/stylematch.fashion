@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ImagePlus, X, AlertCircle } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/lib/toast';
 import { validateAndOptimizeImage, STORE_BANNER_CONFIG, formatFileSize, getImageValidationMessage } from '@/utils/imageValidation';
 
 interface StoreImageUploadProps {
@@ -45,11 +45,7 @@ export function StoreImageUpload({
         
         if (!validationResult.isValid) {
           setValidationError(validationResult.error || 'Image validation failed');
-          toast({
-            title: "Invalid Image",
-            description: getImageValidationMessage(validationResult),
-            variant: "destructive"
-          });
+          toast.general.uploadError();
           return;
         }
 
@@ -66,33 +62,10 @@ export function StoreImageUpload({
         const newPreviewUrl = URL.createObjectURL(optimizedFile);
         onPreviewUrlChange(newPreviewUrl);
 
-        // Show warnings if any
-        if (validationResult.warnings && validationResult.warnings.length > 0) {
-          toast({
-            title: "Image Optimized",
-            description: validationResult.warnings.join(', '),
-            variant: "default"
-          });
-        }
-
-        // Show success message if file was optimized
-        if (validationResult.optimizedFile && validationResult.optimizedFile.size !== file.size) {
-          const originalSize = formatFileSize(file.size);
-          const optimizedSize = formatFileSize(validationResult.optimizedFile.size);
-          toast({
-            title: "Image Optimized",
-            description: `File size reduced from ${originalSize} to ${optimizedSize}`,
-            variant: "default"
-          });
-        }
       } catch (error) {
         console.error('Image validation error:', error);
         setValidationError('Failed to process image');
-        toast({
-          title: "Error",
-          description: "Failed to process image. Please try again.",
-          variant: "destructive"
-        });
+        toast.general.uploadError();
       } finally {
         setIsValidating(false);
       }

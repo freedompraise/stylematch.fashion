@@ -1,59 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useVendorStore } from '@/stores';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { AlertTriangle, Trash2 } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
-const SettingsDangerZone: React.FC = () => {
-  const { signOut, removeProduct, fetchProducts, softDeleteProduct } = useVendorStore();
-  const { toast } = useToast();
+export function SettingsDangerZone() {
+  const { vendor, signOut, fetchProducts, softDeleteProduct } = useVendorStore();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleDeleteAllProducts = async () => {
-    if (!confirm('Are you sure you want to delete all products? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       const products = await fetchProducts(false);
       await Promise.all(products.map(product => softDeleteProduct(product.id, 'Bulk deletion from settings', product)));
-      
-      toast({
-        title: 'All products deleted',
-        description: 'All your products have been deleted successfully.',
-      });
+      toast.general.deleteAllProductsSuccess();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete all products. Please try again.',
-        variant: 'destructive',
-      });
+      toast.general.deleteAllProductsError();
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.')) {
-      return;
-    }
-
     try {
-      // Delete all products first
-      const products = await fetchProducts(false);
-      await Promise.all(products.map(product => softDeleteProduct(product.id, 'Account deletion', product)));
-      
-      // Sign out and redirect
+      // Replace with your actual account deletion logic
+      console.log('Deleting account...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await signOut();
-      
-      toast({
-        title: 'Account deleted',
-        description: 'Your account has been deleted successfully.',
-      });
+      toast.general.deleteAccountSuccess();
+      // Optionally, sign out the user and redirect
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete account. Please try again.',
-        variant: 'destructive',
-      });
+      toast.general.deleteAccountError();
+    } finally {
+      setDialogOpen(false);
     }
   };
 

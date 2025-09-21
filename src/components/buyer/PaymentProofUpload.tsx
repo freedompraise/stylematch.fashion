@@ -7,7 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { toast } from '@/lib/toast';
+
 interface PaymentProofUploadProps {
   onProofsChange: (files: File[], reference: string, notes: string) => void;
   orderId: string;
@@ -19,7 +27,6 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
   orderId,
   totalAmount,
 }) => {
-  const { toast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [transactionReference, setTransactionReference] = useState('');
   const [notes, setNotes] = useState('');
@@ -31,19 +38,11 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
     // Validate file types and sizes
     const validFiles = Array.from(files).filter(file => {
       if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Invalid file type',
-          description: 'Please upload only image files (JPG, PNG, etc.)',
-          variant: 'destructive',
-        });
+        toast.general.uploadError();
         return false;
       }
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({
-          title: 'File too large',
-          description: 'Please upload images smaller than 5MB',
-          variant: 'destructive',
-        });
+        toast.general.uploadError();
         return false;
       }
       return true;
@@ -55,10 +54,7 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
     setSelectedFiles(updatedFiles);
     onProofsChange(updatedFiles, transactionReference, notes);
 
-    toast({
-      title: 'Files selected',
-      description: `${validFiles.length} payment proof(s) selected`,
-    });
+    toast.general.uploadSuccess();
   };
 
   const removeProof = (index: number) => {

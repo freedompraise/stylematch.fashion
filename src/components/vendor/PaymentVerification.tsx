@@ -2,13 +2,13 @@
 
 import React, { useState } from 'react';
 import { Order } from '@/types/OrderSchema';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CheckCircle, XCircle, Eye, Clock, AlertCircle, CreditCard } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from '@/lib/toast';
 
 interface PaymentVerificationProps {
   order: Order;
@@ -21,7 +21,6 @@ const PaymentVerification: React.FC<PaymentVerificationProps> = ({
   onVerifyPayment, 
   onVerificationComplete 
 }) => {
-  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [verifying, setVerifying] = useState(false);
 
@@ -30,22 +29,20 @@ const PaymentVerification: React.FC<PaymentVerificationProps> = ({
     try {
       await onVerifyPayment(order.id, status);
       
-      toast({
+      toast.success({
         title: status === 'verified' ? 'Payment Verified' : 'Payment Rejected',
         description: status === 'verified' 
           ? 'Order has been confirmed and will be processed'
           : 'Payment has been rejected. Customer will be notified.',
-        variant: status === 'verified' ? 'default' : 'destructive',
       });
 
       setIsOpen(false);
       onVerificationComplete();
     } catch (error) {
       console.error('Error verifying payment:', error);
-      toast({
+      toast.error({
         title: 'Error',
         description: 'Failed to verify payment. Please try again.',
-        variant: 'destructive',
       });
     } finally {
       setVerifying(false);

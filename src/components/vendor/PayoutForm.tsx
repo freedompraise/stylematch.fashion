@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Form } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
 import { PayoutFormData } from '@/types';
+import { paystackClient } from '@/lib/paystackClient';
+import { toast } from '@/lib/toast';
 
 interface PayoutFormProps {
   initialData?: PayoutFormData;
@@ -36,7 +37,6 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
 }) => {
   const [resolvedAccountName, setResolvedAccountName] = useState(externalResolvedName || '');
   const [resolving, setResolving] = useState(false);
-  const { toast } = useToast();
   
   const form = useForm<PayoutFormData>({
     defaultValues: {
@@ -72,6 +72,10 @@ export const PayoutForm: React.FC<PayoutFormProps> = ({
       form.setError('account_number', {
         type: 'manual',
         message: 'Could not verify account number. Please check and try again.'
+      });
+      toast.error({
+        title: 'Error',
+        description: 'Could not resolve account name. Please check the details and try again.',
       });
     } finally {
       setResolving(false);

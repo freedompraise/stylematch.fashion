@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/lib/toast';
 import Logo from '@/components/Logo';
 import { AuthError, AuthErrorType } from '@/services/errors/AuthError';
 import SupportChat from '@/components/SupportChat';
@@ -70,10 +70,9 @@ export default function ResetPassword() {
           ? error.message
           : 'Password reset link is invalid or has expired. Please request a new one.';
 
-        toast({
+        toast.error({
           title: 'Reset Link Invalid',
           description: message,
-          variant: 'destructive',
         });
 
         // Redirect to forgot password page
@@ -91,7 +90,7 @@ export default function ResetPassword() {
       setIsLoading(true);
       await authService.updatePassword(data.password);
 
-      toast({
+      toast.success({
         title: 'Password Updated',
         description: 'Your password has been reset successfully. Please sign in with your new password.',
       });
@@ -104,10 +103,9 @@ export default function ResetPassword() {
         ? error.message
         : 'Failed to reset password. Please try again.';
 
-      toast({
+      toast.error({
         title: 'Reset Failed',
         description: message,
-        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
