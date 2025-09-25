@@ -18,9 +18,9 @@ export function validateStoreNameForSlug(storeName: string): { isValid: boolean;
     return { isValid: false, error: 'Store name cannot exceed 50 characters' };
   }
   
-  const validSlugPattern = /^[a-zA-Z0-9\s\-_]+$/;
+  const validSlugPattern = /^[a-zA-Z0-9\s\-_']+$/;
   if (!validSlugPattern.test(storeName)) {
-    return { isValid: false, error: 'Store name contains invalid characters. Use only letters, numbers, spaces, hyphens, and underscores.' };
+    return { isValid: false, error: 'Store name contains invalid characters. Use only letters, numbers, spaces, hyphens, underscores, and apostrophes.' };
   }
   
   return { isValid: true };
@@ -30,10 +30,10 @@ export function generateSlug(storeName: string): string {
   return storeName
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^\w\s-]/g, '') // Remove all non-word characters except spaces and hyphens (this removes apostrophes)
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
 }
 
 export async function generateUniqueSlug(
