@@ -19,21 +19,30 @@ interface SubaccountResponse {
 
 class PaystackClient {
   private async request<T>(action: string, data?: any): Promise<T> {
-    const response = await fetch(PAYSTACK_EDGE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': AUTH_HEADER
-      },
-      body: JSON.stringify({ action, data })
-    });
+    try {
+      const response = await fetch(PAYSTACK_EDGE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': AUTH_HEADER
+        },
+        body: JSON.stringify({ action, data })
+      });
 
-    const result = await response.json();
-    if (!result.status) {
-      throw new Error(result.message || 'Paystack operation failed');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (!result.status) {
+        throw new Error(result.message || 'Paystack operation failed');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error(`[PaystackClient] ${action} error:`, error);
+      throw error;
     }
-
-    return result.data;
   }
 
   async listBanks(): Promise<Bank[]> {

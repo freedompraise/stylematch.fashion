@@ -79,6 +79,10 @@ export const toast = {
     updateSuccess: () => toast.success(TOAST_MESSAGES.payouts.updateSuccess),
     updateError: () => toast.error(TOAST_MESSAGES.payouts.updateError),
     loadBanksError: () => toast.error(TOAST_MESSAGES.payouts.loadBanksError),
+    missingInfo: () => toast.error(TOAST_MESSAGES.payouts.missingInfo),
+  },
+  form: {
+    validationError: () => toast.error(TOAST_MESSAGES.form.validationError),
   },
     
   // General Toasts

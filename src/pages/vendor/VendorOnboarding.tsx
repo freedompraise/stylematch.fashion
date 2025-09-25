@@ -21,10 +21,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import Logo from '@/components/Logo';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { toast } from '@/lib/toast';
-import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
+// import { PayoutForm, defaultInitialData } from '@/components/vendor/PayoutForm';
 import { PayoutFormData } from '@/types';
 import { StoreImageUpload } from '@/components/vendor/StoreImageUpload';
 import SupportChat from '@/components/SupportChat';
+import { getBanks, Bank } from '@/constants/banks';
 
 const basicsSchema = z.object({
   store_name: z.string().min(2, { message: 'Store name is required' }).max(50, { message: 'Store name should be less than 50 characters' }),
@@ -41,14 +42,41 @@ const detailsSchema = z.object({
 const socialSchema = z.object({
   instagram_link: z.string().optional(),
   facebook_link: z.string().optional(),
-  wabusiness_link: z.string().optional(),
+  wabusiness_link: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true; // Optional field
+      // Accept both wa.me and https://wa.me formats
+      const waMeRegex = /^(https?:\/\/)?wa\.me\/[\d\w\-\.]+$/i;
+      return waMeRegex.test(val);
+    }, {
+      message: 'Please enter a valid WhatsApp Business link (e.g., wa.me/1234567890 or https://wa.me/1234567890)'
+    }),
+});
+
+// Makeshift payout form schema for manual entry - matches PayoutFormData interface
+const makeshiftPayoutSchema = z.object({
+  payout_mode: z.enum(['automatic', 'manual'], { required_error: 'Payout mode is required' }),
+  bank_name: z.string().min(1, 'Bank name is required'),
+  bank_code: z.string().min(1, 'Bank code is required'),
+  account_number: z.string().min(10, 'Account number must be 10 digits').max(10, 'Account number must be 10 digits'),
+  account_name: z.string().min(1, 'Account name is required'),
 });
 
 const VendorOnboarding: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
 const { createVendorProfile, completeOnboarding } = useVendorStore();
-  const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  
+  // Makeshift payout form state (separate from main form)
+  const [makeshiftPayoutData, setMakeshiftPayoutData] = useState({
+    payout_mode: 'automatic' as 'automatic' | 'manual',
+    bank_name: '',
+    bank_code: '',
+    account_number: '',
+    account_name: '',
+  });
   
   const {
     state,
@@ -69,7 +97,8 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
     resolver: zodResolver(
       state.step === 1 ? basicsSchema :
       state.step === 2 ? detailsSchema :
-      socialSchema
+      state.step === 3 ? socialSchema :
+      z.object({}) // No validation for step 4 - handled by makeshift form
     ),
     defaultValues: {
       store_name: '',
@@ -79,6 +108,11 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       instagram_link: '',
       facebook_link: '',
       wabusiness_link: '',
+      payout_mode: '',
+      bank_name: '',
+      bank_code: '',
+      account_number: '',
+      account_name: '',
     },
   });
 
@@ -99,19 +133,35 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       form.setValue('facebook_link', social.facebook_link || '');
       form.setValue('wabusiness_link', social.wabusiness_link || '');
     }
+    // Step 4 uses separate makeshift form state - no form sync needed
   }, [state.step]);
 
+  // Load banks using utility function
   useEffect(() => {
     const loadBanks = async () => {
       try {
-        const bankList = await paystackClient.listBanks();
+        const bankList = await getBanks();
         setBanks(bankList);
       } catch (error) {
-        toast.payouts.loadBanksError();
+        console.error('[VendorOnboarding] Error loading banks:', error);
+        // Banks utility will handle fallback to dummy data
       }
     };
     loadBanks();
   }, []);
+
+  // Sync makeshift payout form with onboarding state
+  useEffect(() => {
+    if (state.formData.payout) {
+      setMakeshiftPayoutData({
+        payout_mode: state.formData.payout.payout_mode || 'automatic',
+        bank_name: state.formData.payout.bank_name || '',
+        bank_code: state.formData.payout.bank_code || '',
+        account_number: state.formData.payout.account_number || '',
+        account_name: state.formData.payout.account_name || '',
+      });
+    }
+  }, [state.formData.payout]);
 
   const handleImageFileChange = (file: File | null) => {
     setImageFile(file);
@@ -137,9 +187,7 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
     updateBasics({ phone: truncated });
   };
 
-  const handleResolveAccount = async (bankCode: string, accountNumber: string) => {
-    return await paystackClient.resolveAccount(bankCode, accountNumber);
-  };
+  // Removed handleResolveAccount - using manual entry instead
 
   const validateStep = async () => {
     if (state.step === 1) {
@@ -148,8 +196,39 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       return await form.trigger(['bio']);
     } else if (state.step === 3) {
       return await form.trigger(['instagram_link', 'facebook_link', 'wabusiness_link']);
+    } else if (state.step === 4) {
+      // Validate makeshift payout form data
+      try {
+        // Check if all required fields are filled
+        const isValid = makeshiftPayoutData.payout_mode && 
+                       makeshiftPayoutData.bank_name && 
+                       makeshiftPayoutData.bank_code && 
+                       makeshiftPayoutData.account_number && 
+                       makeshiftPayoutData.account_name;
+        
+        if (!isValid) {
+          console.log('Makeshift form validation failed:', makeshiftPayoutData);
+          return false;
+        }
+        
+        makeshiftPayoutSchema.parse(makeshiftPayoutData);
+        return true;
+      } catch (error) {
+        console.log('Makeshift form schema validation failed:', error, makeshiftPayoutData);
+        return false;
+      }
     }
     return true;
+  };
+
+  // Helper function to normalize WhatsApp links
+  const normalizeWhatsAppLink = (link: string): string => {
+    if (!link) return link;
+    // If it starts with wa.me but doesn't have https://, add it
+    if (link.startsWith('wa.me/') && !link.startsWith('http')) {
+      return `https://${link}`;
+    }
+    return link;
   };
 
   const handleNextStep = async () => {
@@ -167,10 +246,19 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
       } else if (state.step === 2) {
         updateDetails({ bio: formValues.bio });
       } else if (state.step === 3) {
+        // Normalize WhatsApp link before saving
         updateSocial({
           instagram_link: formValues.instagram_link,
           facebook_link: formValues.facebook_link,
-          wabusiness_link: formValues.wabusiness_link,
+          wabusiness_link: normalizeWhatsAppLink(formValues.wabusiness_link || ''),
+        });
+      } else if (state.step === 4) {
+        updatePayout({
+          payout_mode: makeshiftPayoutData.payout_mode,
+          bank_name: makeshiftPayoutData.bank_name,
+          bank_code: makeshiftPayoutData.bank_code,
+          account_number: makeshiftPayoutData.account_number,
+          account_name: makeshiftPayoutData.account_name,
         });
       }
       
@@ -178,11 +266,7 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
         setStep(state.step + 1);
       }, 100);
     } else {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields correctly.',
-        variant: 'destructive',
-      });
+      toast.form.validationError();
     }
   };
 
@@ -190,22 +274,17 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
     setStep(state.step - 1);
   };
 
-  const handlePayoutChange = (data: PayoutFormData) => {
-    updatePayout(data);
-  };
+  // Removed handlePayoutChange - using form validation instead
 
   const handleCompleteOnboarding = async () => {
     if (!user) {
-      toast({ title: 'Error', description: 'User not found', variant: 'destructive' });
+      toast.auth.userNotFound();
       return;
     }
 
-    if (!state.formData.payout) {
-      toast({
-        title: 'Error',
-        description: 'Please complete the payout information.',
-        variant: 'destructive'
-      });
+    // Check makeshift form data instead of state.formData.payout
+    if (!makeshiftPayoutData.payout_mode || !makeshiftPayoutData.bank_name || !makeshiftPayoutData.bank_code || !makeshiftPayoutData.account_number || !makeshiftPayoutData.account_name) {
+      toast.payouts.missingInfo();
       return;
     }
 
@@ -243,18 +322,16 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
         return;
       }
 
-      const payoutInfo = state.formData.payout;
+      // Use makeshift form data instead of state.formData.payout
+      const payoutInfo = makeshiftPayoutData;
 
-      const subaccountResult = await paystackClient.createSubaccount({
-        business_name: finalSubmissionData.store_name,
-        bank_code: payoutInfo.bank_code,
-        account_number: payoutInfo.account_number,
-        percentage_charge: 2
-      });
-
+      // Store payout info without creating subaccount yet
+      // Subaccount will be created when vendor makes their first sale or when explicitly requested
+      // This prevents unnecessary subaccount creation for vendors who don't make sales
       const payout_info_payload = {
         ...payoutInfo,
-        subaccount_code: subaccountResult.subaccount_code
+        subaccount_created: false,
+        subaccount_code: null
       };
 
       await createVendorProfile(user.id, {
@@ -516,7 +593,7 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
                             <div className="relative">
                               <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                               <Input 
-                                placeholder="https://wa.me/yourwhatsapplink"
+                                placeholder="wa.me/1234567890"
                                 className="pl-10" 
                                 {...field} 
                               />
@@ -562,6 +639,79 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
                       </Button>                    
                     </div>
                     <div>
+                      {/* 
+                        MAKESHIFT PAYOUT FORM - Manual Entry Only
+                        This is a temporary solution while Paystack test mode has daily limits.
+                        The original PayoutForm with account resolution is commented out below.
+                        TODO: Restore original PayoutForm once Paystack live mode is enabled.
+                      */}
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block font-semibold mb-1 text-baseContent">Payout Mode</label>
+                          <select 
+                            value={makeshiftPayoutData.payout_mode}
+                            onChange={(e) => setMakeshiftPayoutData(prev => ({ ...prev, payout_mode: e.target.value as 'automatic' | 'manual' }))}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
+                            disabled={state.isSubmitting}
+                          >
+                            <option value="">Select Payout Mode</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold mb-1 text-baseContent">Bank</label>
+                          <select
+                            value={makeshiftPayoutData.bank_code}
+                            onChange={(e) => {
+                              const code = e.target.value;
+                              const bank = banks.find(b => b.code === code);
+                              if (bank) {
+                                setMakeshiftPayoutData(prev => ({ 
+                                  ...prev, 
+                                  bank_code: code,
+                                  bank_name: bank.name 
+                                }));
+                              }
+                            }}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-baseContent"
+                            disabled={state.isSubmitting}
+                          >
+                            <option value="">Select Bank</option>
+                            {banks.map(bank => (
+                              <option key={bank.code} value={bank.code} className="text-baseContent">
+                                {bank.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold mb-1 text-baseContent">Account Number</label>
+                          <Input
+                            value={makeshiftPayoutData.account_number}
+                            onChange={(e) => setMakeshiftPayoutData(prev => ({ ...prev, account_number: e.target.value }))}
+                            placeholder="Enter 10-digit account number"
+                            maxLength={10}
+                            disabled={state.isSubmitting}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold mb-1 text-baseContent">Account Name</label>
+                          <Input
+                            value={makeshiftPayoutData.account_name}
+                            onChange={(e) => setMakeshiftPayoutData(prev => ({ ...prev, account_name: e.target.value }))}
+                            placeholder="Enter account holder name"
+                            disabled={state.isSubmitting}
+                          />
+                        </div>
+                      </div>
+
+                      {/* 
+                        ORIGINAL PAYOUT FORM - COMMENTED OUT
+                        TODO: Restore this once Paystack live mode is enabled
                       <PayoutForm
                         initialData={state.formData.payout || defaultInitialData}
                         onChange={handlePayoutChange}
@@ -569,6 +719,7 @@ const { createVendorProfile, completeOnboarding } = useVendorStore();
                         onResolveAccount={handleResolveAccount}
                         disabled={state.isSubmitting}
                       />
+                      */}
                     </div>
                     <div className="mt-6">
                       <Button

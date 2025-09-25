@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { VendorServiceError, NotFoundError, ValidationError, DatabaseError } from './errors/VendorServiceError';
 import { getPublicIdFromUrl, deleteFromCloudinary, uploadStoreBanner } from '@/lib/cloudinary';
 import { generateUniqueSlug } from '@/lib/utils';
+import { paystackClient } from '@/lib/paystackClient';
 
 const createVendorProfileSchema = z.object({
   store_name: z.string().min(2, 'Store name required'),
@@ -288,5 +289,62 @@ export async function cleanupFailedCreation(imageUrl: string | null): Promise<vo
     } catch (error) {
       console.error('Error cleaning up image after failed profile creation:', error);
     }
+  }
+}
+
+export async function createVendorSubaccount(userId: string): Promise<string> {
+  try {
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('store_name, payout_info')
+      .eq('user_id', userId)
+      .single();
+    
+    if (!vendor) {
+      throw new NotFoundError('Vendor profile not found');
+    }
+    
+    if (!vendor.payout_info) {
+      throw new ValidationError('Payout information not found');
+    }
+    
+    const payoutInfo = vendor.payout_info as any;
+    
+    // Check if subaccount already exists
+    if (payoutInfo.subaccount_created && payoutInfo.subaccount_code) {
+      return payoutInfo.subaccount_code;
+    }
+    
+    // Create subaccount
+    const subaccountResult = await paystackClient.createSubaccount({
+      business_name: vendor.store_name,
+      bank_code: payoutInfo.bank_code,
+      account_number: payoutInfo.account_number,
+      percentage_charge: 2
+    });
+    
+    // Update vendor profile with subaccount code
+    const updatedPayoutInfo = {
+      ...payoutInfo,
+      subaccount_created: true,
+      subaccount_code: subaccountResult.subaccount_code
+    };
+    
+    const { error } = await supabase
+      .from('vendors')
+      .update({ 
+        payout_info: updatedPayoutInfo,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+    
+    if (error) {
+      throw new DatabaseError(`Failed to update vendor with subaccount: ${error.message}`);
+    }
+    
+    return subaccountResult.subaccount_code;
+  } catch (error) {
+    console.error('[VendorProfileService] Error creating subaccount:', error);
+    throw error;
   }
 }

@@ -154,6 +154,16 @@ export const TOAST_MESSAGES = {
       title: 'Error',
       description: 'Failed to load banks list. Please refresh the page.',
     },
+    missingInfo: {
+      title: 'Missing Information',
+      description: 'Please complete the payout information.',
+    },
+  },
+  form: {
+    validationError: {
+      title: 'Validation Error',
+      description: 'Please fill in all required fields correctly.',
+    },
   },
   general: {
     linkCopied: {

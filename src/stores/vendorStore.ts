@@ -5,7 +5,8 @@ import { User } from '@supabase/supabase-js';
 import {
   getVendorProfile as getVendorProfileService,
   updateVendorProfile as updateVendorProfileService,
-  createVendorProfile as createVendorProfileService
+  createVendorProfile as createVendorProfileService,
+  createVendorSubaccount as createVendorSubaccountService
 } from '@/services/vendorProfileService';
 import { vendorDataService, VendorStats, ProductWithSales } from '@/services/vendorDataService';
 import { VendorProfile, CreateVendorProfileInput } from '@/types';
@@ -89,6 +90,7 @@ interface VendorState {
   loadVendorForRoute: (userId: string, route: string) => Promise<VendorProfile | null>;
   updateVendorProfile: (updates: Partial<VendorProfile>, imageFile?: File) => Promise<void>;
   createVendorProfile: (userId: string, profile: CreateVendorProfileInput, imageFile?: File) => Promise<void>;
+  createVendorSubaccount: (userId: string) => Promise<string>;
   clearVendorData: () => void;
   signOut: () => Promise<void>;
   storeLastVendorPath: (path: string) => void;
@@ -323,6 +325,18 @@ export const useVendorStore = create<VendorState>()(
         };
         set({ vendorCache: cacheData });
         console.log('[VendorStore] Vendor created:', created);
+      },
+      
+      createVendorSubaccount: async (userId: string) => {
+        try {
+          const subaccountCode = await createVendorSubaccountService(userId);
+          console.log('[VendorStore] Subaccount created:', subaccountCode);
+          return subaccountCode;
+        } catch (error) {
+          console.error('[VendorStore] Error creating subaccount:', error);
+          set({ error: error as Error });
+          throw error;
+        }
       },
       
       clearVendorData: () => {
