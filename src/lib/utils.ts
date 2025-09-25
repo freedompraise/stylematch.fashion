@@ -6,20 +6,26 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function validateStoreNameForSlug(storeName: string): { isValid: boolean; error?: string } {
-  if (!storeName || storeName.trim().length === 0) {
+  // Normalize whitespace the same way as generateSlug
+  const normalizedName = storeName
+    .trim()
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  if (!normalizedName || normalizedName.length === 0) {
     return { isValid: false, error: 'Store name cannot be empty' };
   }
   
-  if (storeName.trim().length < 2) {
+  if (normalizedName.length < 2) {
     return { isValid: false, error: 'Store name must be at least 2 characters long' };
   }
   
-  if (storeName.trim().length > 50) {
+  if (normalizedName.length > 50) {
     return { isValid: false, error: 'Store name cannot exceed 50 characters' };
   }
   
   const validSlugPattern = /^[a-zA-Z0-9\s\-_']+$/;
-  if (!validSlugPattern.test(storeName)) {
+  if (!validSlugPattern.test(normalizedName)) {
     return { isValid: false, error: 'Store name contains invalid characters. Use only letters, numbers, spaces, hyphens, underscores, and apostrophes.' };
   }
   
@@ -29,11 +35,13 @@ export function validateStoreNameForSlug(storeName: string): { isValid: boolean;
 export function generateSlug(storeName: string): string {
   return storeName
     .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove all non-word characters except spaces and hyphens (this removes apostrophes)
-    .replace(/\s+/g, '-')     // Replace spaces with hyphens
-    .replace(/-+/g, '-')      // Replace multiple hyphens with single hyphen
-    .replace(/^-+|-+$/g, ''); // Remove leading and trailing hyphens
+    .trim()                    // Remove leading/trailing whitespace
+    .replace(/\s+/g, ' ')      // Normalize internal whitespace to single spaces
+    .trim()                    // Trim again after normalization
+    .replace(/[^\w\s-]/g, '')  // Remove all non-word characters except spaces and hyphens (this removes apostrophes)
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '');  // Remove leading and trailing hyphens
 }
 
 export async function generateUniqueSlug(
