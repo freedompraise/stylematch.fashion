@@ -147,6 +147,11 @@ export function SettingsStore() {
               {vendor?.store_slug && (
                 <div className="text-sm text-muted-foreground">
                   Current store URL: <code className="bg-muted px-1 py-0.5 rounded">stylematch.fashion/store/{vendor.store_slug}</code>
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Quick access:</strong> You can also view and copy your store link from the header at the top of any page in your dashboard.
+                    </p>
+                  </div>
                   {formData.store_name !== vendor.store_name && !storeNameError && (
                     <span className="block mt-1 text-amber-600">
                       ⚠️ Changing store name will update your store URL

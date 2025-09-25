@@ -11,7 +11,8 @@ import {
   Settings,
   Search,
   Menu,
-  LogOut
+  LogOut,
+  ExternalLink
 } from 'lucide-react';
 import { useVendorStore, useAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
@@ -118,6 +119,21 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     await handleSignOut();
   };
 
+  const handleCopyStoreLink = () => {
+    if (vendor?.store_slug) {
+      const link = `${window.location.origin}/store/${vendor.store_slug}`;
+      navigator.clipboard.writeText(link);
+      toast.general.linkCopied();
+    }
+  };
+
+  const handleOpenStore = () => {
+    if (vendor?.store_slug) {
+      const link = `${window.location.origin}/store/${vendor.store_slug}`;
+      window.open(link, '_blank');
+    }
+  };
+
   return (
     <>
       <SidebarProvider defaultOpen={true}>
@@ -186,10 +202,44 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
                 <span>Search...</span>
               </Button> */}
               {vendor && (
-                <div className="flex items-center gap-4">
-                  <div className="text-sm">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  {vendor.store_slug && (
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenStore}
+                        className="hidden sm:flex items-center gap-2"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        View Store
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleOpenStore}
+                        className="sm:hidden hover:bg-accent"
+                        title="View store"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleCopyStoreLink}
+                        className="hover:bg-accent"
+                        title="Copy store link"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="hidden sm:block text-sm">
                     <div className="font-medium">{vendor.store_name}</div>
                     <div className="text-muted-foreground text-xs">{vendor.name}</div>
+                  </div>
+                  <div className="sm:hidden text-sm">
+                    <div className="font-medium truncate max-w-[100px]">{vendor.store_name}</div>
                   </div>
                   <Button
                     variant="ghost"
