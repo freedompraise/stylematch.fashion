@@ -1,37 +1,63 @@
 import supabase from '@/lib/supabaseClient';
 import { VendorProfile, Product } from '@/types';
-import { CreateOrderInput, Order } from '@/types/OrderSchema';
+import { CreateOrderInput, Order, OrderWithNotification } from '@/types/OrderSchema';
 import { uploadPaymentProof, deleteFromCloudinary, getPublicIdFromUrl } from '@/lib/cloudinary';
 
+// Helper function to send vendor notifications (email + WhatsApp)
+async function sendVendorNotifications(order: Order, vendor: VendorProfile, customerName?: string) {
+  try {
+    const notificationData = {
+      vendor_email: vendor.email,
+      order_id: order.id,
+      total_amount: order.total_amount,
+      vendor_name: vendor.store_name || vendor.name || 'Vendor',
+      customer_name: customerName,
+      whatsapp_url: vendor.wabusiness_url
+    };
+
+    const { data, error } = await supabase.functions.invoke('send-vendor-email', {
+      body: notificationData
+    });
+
+    if (error) {
+      console.error('Error calling send-vendor-email function:', error);
+      return { success: false, whatsappUrl: null };
+    }
+
+    if (!data?.status) {
+      console.error('Email function returned error:', data?.message);
+      return { success: false, whatsappUrl: null };
+    }
+
+    console.log('Vendor notifications sent successfully');
+    return { 
+      success: true, 
+      whatsappUrl: data.whatsapp_url || null,
+      emailSent: data.email_sent || false
+    };
+  } catch (error) {
+    console.error('Error sending vendor notifications:', error);
+    return { success: false, whatsappUrl: null };
+  }
+}
+
+
 export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
- // Try the view first
- const { data: viewData, error: viewError } = await supabase
-   .from('vendor_storefront_view')
-   .select('*')
-   .eq('store_slug', storeSlug)
-   .single();
-   
- if (!viewError && viewData) {
-   return viewData as VendorProfile;
- }
- 
- // If view fails, fallback to RPC function
- console.log('[BuyerStorefrontService] View query failed, trying RPC function:', viewError?.message);
- 
- const { data: rpcData, error: rpcError } = await supabase.rpc('get_vendor_storefront', {
-   slug: storeSlug
- });
-   
- if (rpcError) {
-   console.error('[BuyerStorefrontService] RPC function also failed:', rpcError.message);
-   throw new Error(`Failed to fetch vendor: ${rpcError.message}`);
- }
- 
- if (!rpcData || rpcData.length === 0) {
-   return null;
- }
- 
- return rpcData[0] as VendorProfile;
+  // Use RPC function directly for better performance and to avoid RLS issues
+  const { data, error } = await supabase.rpc('get_vendor_storefront', {
+    slug: storeSlug
+  });
+
+  if (error) {
+    console.error('[BuyerStorefrontService] Failed to get vendor storefront:', error.message);
+    throw new Error(`Failed to fetch vendor: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  return data[0] as VendorProfile;
 }
 
 // Helper function to debug vendor issues - checks vendor status without strict filtering
@@ -77,7 +103,7 @@ export async function getProductsByVendorSlug(slug: string): Promise<Product[]> 
   return data as Product[];
 }
 
-export async function createOrder(order: any) {
+export async function createOrder(order: any, vendor?: VendorProfile): Promise<Order> {
   const { data, error } = await supabase
     .from('orders')
     .insert([order])
@@ -85,6 +111,7 @@ export async function createOrder(order: any) {
     .single();
   if (error) throw error;
   return data;
+
 }
 
 export async function getVendorSubaccountBySlug(slug: string): Promise<string | null> {
@@ -106,8 +133,9 @@ export async function getOrderById(orderId: string) {
 // NEW: Enhanced order creation with payment proof and proper error handling
 export async function createOrderWithPaymentProof(
   orderData: CreateOrderInput,
-  paymentProofFiles: File[]
-): Promise<Order> {
+  paymentProofFiles: File[],
+  vendor?: VendorProfile
+): Promise<OrderWithNotification> {
   let uploadedUrls: string[] = [];
   
   try {
@@ -126,7 +154,23 @@ export async function createOrderWithPaymentProof(
     });
     
     if (error) throw error;
-    return data;
+    
+    // Step 3: Send notifications to vendor
+    let notificationResult = null;
+    if (vendor && vendor.email) {
+      const customerName = orderData.customer_info?.name;
+      notificationResult = await sendVendorNotifications(data, vendor, customerName)
+        .catch(error => {
+          console.error('Failed to send vendor notifications:', error);
+          return { success: false, whatsappUrl: null };
+        });
+    }
+    
+    // Return order data with notification info
+    return {
+      ...data,
+      notification: notificationResult
+    };
     
   } catch (error) {
     // CRITICAL: Cleanup uploaded images on failure

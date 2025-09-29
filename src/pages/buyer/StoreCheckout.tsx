@@ -93,14 +93,21 @@ const StoreCheckoutContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) 
           percentage: 98,
         },
       };
-      const order = await createOrder(orderPayload);
+      const order = await createOrder(orderPayload, vendor) as any;
       // 3. Initialize Paystack payment (pseudo, replace with real integration)
       // TODO: Use Paystack JS SDK or redirect to payment page
       // For now, simulate payment success
       setTimeout(() => {
         setSubmitting(false);
         clearCart();
-        navigate(`/store/${vendorSlug}/confirmation?orderId=${order.id}`);
+        
+        // Build confirmation URL with WhatsApp notification if available
+        const confirmationUrl = `/store/${vendorSlug}/confirmation?orderId=${order.id}`;
+        const urlWithNotification = order.notification?.whatsappUrl 
+          ? `${confirmationUrl}&whatsapp=${encodeURIComponent(order.notification.whatsappUrl)}`
+          : confirmationUrl;
+        
+        navigate(urlWithNotification);
       }, 1200);
     } catch (err: any) {
       setFormError(err.message || 'Failed to process order.');

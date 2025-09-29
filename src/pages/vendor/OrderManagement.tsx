@@ -93,33 +93,15 @@ const OrderManagement: React.FC = () => {
   const getOrderFlow = (currentStatus: OrderStatus) => {
     const flow: Record<OrderStatus, { next: OrderStatus[], label: string, color: string, variant: string }> = {
       pending: { 
-        next: ['cancelled'], // Only show cancel option, payment_pending is set automatically when payment proof is uploaded
-        label: 'Awaiting Payment', 
+        next: ['confirmed', 'cancelled'], // Can verify payment or cancel
+        label: 'Awaiting Payment Verification', 
         color: 'bg-yellow-100 text-yellow-800', 
         variant: 'secondary' 
       },
-      payment_pending: { 
-        next: ['cancelled'], // Only show cancel option, verification handled by PaymentVerification component
-        label: 'Payment Pending', 
-        color: 'bg-orange-100 text-orange-800', 
-        variant: 'outline' 
-      },
-      payment_verified: { 
-        next: ['confirmed'], 
-        label: 'Payment Verified', 
-        color: 'bg-green-100 text-green-800', 
-        variant: 'default' 
-      },
-      payment_rejected: { 
-        next: ['cancelled'], 
-        label: 'Payment Rejected', 
-        color: 'bg-red-100 text-red-800', 
-        variant: 'destructive' 
-      },
       confirmed: { 
-        next: ['processing'], 
+        next: ['processing', 'cancelled'], 
         label: 'Confirmed', 
-        color: 'bg-blue-100 text-blue-800', 
+        color: 'bg-green-100 text-green-800', 
         variant: 'default' 
       },
       processing: { 
@@ -129,15 +111,9 @@ const OrderManagement: React.FC = () => {
         variant: 'default' 
       },
       delivered: { 
-        next: ['completed'], 
+        next: [], 
         label: 'Delivered', 
         color: 'bg-green-100 text-green-800', 
-        variant: 'default' 
-      },
-      completed: { 
-        next: [], 
-        label: 'Completed', 
-        color: 'bg-emerald-100 text-emerald-800', 
         variant: 'default' 
       },
       cancelled: { 
@@ -196,13 +172,10 @@ const OrderManagement: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
               <SelectItem value="all">All Orders</SelectItem>
-                <SelectItem value="pending">Awaiting Payment</SelectItem>
-                <SelectItem value="payment_pending">Payment Pending</SelectItem>
-                <SelectItem value="payment_verified">Payment Verified</SelectItem>
+                <SelectItem value="pending">Awaiting Payment Verification</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
@@ -309,15 +282,15 @@ const OrderManagement: React.FC = () => {
                       </TableCell>
                       <TableCell>
                       <div className="flex items-center gap-2 flex-wrap">
-                          {/* Special handling for payment_pending orders with payment proof */}
-                          {order.status === 'payment_pending' && 
+                          {/* Special handling for pending orders with payment proof */}
+                          {order.status === 'pending' && 
                            order.payment_proof_urls && 
                            order.payment_proof_urls.length > 0 ? (
                             // Show Payment Verification component for orders with payment proof
                             <PaymentVerification 
                               order={order} 
                               onVerifyPayment={async (orderId, status) => {
-                                await updateOrderInStore(orderId, status === 'verified' ? 'payment_verified' : 'payment_rejected');
+                                await updateOrderInStore(orderId, status === 'verified' ? 'confirmed' : 'cancelled');
                               }}
                               onVerificationComplete={() => {
                                 // Refresh orders after verification
@@ -336,17 +309,14 @@ const OrderManagement: React.FC = () => {
                                   className={
                                     nextStatus === 'cancelled' 
                                       ? 'bg-red-600 hover:bg-red-700' 
-                                      : nextStatus === 'payment_verified'
+                                      : nextStatus === 'confirmed'
                                       ? 'bg-green-600 hover:bg-green-700'
                                       : ''
                                   }
                                 >
-                                  {nextStatus === 'payment_verified' && 'Verify Payment'}
-                                  {nextStatus === 'payment_rejected' && 'Reject Payment'}
-                                  {nextStatus === 'confirmed' && 'Confirm Order'}
+                                  {nextStatus === 'confirmed' && 'Verify Payment'}
                                   {nextStatus === 'processing' && 'Start Processing'}
                                   {nextStatus === 'delivered' && 'Mark Delivered'}
-                                  {nextStatus === 'completed' && 'Mark Completed'}
                                   {nextStatus === 'cancelled' && 'Cancel Order'}
                                 </Button>
                               ))}
@@ -359,20 +329,20 @@ const OrderManagement: React.FC = () => {
                               Waiting for payment proof
                             </span>
                           )}
-                          {order.status === 'payment_pending' && 
+                          {order.status === 'pending' && 
                            (!order.payment_proof_urls || order.payment_proof_urls.length === 0) && (
                             <span className="text-sm text-muted-foreground">
                               No payment proof uploaded
                             </span>
                           )}
-                          {(order.status === 'completed' || order.status === 'cancelled') && (
+                          {(order.status === 'delivered' || order.status === 'cancelled') && (
                             <span className="text-sm text-muted-foreground">
-                              {order.status === 'completed' ? 'Order completed' : 'Order cancelled'}
+                              {order.status === 'delivered' ? 'Order delivered' : 'Order cancelled'}
                             </span>
                           )}
                           
-                          {/* Show delete button for all orders except completed ones */}
-                          {order.status !== 'completed' && (
+                          {/* Show delete button for all orders except delivered ones */}
+                          {order.status !== 'delivered' && (
                           <Button
                             variant="outline"
                             size="sm"

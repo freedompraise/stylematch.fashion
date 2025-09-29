@@ -390,8 +390,7 @@ class VendorDataService {
     try {
       const { data, error } = await supabase.rpc('verify_payment', {
         order_id: orderId,
-        status: status,
-        vendor_id: vendorId
+        is_verified: status === 'verified',
       });
 
       if (error) throw error;

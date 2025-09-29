@@ -4,14 +4,10 @@ import { z } from 'zod';
 
 export const orderStatusSchema = z.enum([
   'pending',
-  'payment_pending',
-  'payment_verified',
-  'payment_rejected',
   'confirmed', 
   'processing',
   'delivered',
   'cancelled',
-  'completed',
 ]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
@@ -54,6 +50,15 @@ export const orderSchema = z.object({
 
 export type Order = z.infer<typeof orderSchema>;
 export type CustomerInfo = z.infer<typeof customerInfoSchema>;
+
+// Extended Order type that includes notification data from order creation
+export interface OrderWithNotification extends Order {
+  notification?: {
+    success: boolean;
+    whatsappUrl: string | null;
+    emailSent: boolean;
+  } | null;
+}
 
 export const createOrderSchema = z.object({
   product_id: z.string().uuid().optional(), // Legacy field, will be removed

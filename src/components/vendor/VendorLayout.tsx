@@ -17,6 +17,7 @@ import {
 import { useVendorStore, useAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useUnreadOrders } from '@/hooks/use-unread-orders';
 import {
   Sidebar,
   SidebarContent,
@@ -55,7 +56,7 @@ const navigationItems = [
     path: '/vendor/products',
     subItems: [{ title: 'All Products', path: '/vendor/products' }]
   },
-  { title: 'Orders', icon: ShoppingCart, path: '/vendor/orders' },
+  { title: 'Orders', icon: ShoppingCart, path: '/vendor/orders', showUnreadCount: true },
   // { title: 'Customers', icon: Users, path: '/customers' },
   // { title: 'Payments', icon: CreditCard, path: '/payments' },
   {
@@ -91,6 +92,8 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
     error,
     handleSearchSelect
   } = useVendorSearch();
+  
+  const { unreadCount, hasUnreadOrders } = useUnreadOrders();
 
   const handleSearchOpenChange = (open: boolean) => {
     setSearchOpen(open);
@@ -161,7 +164,12 @@ export default function VendorLayout({ children }: VendorLayoutProps) {
                     )}
                   >
                     <item.icon className="h-5 w-5" />
-                    <span>{item.title}</span>
+                    <span className="flex-1">{item.title}</span>
+                    {item.showUnreadCount && hasUnreadOrders && (
+                      <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                   {item.subItems && (
                     <div className="ml-6 mt-1 flex flex-col gap-1">

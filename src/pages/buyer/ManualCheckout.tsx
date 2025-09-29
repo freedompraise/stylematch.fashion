@@ -100,7 +100,7 @@ const ManualCheckout: React.FC = () => {
           product_id: items[0]?.id || '', // Required for backward compatibility
           product_name: items[0]?.name || '', // Product name for display
           vendor_id: vendor.user_id,
-          status: 'payment_pending' as const,
+          status: 'pending' as const,
           delivery_location: delivery.pickup_location,
           total_amount: getTotal(),
         customer_info: {
@@ -124,11 +124,11 @@ const ManualCheckout: React.FC = () => {
         notes: notes,
       };
 
-      const order = await createOrderWithPaymentProof(orderPayload, paymentProofFiles);
+      const order = await createOrderWithPaymentProof(orderPayload, paymentProofFiles, vendor) as any;
       
       // Clear cart and redirect to confirmation
       clearCart();
-      navigate(`/store/${vendorSlug}/confirmation?orderId=${order.id}&payment=pending`);
+      navigate(`/store/${vendorSlug}/confirmation?orderId=${order.id}&payment=submitted`);
       
     } catch (err: any) {
       toast.error({
@@ -193,7 +193,7 @@ const ManualCheckout: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Label htmlFor="phone">Phone Number (WA preferably)*</Label>
                     <Input
                       id="phone"
                       name="phone"

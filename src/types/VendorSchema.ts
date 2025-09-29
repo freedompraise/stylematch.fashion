@@ -20,6 +20,7 @@ export const vendorSchema = z.object({
   verification_status: verificationStatusSchema.nullable(),
   created_at: z.string().datetime().nullable(),
   updated_at: z.string().datetime().nullable(),
+  email: z.string().email().nullable().optional(), // Added for storefront queries
 });
 
 export type VendorProfile = z.infer<typeof vendorSchema>;

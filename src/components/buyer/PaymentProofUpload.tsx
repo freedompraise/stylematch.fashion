@@ -54,7 +54,7 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
     setSelectedFiles(updatedFiles);
     onProofsChange(updatedFiles, transactionReference, notes);
 
-    toast.general.uploadSuccess();
+ 
   };
 
   const removeProof = (index: number) => {

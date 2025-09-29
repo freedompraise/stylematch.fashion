@@ -58,6 +58,7 @@ const ProductDetail = lazy(() => import('./pages/buyer/ProductDetail'));
 const StoreCheckout = lazy(() => import('./pages/buyer/StoreCheckout'));
 const ManualCheckout = lazy(() => import('./pages/buyer/ManualCheckout'));
 const StoreConfirmation = lazy(() => import('./pages/buyer/StoreConfirmation'));
+const OrderTracking = lazy(() => import('./pages/buyer/OrderTracking'));
 
 export default function AppRoutes() {
   return (
@@ -162,6 +163,8 @@ export default function AppRoutes() {
       <Route path="/store/:vendorSlug/product/:productId" element={<React.Suspense fallback={<div>Loading...</div>}><ProductDetail /></React.Suspense>} />
       <Route path="/store/:vendorSlug/checkout" element={<React.Suspense fallback={<div>Loading...</div>}><ManualCheckout /></React.Suspense>} />
       <Route path="/store/:vendorSlug/confirmation" element={<React.Suspense fallback={<div>Loading...</div>}><StoreConfirmation /></React.Suspense>} />
+      <Route path="/store/:vendorSlug/track" element={<React.Suspense fallback={<div>Loading...</div>}><OrderTracking /></React.Suspense>} />
+      <Route path="/track" element={<React.Suspense fallback={<div>Loading...</div>}><OrderTracking /></React.Suspense>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -172,7 +175,6 @@ const OnboardingRouteGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, session, loading: authLoading } = useAuthStore();
   const { vendor, loading: vendorLoading } = useVendorStore();
 
-  // Show loading while auth is initializing
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen text-lg">
