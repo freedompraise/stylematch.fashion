@@ -159,6 +159,20 @@
 }
 
 @layer components {
+  /* Custom text color utilities for base content */
+  .text-baseContent {
+    color: hsl(var(--base-content));
+  }
+
+  .text-baseContent-secondary {
+    color: hsl(var(--base-content-secondary));
+  }
+
+  /* Ensure destructive text color has proper specificity */
+  .text-destructive {
+    color: hsl(var(--destructive));
+  }
+
   .btn {
     @apply px-6 py-3 rounded-md font-opensans font-semibold text-sm transition-all duration-300 inline-flex items-center justify-center;
   }
@@ -181,5 +195,60 @@
 
   .section {
     @apply py-16 md:py-24;
+  }
+
+  /* Fix browser autofill styling for input fields */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Dark mode autofill fix */
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Firefox autofill fix */
+  input:-moz-autofill {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* General autofill styling for all browsers */
+  input[data-autocompleted] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Additional autofill fix class for specific targeting */
+  .autofill-fix:-webkit-autofill,
+  .autofill-fix:-webkit-autofill:hover,
+  .autofill-fix:-webkit-autofill:focus,
+  .autofill-fix:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+    background-color: hsl(var(--background)) !important;
+  }
+
+  /* Ensure autofill text is visible in both light and dark modes */
+  input:-webkit-autofill {
+    color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  }
+
+  /* Force autofill background to match theme */
+  input:-webkit-autofill {
+    background-color: hsl(var(--background)) !important;
+    -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
   }
 }
