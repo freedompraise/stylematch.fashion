@@ -85,6 +85,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
   const [productRatings, setProductRatings] = useState<Record<string, { average_rating: number; review_count: number }>>({});
   const navigate = useNavigate();
   
@@ -102,6 +103,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     setSelectedProduct(product);
     setSelectedSize(Array.isArray(product.size) ? product.size[0] : '');
     setSelectedColor(Array.isArray(product.color) ? product.color[0] : '');
+    setSelectedQuantity(1);
   };
   
   const addToCartHandler = () => {
@@ -111,7 +113,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
       name: selectedProduct.name,
       price: selectedProduct.price,
       image: Array.isArray(selectedProduct.images) ? selectedProduct.images[0] : '',
-      quantity: 1,
+      quantity: selectedQuantity,
       size: selectedSize,
       color: selectedColor,
       vendor_slug: vendorSlug,
@@ -515,16 +517,37 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                   </Button>
                 </div>
                 
-                {/* Quick Add Button */}
-                <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                {/* Quick Action Buttons */}
+                <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
                   <Button 
-                    className="w-full bg-primary/90 backdrop-blur-sm hover:bg-primary"
+                    className="flex-1 bg-primary/90 backdrop-blur-sm hover:bg-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Add to cart and redirect to checkout
+                      addToCart({
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        image: Array.isArray(product.images) ? product.images[0] : '',
+                        quantity: 1,
+                        size: Array.isArray(product.size) ? product.size[0] : '',
+                        color: Array.isArray(product.color) ? product.color[0] : '',
+                        vendor_slug: vendorSlug,
+                      });
+                      navigate(`/store/${vendorSlug}/checkout`);
+                    }}
+                  >
+                    Buy Now
+                  </Button>
+                  <Button 
+                    variant="secondary"
+                    className="bg-primary text-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleProductSelect(product);
                     }}
                   >
-                    Quick View
+                    Details
                   </Button>
                 </div>
               </div>
@@ -699,16 +722,61 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                       </div>
                     </div>
                   )}
+
+                  {/* Quantity Selection */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-foreground">Quantity</h4>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
+                        disabled={selectedQuantity <= 1}
+                      >
+                        <Minus size={16} />
+                      </Button>
+                      <span className="w-12 text-center font-medium">{selectedQuantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setSelectedQuantity(selectedQuantity + 1)}
+                      >
+                        <Plus size={16} />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 
                 {/* Action Buttons */}
                 <div className="space-y-3 pt-6 border-t border-border">
-                  <Button 
-                    className="w-full h-12 text-base font-semibold" 
-                    onClick={addToCartHandler}
-                  >
-                    Add to Cart
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button 
+                      className="flex-1 h-12 text-base font-semibold bg-primary" 
+                      onClick={() => {
+                        // Add to cart and redirect to checkout
+                        addToCart({
+                          id: selectedProduct.id,
+                          name: selectedProduct.name,
+                          price: selectedProduct.price,
+                          image: Array.isArray(selectedProduct.images) ? selectedProduct.images[0] : '',
+                          quantity: selectedQuantity,
+                          size: selectedSize || (Array.isArray(selectedProduct.size) ? selectedProduct.size[0] : ''),
+                          color: selectedColor || (Array.isArray(selectedProduct.color) ? selectedProduct.color[0] : ''),
+                          vendor_slug: vendorSlug,
+                        });
+                        navigate(`/store/${vendorSlug}/checkout`);
+                      }}
+                    >
+                      Buy Now ({selectedQuantity})
+                    </Button>
+                    <Button 
+                      className="flex-1 h-12 text-base font-semibold" 
+                      variant="outline"
+                      onClick={addToCartHandler}
+                    >
+                      Add to Cart
+                    </Button>
+                  </div>
                   <div className="flex gap-3">
                     <Button 
                       variant="outline" 

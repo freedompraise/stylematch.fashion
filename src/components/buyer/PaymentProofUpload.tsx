@@ -17,7 +17,7 @@ import {
 import { toast } from '@/lib/toast';
 
 interface PaymentProofUploadProps {
-  onProofsChange: (files: File[], reference: string, notes: string) => void;
+  onProofsChange: (files: File[], notes: string) => void;
   orderId: string;
   totalAmount: number;
 }
@@ -28,7 +28,6 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
   totalAmount,
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [transactionReference, setTransactionReference] = useState('');
   const [notes, setNotes] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +51,7 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
 
     const updatedFiles = [...selectedFiles, ...validFiles];
     setSelectedFiles(updatedFiles);
-    onProofsChange(updatedFiles, transactionReference, notes);
+    onProofsChange(updatedFiles, notes);
 
  
   };
@@ -60,17 +59,12 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
   const removeProof = (index: number) => {
     const updatedFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(updatedFiles);
-    onProofsChange(updatedFiles, transactionReference, notes);
-  };
-
-  const handleReferenceChange = (value: string) => {
-    setTransactionReference(value);
-    onProofsChange(selectedFiles, value, notes);
+    onProofsChange(updatedFiles, notes);
   };
 
   const handleNotesChange = (value: string) => {
     setNotes(value);
-    onProofsChange(selectedFiles, transactionReference, value);
+    onProofsChange(selectedFiles, value);
   };
 
   return (
@@ -85,20 +79,7 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Transaction Reference */}
-        <div className="space-y-2">
-          <Label htmlFor="reference">Transaction Reference *</Label>
-          <Input
-            id="reference"
-            placeholder="Enter your bank transfer reference number"
-            value={transactionReference}
-            onChange={(e) => handleReferenceChange(e.target.value)}
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            This is the reference number from your bank transfer
-          </p>
-        </div>
+        {/* Transaction Reference section removed - now auto-generated */}
 
         {/* File Upload */}
         <div className="space-y-2">
@@ -172,7 +153,6 @@ const PaymentProofUpload: React.FC<PaymentProofUploadProps> = ({
               <p className="font-medium mb-1">Payment Verification Process:</p>
               <ul className="text-xs space-y-1">
                 <li>• Upload clear screenshots of your bank transfer</li>
-                <li>• Include the transaction reference number</li>
                 <li>• Your payment will be verified within 24 hours</li>
                 <li>• You'll receive confirmation once verified</li>
               </ul>

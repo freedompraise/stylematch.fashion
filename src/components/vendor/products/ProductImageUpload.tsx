@@ -1,3 +1,4 @@
+// ProductImageUpload.tsx
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from '@/lib/toast';
@@ -36,7 +37,6 @@ export function ProductImageUpload({
       setValidationError(null);
 
       try {
-        // Validate and optimize the image
         const validationResult = await validateAndOptimizeImage(file, PRODUCT_IMAGE_CONFIG);
         
         if (!validationResult.isValid) {
@@ -45,11 +45,9 @@ export function ProductImageUpload({
           return;
         }
 
-        // Use optimized file if available, otherwise use original
         const optimizedFile = validationResult.optimizedFile || file;
         onImageChange(optimizedFile);
 
-        // Generate preview URL for the optimized file
         const newPreviewUrl = URL.createObjectURL(optimizedFile);
         onPreviewUrlChange(newPreviewUrl);
 
@@ -83,7 +81,7 @@ export function ProductImageUpload({
     onImageChange(null);
     onPreviewUrlChange(null);
     setValidationError(null);
-    onImageRemoved?.(); // Notify parent component that image was removed
+    onImageRemoved?.();
   };
 
   return (
@@ -112,10 +110,10 @@ export function ProductImageUpload({
             }
           </p>
           <p className="text-xs text-muted-foreground">
-          
             Max size: {formatFileSize(PRODUCT_IMAGE_CONFIG.maxFileSize)} • 
             Max dimensions: {PRODUCT_IMAGE_CONFIG.maxWidth}x{PRODUCT_IMAGE_CONFIG.maxHeight}
           </p>
+     
         </div>
       </div>
 
@@ -127,12 +125,24 @@ export function ProductImageUpload({
       )}
 
       {!previewUrl && !validationError && (
+        <div>
         <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <AlertCircle className="h-4 w-4 text-amber-600" />
           <p className="text-sm text-amber-800">
             <span className="font-medium">Image required:</span> Products with images get 5x more views and sales
           </p>
         </div>
+        <p className="text-xs">
+            <a 
+              href="https://tinypng.com/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-primary hover:underline"
+            >
+              Compress large images for free before uploading
+            </a>
+          </p>
+          </div>
       )}
 
       {previewUrl && (
@@ -155,4 +165,4 @@ export function ProductImageUpload({
       )}
     </div>
   );
-} 
+}

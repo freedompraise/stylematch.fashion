@@ -32,7 +32,7 @@ export const orderSchema = z.object({
   customer_info: customerInfoSchema,
   // Manual payment fields
   payment_proof_urls: z.array(z.string()).optional(),
-  transaction_reference: z.string().optional(),
+  order_reference: z.string().optional(), // Auto-generated order reference
   payment_status: z.enum(['pending', 'verified', 'rejected']).optional(),
   payment_verified_at: z.string().optional(),
   payment_verified_by: z.string().uuid().optional(),
@@ -71,7 +71,7 @@ export const createOrderSchema = z.object({
   customer_info: customerInfoSchema,
   // Manual payment fields
   payment_proof_urls: z.array(z.string()).optional(),
-  transaction_reference: z.string().optional(),
+  order_reference: z.string().optional(), // Auto-generated order reference
   payment_status: z.enum(['pending', 'verified', 'rejected']).optional(),
   expires_at: z.string().optional(),
   notes: z.string().optional(),
