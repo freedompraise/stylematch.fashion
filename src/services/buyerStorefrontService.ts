@@ -45,18 +45,18 @@ async function sendVendorNotifications(order: Order, vendor: VendorProfile, cust
 export async function getVendorBySlug(storeSlug: string): Promise<VendorProfile | null> {
   // Use RPC function directly for better performance and to avoid RLS issues
   const { data, error } = await supabase.rpc('get_vendor_storefront', {
-    slug: storeSlug
-  });
-
+   slug: storeSlug
+ });
+   
   if (error) {
     console.error('[BuyerStorefrontService] Failed to get vendor storefront:', error.message);
     throw new Error(`Failed to fetch vendor: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    return null;
-  }
-
+   return null;
+ }
+ 
   return data[0] as VendorProfile;
 }
 

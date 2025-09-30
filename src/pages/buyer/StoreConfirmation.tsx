@@ -15,6 +15,9 @@ const StoreConfirmation: React.FC = () => {
   const query = useQuery();
   const orderId = query.get('orderId');
   const whatsappUrl = query.get('whatsapp');
+  
+  // Debug: Log the WhatsApp URL received
+  console.log('WhatsApp URL from URL params:', whatsappUrl);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<any>(null);
@@ -125,6 +128,7 @@ const StoreConfirmation: React.FC = () => {
             <Button 
               onClick={() => {
                 const url = whatsappUrl || vendor?.wabusiness_url;
+                console.log('WhatsApp URL being used:', url);
                 if (url) window.open(url, '_blank');
               }}
               className="w-full bg-success hover:bg-success/90 text-success-foreground"
