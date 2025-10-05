@@ -111,12 +111,7 @@ const PaymentVerification: React.FC<PaymentVerificationProps> = ({
                 </div>
               </div>
               
-              {order.transaction_reference && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <span className="font-medium">Transaction Reference:</span>
-                  <span className="font-mono ml-2">{order.transaction_reference}</span>
-                </div>
-              )}
+       
 
               {order.notes && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">

@@ -15,12 +15,13 @@ import {
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Store, Eye, EyeOff, Play, X } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { toast } from '@/lib/toast';
 import { AuthService } from '@/services/authService';
 import { useAuthStore } from '@/stores';
 import SupportChat from '@/components/SupportChat';
+import CheckMailGuide from '@/components/CheckMailGuide';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -45,6 +46,8 @@ const Auth = (): JSX.Element => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
+  const [showEmailGuide, setShowEmailGuide] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const navigate = useNavigate();
   const authService = new AuthService();
   const { signIn, signUp } = useAuthStore();
@@ -89,6 +92,7 @@ const Auth = (): JSX.Element => {
       setIsLogin(true);
       loginForm.reset();
       registerForm.reset();
+      setShowEmailGuide(true);
     } catch (error) {
       toast.auth.signUpError();
     } finally {
@@ -324,10 +328,16 @@ const Auth = (): JSX.Element => {
               </button>
             </p>
           </div>
+
+          <div className="mt-6">
+            <CheckMailGuide show={showEmailGuide} onDismiss={() => setShowEmailGuide(false)} />
+          </div>
         </div>
       </div>
     </div>
     <SupportChat isVendor={false} />
+
+    {/* Guide handled within CheckMailGuide */}
     </>
   );
 };

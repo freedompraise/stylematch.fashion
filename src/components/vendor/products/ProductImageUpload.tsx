@@ -139,7 +139,7 @@ export function ProductImageUpload({
               rel="noopener noreferrer" 
               className="text-primary hover:underline"
             >
-              Compress large images for free before uploading
+              Click to optimize large images for free before uploading
             </a>
           </p>
           </div>

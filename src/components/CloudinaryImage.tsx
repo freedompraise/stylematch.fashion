@@ -11,6 +11,7 @@ interface CloudinaryImageProps {
   format?: string;
   className?: string;
   alt?: string;
+  onClick?: React.MouseEventHandler<HTMLImageElement>;
 }
 
 const CloudinaryImage: React.FC<CloudinaryImageProps> = ({
@@ -23,6 +24,7 @@ const CloudinaryImage: React.FC<CloudinaryImageProps> = ({
   format = 'auto',
   className = '',
   alt = '',
+  onClick,
 }) => {
   return (
     <Image
@@ -36,6 +38,7 @@ const CloudinaryImage: React.FC<CloudinaryImageProps> = ({
       format={format}
       className={className}
       alt={alt}
+      onClick={onClick}
     />
   );
 };

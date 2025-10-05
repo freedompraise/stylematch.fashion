@@ -541,7 +541,7 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                   </Button>
                   <Button 
                     variant="secondary"
-                    className="bg-primary text-white"
+                    className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleProductSelect(product);
@@ -631,7 +631,11 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                 <img 
                   src={selectedProduct.images?.[0] || ''} 
                   alt={selectedProduct.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain cursor-zoom-in"
+                  onClick={() => {
+                    const url = selectedProduct.images?.[0] || '';
+                    if (url) window.open(url, '_blank');
+                  }}
                 />
                 {selectedProduct.discount_price && (
                   <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground">

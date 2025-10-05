@@ -84,14 +84,15 @@ export function ProductDetailDialog({
           <div className="flex flex-col md:flex-row gap-6">
             {/* Product Image */}
             <div className="flex-shrink-0">
-              <div className="w-full md:w-80 h-80 rounded-lg overflow-hidden border">
+              <div className="w-full md:w-80 h-80 rounded-lg overflow-hidden border cursor-zoom-in">
                 {product.images && product.images.length > 0 ? (
                   <CloudinaryImage
                     publicId={product.images[0]}
                     width={320}
                     height={320}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                     alt={product.name}
+                    onClick={() => window.open(product.images[0], '_blank')}
                   />
                 ) : (
                   <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -104,13 +105,14 @@ export function ProductDetailDialog({
               {product.images && product.images.length > 1 && (
                 <div className="flex gap-2 mt-4 overflow-x-auto">
                   {product.images.slice(1, 4).map((image, index) => (
-                    <div key={index} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border">
+                    <div key={index} className="flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border cursor-zoom-in">
                       <CloudinaryImage
                         publicId={image}
                         width={64}
                         height={64}
                         className="w-full h-full object-cover"
                         alt={`${product.name} ${index + 2}`}
+                        onClick={() => window.open(image, '_blank')}
                       />
                     </div>
                   ))}
@@ -187,14 +189,14 @@ export function ProductDetailDialog({
                   <p className="text-sm font-medium text-muted-foreground">Category</p>
                   <p className="text-sm">{product.category}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-sm font-medium text-muted-foreground">Brand</p>
                   <p className="text-sm">{product.brand || 'Not specified'}</p>
-                </div>
-                <div>
+                </div> */}
+                {/* <div>
                   <p className="text-sm font-medium text-muted-foreground">SKU</p>
                   <p className="text-sm">{product.sku || 'Not specified'}</p>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
 
@@ -215,14 +217,14 @@ export function ProductDetailDialog({
                   <p className="text-sm font-medium text-muted-foreground">Stock Quantity</p>
                   <p className="text-sm">{product.stock_quantity} units</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-sm font-medium text-muted-foreground">Minimum Order</p>
                   <p className="text-sm">{product.minimum_order || 'No minimum'}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Weight</p>
                   <p className="text-sm">{product.weight || 'Not specified'}</p>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
           </div>
@@ -245,7 +247,7 @@ export function ProductDetailDialog({
           )}
 
           {/* Product Tags */}
-          {product.tags && product.tags.length > 0 && (
+          {/* {product.tags && product.tags.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -263,7 +265,7 @@ export function ProductDetailDialog({
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
           {/* Timestamps */}
           <Card>

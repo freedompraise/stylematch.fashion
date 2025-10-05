@@ -8,9 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search, Filter, Download, User, Phone, Mail, MapPin, Calendar, Package } from 'lucide-react';
+import CheckMailGuide from '@/components/CheckMailGuide';
 import { Order, OrderStatus } from '@/types/OrderSchema';
 import { toast } from '@/lib/toast';
 import PaymentVerification from '@/components/vendor/PaymentVerification';
+// using existing Dialog imports from above
 
 const OrderManagement: React.FC = () => {
   const { 
@@ -26,6 +28,8 @@ const OrderManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Order | null>(null);
+  const [showEmailGuide, setShowEmailGuide] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -152,6 +156,8 @@ const OrderManagement: React.FC = () => {
           Export
         </Button>
       </div>
+
+      <CheckMailGuide show={showEmailGuide} onDismiss={() => setShowEmailGuide(false)} />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:w-64">
@@ -493,7 +499,7 @@ const OrderManagement: React.FC = () => {
               )}
 
               {/* Payment Information */}
-              {(selectedCustomer.payment_proof_urls || selectedCustomer.transaction_reference || selectedCustomer.notes) && (
+              {(selectedCustomer.payment_proof_urls || selectedCustomer.notes) && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -502,12 +508,6 @@ const OrderManagement: React.FC = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {selectedCustomer.transaction_reference && (
-                      <div>
-                        <p className="text-sm font-medium">Transaction Reference</p>
-                        <p className="text-sm text-muted-foreground font-mono">{selectedCustomer.transaction_reference}</p>
-                      </div>
-                    )}
                     {selectedCustomer.payment_proof_urls && selectedCustomer.payment_proof_urls.length > 0 && (
                       <div>
                         <p className="text-sm font-medium">Payment Proof Images</p>
@@ -537,6 +537,8 @@ const OrderManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Guide handled within CheckMailGuide */}
     </div>
   );
 };
