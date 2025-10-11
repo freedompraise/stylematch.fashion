@@ -21,7 +21,6 @@ import { toast } from '@/lib/toast';
 import { AuthService } from '@/services/authService';
 import { useAuthStore } from '@/stores';
 import SupportChat from '@/components/SupportChat';
-import CheckMailGuide from '@/components/CheckMailGuide';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -46,7 +45,6 @@ const Auth = (): JSX.Element => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
-  const [showEmailGuide, setShowEmailGuide] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const navigate = useNavigate();
   const authService = new AuthService();
@@ -84,15 +82,21 @@ const Auth = (): JSX.Element => {
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     try {
       setIsLoading(true);
-      await signUp({
+      const result = await signUp({
         email: data.email,
         password: data.password,
       });
+      
+      // If signup was successful and we have a session, redirect to onboarding
+      if (result?.session) {
+        navigate('/vendor/onboarding');
+        return;
+      }
+      
       toast.auth.signUpSuccess();
       setIsLogin(true);
       loginForm.reset();
       registerForm.reset();
-      setShowEmailGuide(true);
     } catch (error) {
       toast.auth.signUpError();
     } finally {
@@ -329,15 +333,11 @@ const Auth = (): JSX.Element => {
             </p>
           </div>
 
-          <div className="mt-6">
-            <CheckMailGuide show={showEmailGuide} onDismiss={() => setShowEmailGuide(false)} />
-          </div>
         </div>
       </div>
     </div>
     <SupportChat isVendor={false} />
 
-    {/* Guide handled within CheckMailGuide */}
     </>
   );
 };

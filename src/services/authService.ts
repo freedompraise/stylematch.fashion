@@ -30,9 +30,6 @@ export class AuthService {
       if (message.includes('Invalid login credentials')) {
         type = AuthErrorType.INVALID_CREDENTIALS;
         message = "The email or password you entered is incorrect.";
-      } else if (message.includes('Email not confirmed')) {
-        type = AuthErrorType.EMAIL_NOT_VERIFIED;
-        message = "Please check your email and verify your account.";
       } else if (message.includes('Rate limit')) {
         type = AuthErrorType.RATE_LIMIT;
         message = "Please wait a moment before trying again.";
@@ -96,7 +93,7 @@ export class AuthService {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/verification-complete`,
+          // No email verification redirect needed since verification is disabled
         }
       });
 

@@ -9,7 +9,6 @@ import VendorRouteGuard from '@/components/vendor/VendorRouteGuard';
 import Index from '@/pages/Index';
 import Auth from '@/pages/auth/Index';
 import AuthCallback from '@/pages/auth/callback';
-import VerificationComplete from '@/pages/auth/verification-complete';
 import ForgotPassword from '@/pages/auth/forgot-password';
 import ResetPassword from '@/pages/auth/reset-password';
 import VendorOnboarding from '@/pages/vendor/VendorOnboarding';
@@ -66,7 +65,6 @@ export default function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/auth/verification-complete" element={<VerificationComplete />} />
       <Route path="/auth/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
       <Route path="/auth/reset-password" element={<ResetPassword />} />
       

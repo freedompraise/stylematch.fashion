@@ -17,7 +17,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setVendorSignup: (isVendor: boolean) => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (params: SignUpParams) => Promise<void>;
+  signUp: (params: SignUpParams) => Promise<{ session: Session | null; shouldRedirectToOnboarding: boolean } | undefined>;
   signOut: () => Promise<void>;
   setSession: (session: Session | null) => void;
   setUser: (user: User | null) => void;
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
       
       signUp: async (params: SignUpParams) => {
         set({ isVendorSignup: true });
-        await authService.signUp(params);
+        return await authService.signUp(params);
       },
       
       signOut: async () => {

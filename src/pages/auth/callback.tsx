@@ -28,8 +28,13 @@ export default function AuthCallback() {
           return;
         }
 
-        // Successful login - let RequireVendor handle the routing
-        navigate('/vendor/dashboard', { replace: true });
+        // Check if user should be redirected to onboarding
+        if (result.shouldRedirectToOnboarding) {
+          navigate('/vendor/onboarding', { replace: true });
+        } else {
+          // Existing user - redirect to dashboard
+          navigate('/vendor/dashboard', { replace: true });
+        }
       } catch (err) {
         console.error('Auth callback error:', err);
         setError(err instanceof Error ? err.message : 'Authentication failed');
