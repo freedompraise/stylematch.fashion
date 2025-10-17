@@ -2,18 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBuyerStore, useMarketplaceStore } from '@/stores';
 import { Button } from '@/components/ui/button';
-import { Heart } from 'lucide-react';
+import { Heart, ChevronDown } from 'lucide-react';
 
 const ProductDetailContent: React.FC<{ vendorSlug: string; productId: string }> = ({ vendorSlug, productId }) => {
   const { currentVendor: vendor, listings: products, loading, error, fetchVendorData } = useMarketplaceStore();
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const { addToCart } = useBuyerStore();
   
   useEffect(() => {
     fetchVendorData(vendorSlug);
   }, [vendorSlug, fetchVendorData]);
+
 
   useEffect(() => {
     if (!loading && products.length > 0) {
@@ -30,6 +34,69 @@ const ProductDetailContent: React.FC<{ vendorSlug: string; productId: string }> 
   if (!vendor) return null;
   const product = products.find(prod => prod.id === productId);
   if (!product) return <div className="min-h-screen flex items-center justify-center text-destructive">Product not found</div>;
+
+  // Image navigation functions
+  const goToNextImage = () => {
+    if (!product?.images) return;
+    setCurrentImageIndex((prev) => 
+      prev < product.images.length - 1 ? prev + 1 : 0
+    );
+  };
+
+  const goToPreviousImage = () => {
+    if (!product?.images) return;
+    setCurrentImageIndex((prev) => 
+      prev > 0 ? prev - 1 : product.images.length - 1
+    );
+  };
+
+  const selectImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      goToNextImage();
+    } else if (isRightSwipe) {
+      goToPreviousImage();
+    }
+  };
+
+  // Keyboard navigation for images
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!product?.images || product.images.length <= 1) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPreviousImage();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToNextImage();
+      }
+    };
+
+    if (product) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [product, currentImageIndex]);
 
   const handleAddToCart = () => {
     addToCart({
@@ -48,34 +115,79 @@ const ProductDetailContent: React.FC<{ vendorSlug: string; productId: string }> 
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8">
       <div className="max-w-4xl w-full bg-white rounded-lg shadow p-8 flex flex-col md:flex-row gap-8">
         <div className="flex-1 flex flex-col items-center">
-          <div className="aspect-square w-full max-w-md overflow-hidden rounded-lg mb-4">
+          <div 
+            className="aspect-square w-full max-w-md overflow-hidden rounded-lg mb-4 relative group"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <img 
-              src={Array.isArray(product.images) ? product.images[0] : ''} 
+              src={Array.isArray(product.images) ? product.images[currentImageIndex] : ''} 
               alt={product.name} 
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-cover transition-opacity duration-300" 
             />
+            
+            {/* Navigation Arrows */}
+            {Array.isArray(product.images) && product.images.length > 1 && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-sm hover:bg-background"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToPreviousImage();
+                  }}
+                >
+                  <ChevronDown className="h-4 w-4 rotate-90" />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-sm hover:bg-background"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToNextImage();
+                  }}
+                >
+                  <ChevronDown className="h-4 w-4 -rotate-90" />
+                </Button>
+              </>
+            )}
+            
+            {/* Image Counter */}
+            {Array.isArray(product.images) && product.images.length > 1 && (
+              <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
+                {currentImageIndex + 1} / {product.images.length}
+              </div>
+            )}
+            
+            {/* Swipe Indicator for Mobile */}
+            {Array.isArray(product.images) && product.images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 md:hidden">
+                <div className="bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-muted-foreground">
+                  Swipe to view more
+                </div>
+              </div>
+            )}
           </div>
           
-          {/* Additional Images */}
+          {/* Thumbnail Gallery */}
           {Array.isArray(product.images) && product.images.length > 1 && (
             <div className="flex gap-2 mt-2 overflow-x-auto">
-              {product.images.slice(1).map((image, index) => (
+              {product.images.map((image, index) => (
                 <div 
                   key={index} 
-                  className="w-20 h-20 rounded-md overflow-hidden border cursor-pointer hover:border-primary"
-                  onClick={() => {
-                    // Create a new array with the clicked image first
-                    const newImages = [
-                      image,
-                      ...product.images.filter(img => img !== image)
-                    ];
-                    // Update the product with the new image order
-                    product.images = newImages;
-                  }}
+                  className={`w-20 h-20 rounded-md overflow-hidden border cursor-pointer transition-all ${
+                    index === currentImageIndex 
+                      ? 'border-primary ring-2 ring-primary/20 scale-105' 
+                      : 'hover:border-primary hover:scale-105'
+                  }`}
+                  onClick={() => selectImage(index)}
                 >
                   <img 
                     src={image} 
-                    alt={`${product.name} ${index + 2}`} 
+                    alt={`${product.name} ${index + 1}`} 
                     className="w-full h-full object-cover" 
                   />
                 </div>

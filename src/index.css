@@ -252,3 +252,78 @@
     -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset !important;
   }
 }
+
+/* Landing page animations */
+@keyframes fadeCarousel {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+  }
+}
+
+@keyframes show1 {
+  0%,
+  25%,
+  100% {
+    opacity: 0;
+  }
+  0%,
+  25% {
+    opacity: 1;
+  }
+}
+
+@keyframes show2 {
+  0%,
+  25%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes show3 {
+  0%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fadeCarousel {
+  animation: fadeCarousel 15s infinite;
+}
+
+.animate-show1 {
+  animation: show1 15s infinite;
+}
+
+.animate-show2 {
+  animation: show2 15s infinite;
+}
+
+.animate-show3 {
+  animation: show3 15s infinite;
+}
+
+/* Utility classes */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

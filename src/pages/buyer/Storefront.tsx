@@ -86,6 +86,9 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [productRatings, setProductRatings] = useState<Record<string, { average_rating: number; review_count: number }>>({});
   const navigate = useNavigate();
   
@@ -104,7 +107,71 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
     setSelectedSize(Array.isArray(product.size) ? product.size[0] : '');
     setSelectedColor(Array.isArray(product.color) ? product.color[0] : '');
     setSelectedQuantity(1);
+    setCurrentImageIndex(0); // Reset to first image
   };
+
+  // Image navigation functions
+  const goToNextImage = () => {
+    if (!selectedProduct?.images) return;
+    setCurrentImageIndex((prev) => 
+      prev < selectedProduct.images.length - 1 ? prev + 1 : 0
+    );
+  };
+
+  const goToPreviousImage = () => {
+    if (!selectedProduct?.images) return;
+    setCurrentImageIndex((prev) => 
+      prev > 0 ? prev - 1 : selectedProduct.images.length - 1
+    );
+  };
+
+  const selectImage = (index: number) => {
+    setCurrentImageIndex(index);
+  };
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) {
+      goToNextImage();
+    } else if (isRightSwipe) {
+      goToPreviousImage();
+    }
+  };
+
+  // Keyboard navigation for images
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedProduct?.images || selectedProduct.images.length <= 1) return;
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPreviousImage();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToNextImage();
+      }
+    };
+
+    if (selectedProduct) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedProduct, currentImageIndex]);
   
   const addToCartHandler = () => {
     if (!selectedProduct) return;
@@ -628,16 +695,66 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               {/* Product Image */}
               <div className="relative aspect-square lg:aspect-auto lg:h-[70vh] overflow-hidden flex flex-col">
-                <div className="flex-1 relative">
+                <div 
+                  className="flex-1 relative group"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
                   <img 
-                    src={selectedProduct.images?.[0] || ''} 
+                    src={selectedProduct.images?.[currentImageIndex] || ''} 
                     alt={selectedProduct.name}
-                    className="w-full h-full object-contain cursor-zoom-in"
+                    className="w-full h-full object-contain cursor-zoom-in transition-opacity duration-300"
                     onClick={() => {
-                      const url = selectedProduct.images?.[0] || '';
+                      const url = selectedProduct.images?.[currentImageIndex] || '';
                       if (url) window.open(url, '_blank');
                     }}
                   />
+                  
+                  {/* Navigation Arrows */}
+                  {selectedProduct.images && selectedProduct.images.length > 1 && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-sm hover:bg-background"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goToPreviousImage();
+                        }}
+                      >
+                        <ChevronDown className="h-4 w-4 rotate-90" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-sm hover:bg-background"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goToNextImage();
+                        }}
+                      >
+                        <ChevronDown className="h-4 w-4 -rotate-90" />
+                      </Button>
+                    </>
+                  )}
+                  
+                  {/* Image Counter */}
+                  {selectedProduct.images && selectedProduct.images.length > 1 && (
+                    <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-medium">
+                      {currentImageIndex + 1} / {selectedProduct.images.length}
+                    </div>
+                  )}
+                  
+                  {/* Swipe Indicator for Mobile */}
+                  {selectedProduct.images && selectedProduct.images.length > 1 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 md:hidden">
+                      <div className="bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-muted-foreground">
+                        Swipe to view more
+                      </div>
+                    </div>
+                  )}
+                  
                   {selectedProduct.discount_price && (
                     <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground">
                       Sale
@@ -652,19 +769,11 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
                       <div 
                         key={index} 
                         className={`w-16 h-16 rounded-md overflow-hidden border cursor-pointer transition-all ${
-                          index === 0 ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary'
+                          index === currentImageIndex 
+                            ? 'border-primary ring-2 ring-primary/20 scale-105' 
+                            : 'hover:border-primary hover:scale-105'
                         }`}
-                        onClick={() => {
-                          // Create a new array with the clicked image first
-                          const newImages = [
-                            image,
-                            ...selectedProduct.images!.filter(img => img !== image)
-                          ];
-                          // Update the product with the new image order
-                          selectedProduct.images = newImages;
-                          // Force re-render
-                          setSelectedProduct({...selectedProduct});
-                        }}
+                        onClick={() => selectImage(index)}
                       >
                         <img 
                           src={image} 
