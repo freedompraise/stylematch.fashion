@@ -33,10 +33,11 @@ import {
 } from '@/components/ui/select';
 import { useVendorStore } from '@/stores';
 import { Product, ProductFormValues } from '@/types/ProductSchema';
-import { ProductImageUpload } from './ProductImageUpload';
+import { MultiImageUpload } from './MultiImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
 import { X } from 'lucide-react';
 import { toast } from '@/lib/toast';
+import { getMaxAllowedImages } from '@/lib/featureFlags';
 
 interface EditProductDialogProps {
   product: Product | null;
@@ -55,10 +56,11 @@ export function EditProductDialog({
   onProductUpdated 
 }: EditProductDialogProps) {
   const { updateProduct } = useVendorStore();
-  const [productImage, setProductImage] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [productImages, setProductImages] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [shouldRemoveImage, setShouldRemoveImage] = useState(false);
+  const [shouldRemoveImages, setShouldRemoveImages] = useState(false);
   const [customSize, setCustomSize] = useState<string>('');
 
   const form = useForm<EditProductFormValues>({
@@ -72,16 +74,16 @@ export function EditProductDialog({
       size: z.string(),
     }).refine(
       () => {
-        // Check if product has existing image OR new image uploaded OR image removal is not requested
-        const hasExistingImage = product?.images && product.images.length > 0;
-        const hasNewImage = productImage !== null;
-        const isRemovingImage = shouldRemoveImage;
+        // Check if product has existing images OR new images uploaded OR image removal is not requested
+        const hasExistingImages = existingImages.length > 0;
+        const hasNewImages = productImages.length > 0;
+        const isRemovingImages = shouldRemoveImages;
         
-        // Valid if: (has existing image AND not removing) OR (has new image) OR (removing image is intentional)
-        return (hasExistingImage && !isRemovingImage) || hasNewImage;
+        // Valid if: (has existing images AND not removing) OR (has new images) OR (removing images is intentional)
+        return (hasExistingImages && !isRemovingImages) || hasNewImages;
       },
       {
-        message: "Product image is required for better visibility and sales",
+        message: "At least one product image is required for better visibility",
         path: ["name"] // Use name field to show error at form level
       }
     )),
@@ -109,14 +111,17 @@ export function EditProductDialog({
         size: product.size || '',
       });
       
-      // Set preview URL from existing images
+      // Set existing images from product
       if (product.images && product.images.length > 0) {
-        setPreviewUrl(product.images[0]);
+        setExistingImages(product.images);
       } else {
-        setPreviewUrl(null);
+        setExistingImages([]);
       }
-      setProductImage(null);
-      setShouldRemoveImage(false);
+      
+      // Reset other state
+      setProductImages([]);
+      setPreviewUrls([]);
+      setShouldRemoveImages(false);
       setCustomSize('');
     }
   }, [product, open, form]);
@@ -124,7 +129,7 @@ export function EditProductDialog({
   // Revalidate form when image state changes
   useEffect(() => {
     form.trigger();
-  }, [productImage, shouldRemoveImage, form]);
+  }, [productImages, existingImages, shouldRemoveImages, form]);
 
   const onSubmit = async (data: EditProductFormValues) => {
     if (!product) return;
@@ -132,13 +137,13 @@ export function EditProductDialog({
     try {
       setIsSubmitting(true);
       
-      // Update the product with image file if provided, or remove image if requested
-      const updatedProduct = await (updateProduct as any)(
+      // Update the product with image files if provided, or remove images if requested
+      const updatedProduct = await updateProduct(
         product.id, 
         data, 
-        productImage || undefined, 
+        productImages.length > 0 ? productImages : undefined, 
         product, 
-        shouldRemoveImage
+        shouldRemoveImages
       );
       
       toast.products.updateSuccess();
@@ -155,9 +160,9 @@ export function EditProductDialog({
 
   const handleCancel = () => {
     form.reset();
-    setProductImage(null);
-    setPreviewUrl(null);
-    setShouldRemoveImage(false);
+    setProductImages([]);
+    setPreviewUrls([]);
+    setShouldRemoveImages(false);
     setCustomSize('');
     onOpenChange(false);
   };
@@ -175,15 +180,29 @@ export function EditProductDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Product Image */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Product Image</label>
-              <ProductImageUpload
-                image={productImage}
-                previewUrl={previewUrl}
-                onImageChange={setProductImage}
-                onPreviewUrlChange={setPreviewUrl}
-                onImageRemoved={() => setShouldRemoveImage(true)}
-                productIndex={0}
+              <label className="text-sm font-medium">Product Images</label>
+              <MultiImageUpload
+                images={productImages}
+                previewUrls={previewUrls}
+                onImagesChange={setProductImages}
+                onPreviewUrlsChange={setPreviewUrls}
+                existingImages={existingImages}
+                maxImages={getMaxAllowedImages()}
               />
+              {existingImages.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShouldRemoveImages(true);
+                    setExistingImages([]);
+                  }}
+                  className="mt-2"
+                >
+                  Remove existing images
+                </Button>
+              )}
             </div>
 
             {/* Product Name */}

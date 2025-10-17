@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Search, Filter, Download, User, Phone, Mail, MapPin, Calendar, Package } from 'lucide-react';
-import CheckMailGuide from '@/components/CheckMailGuide';
 import { Order, OrderStatus } from '@/types/OrderSchema';
 import { toast } from '@/lib/toast';
 import PaymentVerification from '@/components/vendor/PaymentVerification';
@@ -156,8 +155,6 @@ const OrderManagement: React.FC = () => {
           Export
         </Button>
       </div>
-
-      <CheckMailGuide show={showEmailGuide} onDismiss={() => setShowEmailGuide(false)} />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:w-64">

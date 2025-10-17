@@ -57,6 +57,25 @@ export async function uploadProductImage(file: File): Promise<string> {
   });
 }
 
+// Multi-image upload function
+export async function uploadMultipleProductImages(files: File[]): Promise<string[]> {
+  try {
+    // Upload all files in parallel
+    const uploadPromises = files.map(file => 
+      uploadToCloudinary(file, {
+        folder: 'products'
+      })
+    );
+    
+    // Wait for all uploads to complete
+    const urls = await Promise.all(uploadPromises);
+    return urls;
+  } catch (error) {
+    console.error("[Cloudinary] Error during multiple image upload:", error);
+    throw error;
+  }
+}
+
 export async function uploadStoreBanner(file: File): Promise<string> {
   return uploadToCloudinary(file, {
     folder: 'store-banners'
@@ -113,6 +132,30 @@ export async function deleteFromCloudinary(publicId: string): Promise<void> {
     
   } catch (error) {
     console.error("[Cloudinary] Error during deletion for public ID:", publicId, error);
+    throw error;
+  }
+}
+
+// Delete multiple images from Cloudinary
+export async function deleteMultipleFromCloudinary(publicIds: string[]): Promise<void> {
+  if (!publicIds.length) return;
+  
+  console.log("[Cloudinary] Starting batch deletion for", publicIds.length, "images");
+  
+  try {
+    // Delete images in sequence to avoid rate limiting
+    for (const publicId of publicIds) {
+      try {
+        await deleteFromCloudinary(publicId);
+      } catch (error) {
+        console.error(`[Cloudinary] Error deleting image ${publicId}:`, error);
+        // Continue with other deletions even if one fails
+      }
+    }
+    
+    console.log("[Cloudinary] Batch deletion complete");
+  } catch (error) {
+    console.error("[Cloudinary] Error during batch deletion:", error);
     throw error;
   }
 }

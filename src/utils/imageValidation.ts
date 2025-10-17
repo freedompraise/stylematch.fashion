@@ -26,17 +26,17 @@ export const CLOUDINARY_FREE_LIMITS = {
 } as const;
 
 export const PRODUCT_IMAGE_CONFIG: ImageValidationConfig = {
-  maxFileSize: 3 * 1024 * 1024, // 3MB for product images
-  maxWidth: 1000, // Optimized for product display
-  maxHeight: 1000,
+  maxFileSize: 5 * 1024 * 1024, // 3MB for product images
+  maxWidth: 2000, // Increased limit for product images
+  maxHeight: 2000, // Increased limit for product images
   allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   quality: 80, // Good quality for products
 };
 
 export const STORE_BANNER_CONFIG: ImageValidationConfig = {
-  maxFileSize: 4 * 1024 * 1024, // 4MB for store banners
-  maxWidth: 1600, // Banner dimensions
-  maxHeight: 900,
+  maxFileSize: 5 * 1024 * 1024, // 4MB for store banners
+  maxWidth: 1600, // Increased banner dimensions
+  maxHeight: 1600, // Increased banner dimensions
   allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   quality: 75, // Good quality for banners
 };

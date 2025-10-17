@@ -627,20 +627,53 @@ const StorefrontContent: React.FC<{ vendorSlug: string }> = ({ vendorSlug }) => 
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               {/* Product Image */}
-              <div className="relative aspect-square lg:aspect-auto lg:h-[70vh] overflow-hidden">
-                <img 
-                  src={selectedProduct.images?.[0] || ''} 
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-contain cursor-zoom-in"
-                  onClick={() => {
-                    const url = selectedProduct.images?.[0] || '';
-                    if (url) window.open(url, '_blank');
-                  }}
-                />
-                {selectedProduct.discount_price && (
-                  <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground">
-                    Sale
-                  </Badge>
+              <div className="relative aspect-square lg:aspect-auto lg:h-[70vh] overflow-hidden flex flex-col">
+                <div className="flex-1 relative">
+                  <img 
+                    src={selectedProduct.images?.[0] || ''} 
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain cursor-zoom-in"
+                    onClick={() => {
+                      const url = selectedProduct.images?.[0] || '';
+                      if (url) window.open(url, '_blank');
+                    }}
+                  />
+                  {selectedProduct.discount_price && (
+                    <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground">
+                      Sale
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Thumbnail Gallery */}
+                {selectedProduct.images && selectedProduct.images.length > 1 && (
+                  <div className="flex gap-2 p-4 overflow-x-auto">
+                    {selectedProduct.images.map((image, index) => (
+                      <div 
+                        key={index} 
+                        className={`w-16 h-16 rounded-md overflow-hidden border cursor-pointer transition-all ${
+                          index === 0 ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary'
+                        }`}
+                        onClick={() => {
+                          // Create a new array with the clicked image first
+                          const newImages = [
+                            image,
+                            ...selectedProduct.images!.filter(img => img !== image)
+                          ];
+                          // Update the product with the new image order
+                          selectedProduct.images = newImages;
+                          // Force re-render
+                          setSelectedProduct({...selectedProduct});
+                        }}
+                      >
+                        <img 
+                          src={image} 
+                          alt={`${selectedProduct.name} ${index + 1}`} 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
               

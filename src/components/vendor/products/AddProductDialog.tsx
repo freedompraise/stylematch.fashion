@@ -35,9 +35,10 @@ import {
 import { useVendorStore } from '@/stores';
 import { Product, productsSchema, ProductFormValues, createProductSchema } from '@/types/ProductSchema';
 import { Plus, Trash2 } from 'lucide-react';
-import { ProductImageUpload } from './ProductImageUpload';
+import { MultiImageUpload } from './MultiImageUpload';
 import { FormActions } from '@/components/ui/form-actions';
 import { toast } from '@/lib/toast';
+import { getMaxAllowedImages } from '@/lib/featureFlags';
 
 interface AddProductDialogProps {
   onProductsAdded: (products: Product[]) => void;
@@ -47,8 +48,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
   const { createProduct } = useVendorStore();
-  const [productImages, setProductImages] = useState<(File | null)[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
+  const [productImages, setProductImages] = useState<File[][]>([[]]);
+  const [previewUrls, setPreviewUrls] = useState<string[][]>([[]]);
   const [customSizes, setCustomSizes] = useState<Record<number, string>>({});
 
   const form = useForm<{ products: ProductFormValues[] }>({
@@ -82,8 +83,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
 
     if (currentLength > imagesLength) {
       // Add new entries
-      setProductImages(prev => [...prev, ...Array(currentLength - imagesLength).fill(null)]);
-      setPreviewUrls(prev => [...prev, ...Array(currentLength - urlsLength).fill(null)]);
+      setProductImages(prev => [...prev, ...Array(currentLength - imagesLength).fill([])]);
+      setPreviewUrls(prev => [...prev, ...Array(currentLength - urlsLength).fill([])]);
     } else if (currentLength < imagesLength) {
       // Remove extra entries
       setProductImages(prev => prev.slice(0, currentLength));
@@ -124,25 +125,26 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
     remove(index);
   };
 
-  const handleImageChange = (index: number, file: File | null) => {
+  const handleImagesChange = (index: number, files: File[]) => {
     setProductImages(prev => {
       const newImages = [...prev];
-    newImages[index] = file;
+      newImages[index] = files;
       return newImages;
     });
   };
 
-  const handlePreviewUrlChange = (index: number, url: string | null) => {
+  const handlePreviewUrlsChange = (index: number, urls: string[]) => {
     setPreviewUrls(prev => {
       const newUrls = [...prev];
-    newUrls[index] = url;
+      newUrls[index] = urls;
       return newUrls;
     });
   };
 
   const onSubmit = async (data: { products: ProductFormValues[] }) => {
-    // Validate that all products have images
-    const missingImages = data.products.map((_, index) => index).filter(index => productImages[index] === null);
+    // Validate that all products have at least one image
+    const missingImages = data.products.map((_, index) => index)
+      .filter(index => !productImages[index] || productImages[index].length === 0);
     
     if (missingImages.length > 0) {
       toast.products.imageRequired();
@@ -153,9 +155,10 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       const createdProducts: Product[] = [];
       for (let i = 0; i < data.products.length; i++) {
         const productData = data.products[i];
-        const imageFile = productImages[i];
+        const imageFiles = productImages[i];
         
-        const createdProduct = await createProduct(productData, imageFile || undefined);
+        // Pass all images to createProduct
+        const createdProduct = await createProduct(productData, imageFiles);
         createdProducts.push(createdProduct);
       }
 
@@ -163,8 +166,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
       toast.products.createSuccess(createdProducts.length);
       setOpen(false);
       form.reset();
-      setProductImages([]);
-      setPreviewUrls([]);
+      setProductImages([[]]);
+      setPreviewUrls([[]]);
       setCustomSizes({});
     } catch (error) {
       console.error('Error creating products:', error);
@@ -174,8 +177,8 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
 
   const handleCancel = () => {
     form.reset();
-    setProductImages([]);
-    setPreviewUrls([]);
+    setProductImages([[]]);
+    setPreviewUrls([[]]);
     setCustomSizes({});
     setOpen(false);
   };
@@ -410,13 +413,14 @@ export function AddProductDialog({ onProductsAdded }: AddProductDialogProps) {
                     </div>
                     
                     <div className="space-y-2">
-                      <FormLabel>Product Image</FormLabel>
-                      <ProductImageUpload 
-                        image={productImages[index]}
-                        previewUrl={previewUrls[index]}
-                        onImageChange={(file) => handleImageChange(index, file)}
-                        onPreviewUrlChange={(url) => handlePreviewUrlChange(index, url)}
+                      <FormLabel>Product Images</FormLabel>
+                      <MultiImageUpload 
+                        images={productImages[index] || []}
+                        previewUrls={previewUrls[index] || []}
+                        onImagesChange={(files) => handleImagesChange(index, files)}
+                        onPreviewUrlsChange={(urls) => handlePreviewUrlsChange(index, urls)}
                         productIndex={index}
+                        maxImages={getMaxAllowedImages()}
                       />
                     </div>
                   </div>

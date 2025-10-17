@@ -49,8 +49,39 @@ const ProductDetailContent: React.FC<{ vendorSlug: string; productId: string }> 
       <div className="max-w-4xl w-full bg-white rounded-lg shadow p-8 flex flex-col md:flex-row gap-8">
         <div className="flex-1 flex flex-col items-center">
           <div className="aspect-square w-full max-w-md overflow-hidden rounded-lg mb-4">
-            <img src={Array.isArray(product.images) ? product.images[0] : ''} alt={product.name} className="w-full h-full object-cover" />
+            <img 
+              src={Array.isArray(product.images) ? product.images[0] : ''} 
+              alt={product.name} 
+              className="w-full h-full object-cover" 
+            />
           </div>
+          
+          {/* Additional Images */}
+          {Array.isArray(product.images) && product.images.length > 1 && (
+            <div className="flex gap-2 mt-2 overflow-x-auto">
+              {product.images.slice(1).map((image, index) => (
+                <div 
+                  key={index} 
+                  className="w-20 h-20 rounded-md overflow-hidden border cursor-pointer hover:border-primary"
+                  onClick={() => {
+                    // Create a new array with the clicked image first
+                    const newImages = [
+                      image,
+                      ...product.images.filter(img => img !== image)
+                    ];
+                    // Update the product with the new image order
+                    product.images = newImages;
+                  }}
+                >
+                  <img 
+                    src={image} 
+                    alt={`${product.name} ${index + 2}`} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex-1 flex flex-col">
           <h1 className="text-3xl font-bold mb-2">{product.name}</h1>

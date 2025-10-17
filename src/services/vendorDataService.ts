@@ -20,7 +20,9 @@ import {
 } from '@/types/VariantSchema';
 import {
   uploadProductImage,
+  uploadMultipleProductImages,
   deleteFromCloudinary,
+  deleteMultipleFromCloudinary,
   getPublicIdFromUrl,
 } from '@/lib/cloudinary';
 
@@ -75,18 +77,28 @@ class VendorDataService {
   async createProduct(
     productData: CreateProductInput,
     vendorId: string,
-    imageFile?: File
+    imageFiles?: File[] | File
   ): Promise<Product> {
     try {
-      let imageUrl: string | null = null;
-      if (imageFile) {
-        imageUrl = await uploadProductImage(imageFile);
+      let imageUrls: string[] = [];
+      
+      if (imageFiles) {
+        if (Array.isArray(imageFiles)) {
+          // Handle multiple image uploads
+          if (imageFiles.length > 0) {
+            imageUrls = await uploadMultipleProductImages(imageFiles);
+          }
+        } else {
+          // Handle single image for backward compatibility
+          const imageUrl = await uploadProductImage(imageFiles);
+          imageUrls = [imageUrl];
+        }
       }
 
       const productToCreate = {
         ...productData,
         vendor_id: vendorId,
-        images: imageUrl ? [imageUrl] : [],
+        images: imageUrls,
       };
 
       const { data, error } = await supabase
@@ -148,36 +160,55 @@ class VendorDataService {
     }
   }
 
-  async updateProduct(productId: string, updates: Partial<Product>, vendorId: string, imageFile?: File, currentProduct?: Product, removeImage?: boolean): Promise<Product> {
+  async updateProduct(
+    productId: string, 
+    updates: Partial<Product>, 
+    vendorId: string, 
+    imageFiles?: File[] | File, 
+    currentProduct?: Product, 
+    removeImages?: boolean
+  ): Promise<Product> {
     try {
       let newImages: string[] | null = null;
       let uploadedImagePublicIds: string[] = [];
       let oldImagePublicIds: string[] = [];
 
-      if (imageFile) {
-        // Handle new image upload
+      if (imageFiles) {
+        // Handle new image upload(s)
         try {
-          const imageUrl = await uploadProductImage(imageFile);
-          const uploadedImagePublicId = getPublicIdFromUrl(imageUrl);
+          let imageUrls: string[] = [];
           
-          if (uploadedImagePublicId) {
-            uploadedImagePublicIds.push(uploadedImagePublicId);
+          if (Array.isArray(imageFiles)) {
+            // Handle multiple image uploads
+            if (imageFiles.length > 0) {
+              imageUrls = await uploadMultipleProductImages(imageFiles);
+            }
+          } else {
+            // Handle single image for backward compatibility
+            const imageUrl = await uploadProductImage(imageFiles);
+            imageUrls = [imageUrl];
           }
+          
+          // Track uploaded image public IDs for potential cleanup
+          uploadedImagePublicIds = imageUrls
+            .map(url => getPublicIdFromUrl(url))
+            .filter(Boolean) as string[];
 
+          // If replacing existing images, collect old image IDs for deletion
           if (currentProduct?.images && currentProduct.images.length > 0) {
             oldImagePublicIds = currentProduct.images
               .map(img => getPublicIdFromUrl(img))
               .filter(Boolean) as string[];
           }
 
-          newImages = [imageUrl];
+          newImages = imageUrls;
         } catch (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          throw new Error('Failed to upload image');
+          console.error('Error uploading images:', uploadError);
+          throw new Error('Failed to upload images');
         }
-      } else if (removeImage) {
-        // Handle image removal without uploading new image
-        console.log('[VendorDataService] Removing image from product');
+      } else if (removeImages) {
+        // Handle image removal without uploading new images
+        console.log('[VendorDataService] Removing all images from product');
         if (currentProduct?.images && currentProduct.images.length > 0) {
           oldImagePublicIds = currentProduct.images
             .map(img => getPublicIdFromUrl(img))
@@ -196,7 +227,7 @@ class VendorDataService {
       if (oldImagePublicIds.length > 0) {
         console.log('[VendorDataService] Deleting old images from Cloudinary:', oldImagePublicIds);
         try {
-          await Promise.all(oldImagePublicIds.map(publicId => deleteFromCloudinary(publicId)));
+          await deleteMultipleFromCloudinary(oldImagePublicIds);
           console.log('[VendorDataService] Successfully deleted old images from Cloudinary');
         } catch (deleteError) {
           console.error('[VendorDataService] Error deleting old images from Cloudinary:', deleteError);
@@ -216,7 +247,7 @@ class VendorDataService {
       if (error) {
         if (uploadedImagePublicIds.length > 0) {
           try {
-            await Promise.all(uploadedImagePublicIds.map(publicId => deleteFromCloudinary(publicId)));
+            await deleteMultipleFromCloudinary(uploadedImagePublicIds);
           } catch (cleanupError) {
             console.warn('Error cleaning up uploaded images:', cleanupError);
           }
@@ -237,18 +268,20 @@ class VendorDataService {
       // If the product has images, delete them from Cloudinary
       if (product.images && product.images.length > 0) {
         console.log('[VendorDataService] Deleting images from Cloudinary...');
-        const deletePromises = product.images.map((imageUrl) => {
-          if (imageUrl) {
-            const publicId = getPublicIdFromUrl(imageUrl);
-            if (publicId) {
-              return deleteFromCloudinary(publicId);
-            }
+        
+        try {
+          const publicIds = product.images
+            .map(imageUrl => getPublicIdFromUrl(imageUrl))
+            .filter(Boolean) as string[];
+            
+          if (publicIds.length > 0) {
+            await deleteMultipleFromCloudinary(publicIds);
+            console.log('[VendorDataService] Cloudinary images deleted.');
           }
-          return Promise.resolve();
-        });
-
-        await Promise.all(deletePromises);
-        console.log('[VendorDataService] Cloudinary images deleted.');
+        } catch (cloudinaryError) {
+          console.error('[VendorDataService] Error deleting images from Cloudinary:', cloudinaryError);
+          // Continue with database deletion even if Cloudinary deletion fails
+        }
       }
 
       // After deleting images, delete the product from the database
