@@ -27,7 +27,6 @@ package-lock.json
 *.sw?
 .cursor/
 src/integrations/
-docs/
 stylematch-nextjs/
 /test-image.jpg
 .playwright-mcp/
