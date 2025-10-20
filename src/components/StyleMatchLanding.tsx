@@ -3,6 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { landingService, RoadmapFeature, CommunityStat } from '@/services/landingService';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const StyleMatchLanding: React.FC = () => {
   const [features, setFeatures] = useState<RoadmapFeature[]>([]);
@@ -164,12 +169,12 @@ const StyleMatchLanding: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <a href="/auth" className="btn-primary px-8 py-4 rounded-full font-semibold text-lg">
-              Start free
-            </a>
-            <a href="#roadmap" className="btn-outline px-8 py-4 rounded-full font-semibold text-lg text-white border-white hover:bg-white hover:text-black">
-              See what we're building
-            </a>
+            <Button asChild size="lg" className="px-8 py-4 rounded-full font-semibold text-lg">
+              <a href="/auth">Start free</a>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="px-8 py-4 rounded-full font-semibold text-lg text-white border-white hover:bg-white hover:text-black">
+              <a href="#roadmap">See what we're building</a>
+            </Button>
           </motion.div>
           
           <motion.p
@@ -280,9 +285,9 @@ const StyleMatchLanding: React.FC = () => {
               </div>
               
               <div className="mt-8">
-                <a href="/auth" className="btn-primary px-8 py-4 rounded-full font-semibold text-lg inline-block">
-                  Join the Beta
-                </a>
+                <Button asChild size="lg" className="px-8 py-4 rounded-full font-semibold text-lg">
+                  <a href="/auth">Join the Beta</a>
+                </Button>
               </div>
             </div>
             
@@ -372,11 +377,13 @@ const StyleMatchLanding: React.FC = () => {
                   </p>
                   
                   <div className="flex justify-between items-center">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleVote(feature.id, feature.votes)}
                       disabled={feature.status === "released" || landingService.hasVotedForFeature(feature.id) || !landingService.canVote()}
                       className={`
-                        flex items-center space-x-2 text-sm transition-all duration-200
+                        flex items-center space-x-2 text-sm transition-all duration-200 h-auto p-0
                         ${feature.status === "released" || landingService.hasVotedForFeature(feature.id) || !landingService.canVote()
                           ? "text-muted-foreground cursor-not-allowed"
                           : "text-primary hover:text-primary/80 hover:scale-105"
@@ -389,7 +396,7 @@ const StyleMatchLanding: React.FC = () => {
                         {landingService.hasVotedForFeature(feature.id) ? "✅" : "👍"}
                       </span>
                       <span>{feature.votes} votes</span>
-                    </button>
+                    </Button>
                     {feature.status === "released" && (
                       <span className="text-xs text-green-600 font-medium">Live now!</span>
                     )}
@@ -434,9 +441,9 @@ const StyleMatchLanding: React.FC = () => {
         <div className="max-w-3xl mx-auto space-y-6">
           <h2 className="text-4xl font-bold">Ready to start?</h2>
           <p className="text-xl text-white/90">Create your store in minutes. No credit card required.</p>
-          <a href="/auth" className="inline-flex items-center justify-center bg-white text-primary px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/90">
-            Continue to sign up
-          </a>
+          <Button asChild size="lg" className="bg-white text-primary px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/90">
+            <a href="/auth">Continue to sign up</a>
+          </Button>
         </div>
         
         <p className="text-sm text-white/80 mt-6">We build in public and your feedback guides our roadmap.</p>
@@ -455,42 +462,43 @@ const StyleMatchLanding: React.FC = () => {
           
           <div className="bg-muted/30 rounded-2xl p-8">
             <form className="space-y-6" onSubmit={handleFeedback}>
-              <textarea
+              <Textarea
                 placeholder="What would make your fashion business easier? What questions do you have about StyleMatch? What problems keep you up at night?"
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                className="w-full px-4 py-4 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 h-32 resize-none"
+                className="h-32 resize-none"
                 required
               />
               
               <div className="grid md:grid-cols-2 gap-4">
-                <input
+                <Input
                   type="email"
                   placeholder="Your email (so we can follow up)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   required
                 />
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as any)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="general">General Feedback</option>
-                  <option value="question">Question</option>
-                  <option value="interest">Interested in joining</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select value={category} onValueChange={(value: 'general' | 'question' | 'interest' | 'other') => setCategory(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">General Feedback</SelectItem>
+                    <SelectItem value="question">Question</SelectItem>
+                    <SelectItem value="interest">Interested in joining</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <button
+              <Button
                 type="submit"
                 disabled={sending}
-                className="btn-primary px-8 py-4 rounded-lg font-semibold text-lg disabled:opacity-50"
+                size="lg"
+                className="px-8 py-4 rounded-lg font-semibold text-lg"
               >
                 {sending ? "Sending..." : "Send Feedback"}
-              </button>
+              </Button>
             </form>
             
             <div className="mt-6 p-4 bg-primary/10 rounded-lg">
