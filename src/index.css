@@ -305,25 +305,42 @@
 }
 
 .animate-fadeCarousel {
-  animation: fadeCarousel 15s infinite;
+  animation: fadeCarousel 30s infinite;
 }
 
 .animate-show1 {
-  animation: show1 15s infinite;
+  animation: show1 30s infinite;
 }
 
 .animate-show2 {
-  animation: show2 15s infinite;
+  animation: show2 30s infinite;
 }
 
 .animate-show3 {
-  animation: show3 15s infinite;
+  animation: show3 30s infinite;
 }
 
 /* Utility classes */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Horizontal scroll utilities */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

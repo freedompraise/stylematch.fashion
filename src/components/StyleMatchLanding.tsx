@@ -17,6 +17,7 @@ const StyleMatchLanding: React.FC = () => {
   const [email, setEmail] = useState('');
   const [category, setCategory] = useState<'general' | 'question' | 'interest' | 'other'>('general');
   const [sending, setSending] = useState(false);
+  const [activeTab, setActiveTab] = useState<'building' | 'planned'>('building');
   const { toast } = useToast();
 
   // Fetch data on mount
@@ -316,14 +317,13 @@ const StyleMatchLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* ROADMAP */}
-      <section id="roadmap" className="py-24 px-6 bg-muted/20">
-        <div className="max-w-6xl mx-auto text-center space-y-12">
-          <div className="space-y-6">
+      {/* ROADMAP - Hybrid Design */}
+      <section id="roadmap" className="py-16 px-6 bg-muted/20">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <div className="text-center space-y-4">
             <h2 className="text-4xl font-bold">We build in public</h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Every feature is shaped by your feedback. Vote on what we build next,
-              see our progress in real-time, and help us prioritize what matters most.
+              Track our progress and vote for what's next
             </p>
             
             {/* Vote counter */}
@@ -340,70 +340,108 @@ const StyleMatchLanding: React.FC = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={feature.id}
-                  className={`
-                     rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 border
-                    ${feature.status === "released" ? "border-green-200 bg-green-50" : "border-gray-100"}
-                  `}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <span className={`
-                      px-3 py-1 rounded-full text-xs font-medium
-                      ${feature.status === "planned" ? "bg-gray-100 text-gray-700" :
-                        feature.status === "building" ? "bg-blue-100 text-blue-700" :
-                        feature.status === "testing" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-green-100 text-green-700"
-                      }
-                    `}>
-                      {feature.status}
-                    </span>
-                    {feature.status === "released" && (
-                      <span className="text-green-600 text-lg">✅</span>
-                    )}
+            <>
+              {/* Released Features - Horizontal Scroll */}
+              {features.filter(f => f.status === "released").length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-semibold text-center">✅ What's Live Now</h3>
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                    {features.filter(f => f.status === "released").map((feature, index) => (
+                      <motion.div
+                        key={feature.id}
+                        className="flex-shrink-0 w-80 rounded-xl p-4 bg-green-50 border border-green-200"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-green-600">✅</span>
+                          <span className="text-sm font-medium text-green-700">Live</span>
+                        </div>
+                        <h4 className="font-semibold text-base mb-2">{feature.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{feature.description}</p>
+                      </motion.div>
+                    ))}
                   </div>
-                  
-                  <h3 className="font-semibold text-lg mb-3 text-baseContent">
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
-                    {feature.description}
-                  </p>
-                  
-                  <div className="flex justify-between items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleVote(feature.id, feature.votes)}
-                      disabled={feature.status === "released" || landingService.hasVotedForFeature(feature.id) || !landingService.canVote()}
-                      className={`
-                        flex items-center space-x-2 text-sm transition-all duration-200 h-auto p-0
-                        ${feature.status === "released" || landingService.hasVotedForFeature(feature.id) || !landingService.canVote()
-                          ? "text-muted-foreground cursor-not-allowed"
-                          : "text-primary hover:text-primary/80 hover:scale-105"
-                        }
-                      `}
+                </div>
+              )}
+
+              {/* Voting Section - Tabs */}
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <div className="flex bg-white rounded-lg p-1 border border-gray-200">
+                    {['building', 'planned'].map((status) => (
+                      <button
+                        key={status}
+                        className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                          activeTab === status 
+                            ? 'bg-primary text-white' 
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                        onClick={() => setActiveTab(status as 'building' | 'planned')}
+                      >
+                        {status === 'building' && '🔨 Building'}
+                        {status === 'planned' && '📋 Planned'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {features.filter(f => f.status === activeTab).map((feature, index) => (
+                    <motion.div
+                      key={feature.id}
+                      className="rounded-xl p-4 border border-gray-100 hover:shadow-md transition-all bg-white"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
                     >
-                      <span className={`
-                        ${landingService.hasVotedForFeature(feature.id) ? "text-green-600" : ""}
-                      `}>
-                        {landingService.hasVotedForFeature(feature.id) ? "✅" : "👍"}
-                      </span>
-                      <span>{feature.votes} votes</span>
-                    </Button>
-                    {feature.status === "released" && (
-                      <span className="text-xs text-green-600 font-medium">Live now!</span>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                      <div className="flex justify-between items-start mb-3">
+                        <span className={`
+                          px-3 py-1 rounded-full text-xs font-medium
+                          ${feature.status === "planned" ? "bg-gray-100 text-gray-700" :
+                            feature.status === "building" ? "bg-blue-100 text-blue-700" :
+                            "bg-green-100 text-green-700"
+                          }
+                        `}>
+                          {feature.status}
+                        </span>
+                      </div>
+                      
+                      <h4 className="font-semibold text-base mb-2 text-baseContent">
+                        {feature.title}
+                      </h4>
+                      <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+                        {feature.description}
+                      </p>
+                      
+                      <div className="flex justify-between items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleVote(feature.id, feature.votes)}
+                          disabled={landingService.hasVotedForFeature(feature.id) || !landingService.canVote()}
+                          className={`
+                            flex items-center space-x-2 text-sm transition-all duration-200 h-auto p-0
+                            ${landingService.hasVotedForFeature(feature.id) || !landingService.canVote()
+                              ? "text-muted-foreground cursor-not-allowed"
+                              : "text-primary hover:text-primary/80 hover:scale-105"
+                            }
+                          `}
+                        >
+                          <span className={`
+                            ${landingService.hasVotedForFeature(feature.id) ? "text-green-600" : ""}
+                          `}>
+                            {landingService.hasVotedForFeature(feature.id) ? "✅" : "👍"}
+                          </span>
+                          <span>{feature.votes} votes</span>
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </section>
