@@ -51,7 +51,7 @@ StyleMatch is a fashion marketplace platform that connects vendors with customer
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/freedompraise/stylematch.fashion
    cd stylematch-frontend-bloom
    ```
 
@@ -164,7 +164,6 @@ VITE_GOOGLE_CLIENT_SECRET=your_google_client_secret
 3. **Run tests and linting**
 
    ```bash
-   npm run test
    npm run lint
    ```
 
@@ -188,28 +187,6 @@ VITE_GOOGLE_CLIENT_SECRET=your_google_client_secret
 - Utilities: `camelCase.ts` (e.g., `imageValidation.ts`)
 - Pages: `PascalCase.tsx` (e.g., `Storefront.tsx`)
 
-#### Component Structure
-
-```tsx
-// src/components/ExampleComponent.tsx
-import React from "react";
-import { Button } from "@/components/ui/button";
-
-interface ExampleComponentProps {
-  title: string;
-  onAction: () => void;
-}
-
-export function ExampleComponent({ title, onAction }: ExampleComponentProps) {
-  return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <Button onClick={onAction}>Action</Button>
-    </div>
-  );
-}
-```
-
 #### Import Order
 
 1. React imports
@@ -219,27 +196,6 @@ export function ExampleComponent({ title, onAction }: ExampleComponentProps) {
 5. Types
 
 ## 🏗 Architecture & Code Organization
-
-### Directory Structure
-
-```
-src/
-├── components/          # Reusable UI components
-│   ├── ui/             # shadcn/ui components
-│   ├── auth/           # Authentication components
-│   ├── buyer/          # Buyer-specific components
-│   └── vendor/         # Vendor-specific components
-├── pages/              # Route components
-│   ├── auth/           # Authentication pages
-│   ├── buyer/          # Buyer pages
-│   └── vendor/         # Vendor pages
-├── stores/             # Zustand state management
-├── services/           # API and business logic
-├── lib/                # Utilities and configurations
-├── types/              # TypeScript type definitions
-├── utils/              # Helper functions
-└── hooks/              # Custom React hooks
-```
 
 ### Key Architectural Patterns
 
@@ -313,15 +269,7 @@ const buttonVariants = cva(
 );
 ```
 
-#### Responsive Design
-
-```tsx
-// Mobile-first approach
-<div className="flex flex-col md:flex-row gap-4 p-4 md:p-6">
-  <div className="w-full md:w-1/2">Content</div>
-  <div className="w-full md:w-1/2">Content</div>
-</div>
-```
+````
 
 ### Image Handling
 
@@ -337,7 +285,7 @@ import CloudinaryImage from "@/components/CloudinaryImage";
   width={400}
   height={300}
 />;
-```
+````
 
 #### Image Validation
 
@@ -360,48 +308,11 @@ const handleImageUpload = async (file: File) => {
 };
 ```
 
-## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-npm run test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests with UI
-npm run test:ui
-```
-
-### Test Structure
-
-```tsx
-// src/__tests__/components/Button.test.tsx
-import { render, screen } from "@testing-library/react";
-import { Button } from "@/components/ui/button";
-
-describe("Button", () => {
-  it("renders with correct text", () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText("Click me")).toBeInTheDocument();
-  });
-});
-```
-
-### Testing Patterns
-
-- **Unit Tests**: Test individual components and functions
-- **Integration Tests**: Test component interactions
-- **E2E Tests**: Test complete user flows (when needed)
-
 ## 📝 Common Tasks
 
 ### Adding a New Component
+
+The steps use terminal commands, but it its completely okay for you to use the text editor
 
 1. **Create component file**
 
@@ -444,70 +355,6 @@ describe("Button", () => {
 
    // Add route
    <Route path="/new-page" element={<NewPage />} />;
-   ```
-
-### Adding a New Store
-
-1. **Create store file**
-
-   ```bash
-   touch src/stores/newStore.ts
-   ```
-
-2. **Define store with Zustand**
-
-   ```tsx
-   import { create } from "zustand";
-   import { persist } from "zustand/middleware";
-
-   interface NewStoreState {
-     data: any[];
-     loading: boolean;
-     fetchData: () => Promise<void>;
-   }
-
-   export const useNewStore = create<NewStoreState>()(
-     persist(
-       (set) => ({
-         data: [],
-         loading: false,
-         fetchData: async () => {
-           set({ loading: true });
-           // Fetch logic
-           set({ loading: false });
-         },
-       }),
-       { name: "new-store" }
-     )
-   );
-   ```
-
-3. **Export from stores/index.ts**
-   ```tsx
-   export { useNewStore } from "./newStore";
-   ```
-
-### Adding a New Service
-
-1. **Create service file**
-
-   ```bash
-   touch src/services/newService.ts
-   ```
-
-2. **Define service functions**
-
-   ```tsx
-   import { supabase } from "@/lib/supabaseClient";
-
-   export class NewService {
-     static async fetchData(): Promise<any[]> {
-       const { data, error } = await supabase.from("table_name").select("*");
-
-       if (error) throw error;
-       return data;
-     }
-   }
    ```
 
 ## 🔧 Troubleshooting
@@ -587,14 +434,6 @@ VITE_DEBUG=true
    - Optimize image sizes
 
 ## 📚 Additional Resources
-
-### Documentation
-
-- [React Documentation](https://react.dev/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [Supabase Docs](https://supabase.com/docs)
-- [Zustand Docs](https://github.com/pmndrs/zustand)
 
 ### Project-Specific
 
