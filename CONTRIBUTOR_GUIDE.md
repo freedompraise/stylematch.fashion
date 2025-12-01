@@ -51,7 +51,7 @@ StyleMatch is a fashion marketplace platform that connects vendors with customer
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/freedompraise/stylematch.fashion
+   git clone https://github.com/freedompraise/stylematch.live
    cd stylematch-frontend-bloom
    ```
 

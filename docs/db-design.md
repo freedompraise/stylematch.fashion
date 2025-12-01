@@ -632,9 +632,9 @@ $function$;
 
 **Environment Variables Required:**
 
-- `MAILJET_API_KEY` - Mailjet API key for email sending
+- `MAILJET_API_KEY` - Mailjet API key for email sesnding
 - `MAILJET_SECRET_KEY` - Mailjet secret key for email sending
-- `APP_URL` - Application URL (defaults to 'https://www.stylematch.fashion')
+- `APP_URL` - Application URL (defaults to 'https://www.stylematch.live')
 
 **Input Parameters:**
 
@@ -678,11 +678,8 @@ $function$;
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 const MAILJET_API_KEY = Deno.env.get("MAILJET_API_KEY");
 const MAILJET_SECRET_KEY = Deno.env.get("MAILJET_SECRET_KEY");
-const APP_URL = Deno.env.get("APP_URL") || "https://www.stylematch.fashion";
-const allowedOrigins = [
-  "http://localhost:8080",
-  "https://www.stylematch.fashion",
-];
+const APP_URL = Deno.env.get("APP_URL") || "https://www.stylematch.live";
+const allowedOrigins = ["http://localhost:8080", "https://www.stylematch.live"];
 
 function getCorsHeaders(origin) {
   if (origin && allowedOrigins.includes(origin)) {
@@ -719,7 +716,7 @@ async function sendEmail(to, subject, html) {
       Messages: [
         {
           From: {
-            Email: "noreply@stylematch.fashion",
+            Email: "noreply@stylematch.live",
             Name: "StyleMatch",
           },
           To: [

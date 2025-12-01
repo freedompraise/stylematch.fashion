@@ -1,4 +1,3 @@
-
 # StyleMatch
 
 A fashion-forward commerce platform built to empower vendors in Nigeria and beyond.
@@ -9,23 +8,23 @@ StyleMatch helps social vendors showcase their inventory, streamline orders, and
 
 ## ✨ Features
 
-- Personalized online storefront for each vendor  
-- Mobile-first customer shopping experience  
-- Real-time inventory and sales tracking  
-- Seamless product uploads from WhatsApp, Instagram, and file imports  
-- Paystack-powered payment and payout system  
-- Chat-enabled customer support  
-- Social media integration  
-- Responsive dashboard with actionable insights  
+- Personalized online storefront for each vendor
+- Mobile-first customer shopping experience
+- Real-time inventory and sales tracking
+- Seamless product uploads from WhatsApp, Instagram, and file imports
+- Paystack-powered payment and payout system
+- Chat-enabled customer support
+- Social media integration
+- Responsive dashboard with actionable insights
 
 ---
 
 ## 🧠 Tech Stack
 
-- **Frontend**: React (Vite) + Radix UI  
-- **Backend**: Supabase (PostgreSQL + Auth)  
-- **Payments**: Paystack  
-- **Deployment**: Vercel (Frontend)  
+- **Frontend**: React (Vite) + Radix UI
+- **Backend**: Supabase (PostgreSQL + Auth)
+- **Payments**: Paystack
+- **Deployment**: Vercel (Frontend)
 
 ---
 
@@ -34,9 +33,9 @@ StyleMatch helps social vendors showcase their inventory, streamline orders, and
 Clone the repository:
 
 ```bash
-git clone https://github.com/freedompraise/stylematch.fashion..git
+git clone https://github.com/freedompraise/stylematch.live.git
 cd stylematch
-````
+```
 
 Install dependencies:
 
@@ -70,9 +69,9 @@ npm run dev
 
 Use the `supabase` folder to:
 
-* Initialize your schema
-* Define triggers and policies
-* Manage row-level security
+- Initialize your schema
+- Define triggers and policies
+- Manage row-level security
 
 Create tables:
 
@@ -86,9 +85,9 @@ supabase db push
 
 Ensure each vendor has:
 
-* A valid bank name and account number
-* Payout preference: manual or automatic
-* A configured `payout_info` field in the database
+- A valid bank name and account number
+- Payout preference: manual or automatic
+- A configured `payout_info` field in the database
 
 Subaccounts are automatically created using vendor data on onboarding.
 
@@ -122,3 +121,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ```
 
+```
